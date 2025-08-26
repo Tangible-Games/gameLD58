@@ -1,5 +1,6 @@
 fs = import('fs')
 
+# PSPDEV configuration and deps
 psp_config = find_program('psp-config')
 pspdev_sdk = run_command(psp_config, '--pspsdk-path', check: true).stdout().strip()
 
@@ -20,6 +21,7 @@ add_project_arguments('-D_PSP_FW_VERSION=600', language: ['c', 'cpp'])
 
 add_project_arguments('-fno-exceptions', language: ['cpp'])
 add_project_arguments('-fno-rtti', language: ['cpp'])
+
 
 # Add BUILD_PRX=1 to your makefile to generate a PRX file for use with PSP emulators.
 # To allow your application to use the later PSP models's extra RAM (normally used for UMD caching), add PSP_LARGE_MEMORY=1 
@@ -71,7 +73,23 @@ strip_exe = find_program('psp-strip')
 pack_pbp_exe = find_program('pack-pbp')
 ppsspp_exe = find_program('PPSSPPSDL')
 
+add_project_arguments('-std=c++2a', language: 'cpp')
+add_project_arguments('-std=gnu11', language: 'c')
 
+# Host configurations and deps
+add_project_arguments('-std=c++2a', language: 'cpp', native: true)
+add_project_arguments('-std=gnu11', language: 'c', native: true)
+
+add_project_arguments('-DTARGET_HOST=1', language: ['c', 'cpp'], native: true)
+# always debug for the host
+add_project_arguments('-O0', language: ['c', 'cpp'], native: true)
+add_project_arguments('-ggdb', language: ['c', 'cpp'], native: true)
+
+sdl2_dep = dependency('sdl2', native: true)
+
+host_deps = [sdl2_dep]
+
+# Generate build targets
 foreach t : targets
     srcdir = t['srcdir']
     name = t['name']
@@ -116,8 +134,21 @@ foreach t : targets
     )
 
     run_target(
-        'run', 
+        name + '_run',
         command: [ppsspp_exe, '--escape-exit', eboot_pbp.full_path()], 
         depends: eboot_pbp
+    )
+
+    host_elf = executable(
+        name + '_host_exe',
+        srcs_full,
+        dependencies: host_deps + deps,
+        native: true
+    )
+
+    run_target(
+        name + '_host_run',
+        command: [host_elf],
+        depends: host_elf
     )
 endforeach
