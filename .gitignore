@@ -3,3 +3,5 @@
 *.elf
 *.SFO
 *.PBP
+subprojects/*/
+subprojects/wrapdb.json

@@ -87,8 +87,11 @@ add_project_arguments('-O0', language: ['c', 'cpp'], native: true)
 add_project_arguments('-ggdb', language: ['c', 'cpp'], native: true)
 
 sdl2_dep = dependency('sdl2', native: true)
+gtest_dep = dependency('gtest', native: true)
+gtest_main_dep = dependency('gtest_main', native: true)
 
 host_deps = [sdl2_dep]
+gtest_host_dep = [gtest_dep, gtest_main_dep]
 
 # Generate build targets
 foreach t : targets
@@ -174,3 +177,16 @@ if muon_exe.found()
     ]
     run_target('format-meson', command: [muon_exe, 'fmt', '-i'] + meson_files)
 endif
+
+foreach t : tests_srcs
+    test_name = fs.replace_suffix(fs.name(t), '')
+    message('Test: ' + test_name)
+    texe = executable(
+        test_name,
+        t,
+        include_directories: include_directories('.'),
+        dependencies: [gtest_host_dep],
+        native: true,
+    )
+    test(test_name, texe)
+endforeach
