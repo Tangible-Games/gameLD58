@@ -1,0 +1,8 @@
+[binaries]
+c = 'psp-gcc'
+cpp = 'psp-g++'
+ar = 'psp-ar'
+strip = 'psp-strip'
+objcopy = 'psp-objcopy'
+objdump = 'psp-objdump'
+size = 'psp-size'

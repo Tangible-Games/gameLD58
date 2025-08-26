@@ -1,0 +1,28 @@
+# Prepare
+
+Download PSPDEV: https://pspdev.github.io/downloads.html
+Extract to $HOME, e.g.:
+```
+tar xvf pspdev-macos-latest-arm64.tar.gz -C $HOME
+```
+
+Download and install PPSSPP: https://www.ppsspp.org/download/
+
+# Configure build
+
+Import environment:
+```
+source ./build_env.sh
+```
+
+Create build directory:
+```
+configure_cross.sh
+```
+
+# Build and run
+
+Run in simulator:
+```
+ninja -C builddir/ run
+```

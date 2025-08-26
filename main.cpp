@@ -1,9 +1,9 @@
-#include <SDL.h>
+#include <SDL2/SDL.h>
 
 #include <vector>
 #include <ctime>
 
-#include "symphony_lite/all_symphony.hpp"
+#include <symphony_lite/all_symphony.hpp>
 
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
@@ -20,7 +20,7 @@ struct Sprite {
 
 std::vector<Sprite> all_sprites;
 
-int main(int argc, char* argv[]) {
+int main(int /* argc */, char* /* argv */[]) {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
 
   SDL_Window* window = SDL_CreateWindow("window", SDL_WINDOWPOS_UNDEFINED,
@@ -85,11 +85,11 @@ int main(int argc, char* argv[]) {
     }
 
     SpatialBin2d<int> broad_phase(50.0f, 50.0f, 256);
-    for (int i = 0; i < all_sprites.size(); ++i) {
+    for (size_t i = 0; i < all_sprites.size(); ++i) {
       broad_phase.Add(all_sprites[i].cur_pos, all_sprites[i].half_sizes, i);
     }
 
-    for (int i = 0; i < all_sprites.size(); ++i) {
+    for (size_t i = 0; i < all_sprites.size(); ++i) {
       auto& sprite = all_sprites[i];
 
       sprite.collides = false;
@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
 
       AARect2d rect(sprite.cur_pos, sprite.half_sizes);
       for (int pc_index : pcs) {
-        if (pc_index == i) {
+        if (pc_index == static_cast<int>(i)) {
           continue;
         }
 
