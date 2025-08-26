@@ -1,5 +1,1 @@
-
-symphony_lite_dep = declare_dependency(
-    include_directories: '..',
-    dependencies : []
-)
+symphony_lite_dep = declare_dependency(include_directories: '..', dependencies: [])
