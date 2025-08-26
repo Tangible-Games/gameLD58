@@ -1,9 +1,8 @@
 #include <SDL2/SDL.h>
 
-#include <vector>
 #include <ctime>
-
 #include <symphony_lite/all_symphony.hpp>
+#include <vector>
 
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
