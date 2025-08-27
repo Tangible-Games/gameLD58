@@ -169,7 +169,7 @@ endforeach
 
 # Meson format
 
-muon_exe = find_program('muon')
+muon_exe = find_program('muon', required: false)
 if muon_exe.found()
     meson_files = [
         meson.project_source_root() / 'meson.build',
