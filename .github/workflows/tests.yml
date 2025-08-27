@@ -1,0 +1,38 @@
+name: Tests
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  linux-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install latest Meson
+      run: pip3 install --user meson
+    - name: Run tests with ASan
+      run: |
+        meson setup builddir -Db_sanitize=address
+        ninja -C builddir test
+
+  macos-tests:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Prepare virtual env
+      run: |
+        python3 -m venv pvenv
+        source pvenv/bin/activate
+        echo PATH=$PATH >> $GITHUB_ENV
+        echo VIRTUAL_ENV=$VIRTUAL_ENV >> $GITHUB_ENV
+    - name: Install latest Meson
+      run: pip3 install meson
+    - name: Run tests with ASan
+      run: |
+        meson setup builddir -Db_sanitize=address -Db_lundef=false
+        ninja -C builddir test
