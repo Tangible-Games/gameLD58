@@ -86,11 +86,10 @@ add_project_arguments('-DTARGET_HOST=1', language: ['c', 'cpp'], native: true)
 add_project_arguments('-O0', language: ['c', 'cpp'], native: true)
 add_project_arguments('-ggdb', language: ['c', 'cpp'], native: true)
 
-sdl2_dep = dependency('sdl2', native: true)
-gtest_dep = dependency('gtest', native: true)
-gtest_main_dep = dependency('gtest_main', native: true)
+sdl2_host_dep = dependency('sdl2', required: true, native: true)
+gtest_dep = dependency('gtest', required: true, native: true)
+gtest_main_dep = dependency('gtest_main', required: true, native: true)
 
-host_deps = [sdl2_dep]
 gtest_host_dep = [gtest_dep, gtest_main_dep]
 
 # Generate build targets
@@ -156,12 +155,14 @@ foreach t : targets
         )
     endif
 
-    host_elf = executable(
-        name + '_host_exe',
-        srcs_full,
-        dependencies: host_deps + deps,
-        native: true,
-    )
+    if sdl2_host_dep.found()
+        host_elf = executable(
+            name + '_host_exe',
+            srcs_full,
+            dependencies: [sdl2_host_dep] + deps,
+            native: true,
+        )
+    endif
 
     run_target(name + '_host_run', command: [host_elf], depends: host_elf)
 endforeach
@@ -178,15 +179,17 @@ if muon_exe.found()
     run_target('format-meson', command: [muon_exe, 'fmt', '-i'] + meson_files)
 endif
 
-foreach t : tests_srcs
-    test_name = fs.replace_suffix(fs.name(t), '')
-    message('Test: ' + test_name)
-    texe = executable(
-        test_name,
-        t,
-        include_directories: include_directories('.'),
-        dependencies: [gtest_host_dep],
-        native: true,
-    )
-    test(test_name, texe)
-endforeach
+if gtest_dep.found()
+    foreach t : tests_srcs
+        test_name = fs.replace_suffix(fs.name(t), '')
+        message('Test: ' + test_name)
+        texe = executable(
+            test_name,
+            t,
+            include_directories: include_directories('.'),
+            dependencies: [gtest_host_dep],
+            native: true,
+        )
+        test(test_name, texe)
+    endforeach
+endif
