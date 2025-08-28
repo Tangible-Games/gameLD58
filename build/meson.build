@@ -92,83 +92,7 @@ gtest_main_dep = dependency('gtest_main', required: false, native: true)
 
 gtest_host_dep = [gtest_dep, gtest_main_dep]
 
-# Generate build targets
-foreach t : targets
-    srcdir = t['srcdir']
-    name = t['name']
-    srcs = t['srcs']
-    deps = t.get('deps', [])
-    icon = t.get('icon', [])
-    prev = t.get('preview', [])
-
-    srcs_full = []
-    foreach s : srcs
-        srcs_full += srcdir / s
-    endforeach
-
-    if meson.is_cross_build()
-        elf = executable(
-            name,
-            srcs_full,
-            dependencies: pspdev_deps + deps,
-        )
-
-        elf_fixed = custom_target(
-            name + '_fixed',
-            output: name + '-fixed',
-            input: elf,
-            command: [psp_fix_imports_exe, '@INPUT@', '-o', '@OUTPUT@'],
-        )
-
-        param_sfo = custom_target(
-            output: name + '-PARAM.SFO',
-            command: [mksfoex_exe, '-d', 'MEMSIZE=1', name, '@OUTPUT@'],
-        )
-
-        elf_stripped = custom_target(
-            input: elf_fixed,
-            output: name + '-stripped',
-            command: [strip_exe, '@INPUT@', '-o', '@OUTPUT@'],
-        )
-
-        eboot_pbp = custom_target(
-            input: [param_sfo, elf_stripped, icon, prev],
-            output: name + '-EBOOT.PBP',
-            command: [
-                pack_pbp_exe,
-                '@OUTPUT@',
-                '@INPUT0@',
-                '@INPUT2@',
-                'NULL',
-                '@INPUT3@',
-                'NULL',
-                'NULL',
-                '@INPUT1@',
-                'NULL',
-            ],
-        )
-
-        run_target(
-            name + '_run',
-            command: [ppsspp_exe, '--escape-exit', eboot_pbp.full_path()],
-            depends: eboot_pbp,
-        )
-    endif
-
-    if sdl2_host_dep.found()
-        host_elf = executable(
-            name + '_host_exe',
-            srcs_full,
-            dependencies: [sdl2_host_dep] + deps,
-            native: true,
-        )
-
-        run_target(name + '_host_run', command: [host_elf], depends: host_elf)
-    endif
-endforeach
-
 # Meson format
-
 muon_exe = find_program('muon', required: false)
 if muon_exe.found()
     meson_files = [
@@ -177,19 +101,4 @@ if muon_exe.found()
         meson.project_source_root() / 'symphony_lite' / 'meson.build',
     ]
     run_target('format-meson', command: [muon_exe, 'fmt', '-i'] + meson_files)
-endif
-
-if gtest_dep.found()
-    foreach t : tests_srcs
-        test_name = fs.replace_suffix(fs.name(t), '')
-        message('Test: ' + test_name)
-        texe = executable(
-            test_name,
-            t,
-            include_directories: include_directories('.'),
-            dependencies: [gtest_host_dep],
-            native: true,
-        )
-        test(test_name, texe)
-    endforeach
 endif

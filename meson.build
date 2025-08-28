@@ -14,21 +14,93 @@ project(
     ],
 )
 
+srcs = []
+include_dirs = []
+
 subdir('symphony_lite')
+subdir('src')
 
-# targets
-game_elf = {
-    'name': meson.project_name(),
-    'srcs': [
-        'main.cpp',
-    ],
-    'deps': [symphony_lite_dep],
-    'icon': [meson.current_source_dir() / 'icon.png'],
-    'preview': [meson.current_source_dir() / 'prev.png'],
-    'srcdir': meson.current_source_dir(),
-}
-
-targets = [game_elf]
-
-# build scripts (include at the end)
+# Build configuration and dependencies
 subdir('build')
+
+icon = files('icon.png')
+preview = files('icon.png')
+
+# Generate build targets
+if meson.is_cross_build()
+    elf = executable(
+        meson.project_name(),
+        srcs,
+        include_directories: include_dirs,
+        dependencies: pspdev_deps + [symphony_lite_dep],
+    )
+
+    elf_fixed = custom_target(
+        meson.project_name() + '_fixed',
+        output: meson.project_name() + '-fixed',
+        input: elf,
+        command: [psp_fix_imports_exe, '@INPUT@', '-o', '@OUTPUT@'],
+    )
+
+    param_sfo = custom_target(
+        output: meson.project_name() + '-PARAM.SFO',
+        command: [mksfoex_exe, '-d', 'MEMSIZE=1', meson.project_name(), '@OUTPUT@'],
+    )
+
+    elf_stripped = custom_target(
+        input: elf_fixed,
+        output: meson.project_name() + '-stripped',
+        command: [strip_exe, '@INPUT@', '-o', '@OUTPUT@'],
+    )
+
+    eboot_pbp = custom_target(
+        input: [param_sfo, elf_stripped, icon, preview],
+        output: meson.project_name() + '-EBOOT.PBP',
+        command: [
+            pack_pbp_exe,
+            '@OUTPUT@',
+            '@INPUT0@',
+            '@INPUT2@',
+            'NULL',
+            '@INPUT3@',
+            'NULL',
+            'NULL',
+            '@INPUT1@',
+            'NULL',
+        ],
+    )
+
+    run_target(
+        'run',
+        command: [ppsspp_exe, '--escape-exit', eboot_pbp.full_path()],
+        depends: eboot_pbp,
+    )
+endif
+
+if sdl2_host_dep.found()
+    host_elf = executable(
+        meson.project_name() + '_host_exe',
+        srcs,
+        include_directories: include_dirs,
+        dependencies: [sdl2_host_dep, symphony_lite_dep],
+        native: true,
+    )
+
+    run_target('host_run', command: [host_elf], depends: host_elf)
+endif
+
+# Tests
+if gtest_dep.found()
+    foreach t : tests_srcs
+        test_name = fs.replace_suffix(fs.name(t), '')
+        message('Test: ' + test_name)
+        texe = executable(
+            test_name,
+            t,
+            include_directories: include_directories('.'),
+            dependencies: [gtest_host_dep],
+            native: true,
+        )
+        test(test_name, texe)
+    endforeach
+endif
