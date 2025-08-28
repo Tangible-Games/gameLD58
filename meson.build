@@ -26,6 +26,20 @@ subdir('build')
 icon = files('icon.png')
 preview = files('icon.png')
 
+assets_link = custom_target(
+    'assets_link',
+    output: '.empty',
+    command: [
+        python_exe,
+        [
+            meson.project_source_root() / 'build' / 'link_assets.py',
+            meson.project_source_root() / 'assets',
+            meson.project_build_root(),
+        ],
+    ],
+    build_always_stale: true,
+)
+
 # Generate build targets
 if meson.is_cross_build()
     elf = executable(
@@ -73,7 +87,7 @@ if meson.is_cross_build()
     run_target(
         'run',
         command: [ppsspp_exe, '--escape-exit', eboot_pbp.full_path()],
-        depends: eboot_pbp,
+        depends: [eboot_pbp, assets_link],
     )
 endif
 
@@ -82,11 +96,11 @@ if sdl2_host_dep.found()
         meson.project_name() + '_host_exe',
         srcs,
         include_directories: include_dirs,
-        dependencies: [sdl2_host_dep, symphony_lite_dep],
+        dependencies: [sdl2_host_dep, sdl2image_host_dep, symphony_lite_dep],
         native: true,
     )
 
-    run_target('host_run', command: [host_elf], depends: host_elf)
+    run_target('host_run', command: [host_elf], depends: [host_elf, assets_link])
 endif
 
 # Tests

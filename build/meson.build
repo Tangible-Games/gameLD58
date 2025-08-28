@@ -52,7 +52,11 @@ if meson.is_cross_build()
         # sdl
         'SDL2',
         'SDL2main',
+        'SDL2_image',
         'GL',
+        'jpeg',
+        'png',
+        'z',
     ]
 
     foreach lib : psp_libs
@@ -87,10 +91,13 @@ add_project_arguments('-O0', language: ['c', 'cpp'], native: true)
 add_project_arguments('-ggdb', language: ['c', 'cpp'], native: true)
 
 sdl2_host_dep = dependency('sdl2', required: false, native: true)
+sdl2image_host_dep = dependency('SDL2_image', required: false, native: true)
 gtest_dep = dependency('gtest', required: false, native: true)
 gtest_main_dep = dependency('gtest_main', required: false, native: true)
 
 gtest_host_dep = [gtest_dep, gtest_main_dep]
+
+python_exe = find_program('python3')
 
 # Meson format
 muon_exe = find_program('muon', required: false)
@@ -99,6 +106,8 @@ if muon_exe.found()
         meson.project_source_root() / 'meson.build',
         meson.project_source_root() / 'build' / 'meson.build',
         meson.project_source_root() / 'symphony_lite' / 'meson.build',
+        meson.project_source_root() / 'src' / 'meson.build',
+        meson.project_source_root() / 'src' / 'meson.build',
     ]
     run_target('format-meson', command: [muon_exe, 'fmt', '-i'] + meson_files)
 endif
