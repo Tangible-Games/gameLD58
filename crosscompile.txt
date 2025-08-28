@@ -1,0 +1,14 @@
+[binaries]
+c = 'psp-gcc'
+cpp = 'psp-g++'
+ar = 'psp-ar'
+strip = 'psp-strip'
+objcopy = 'psp-objcopy'
+objdump = 'psp-objdump'
+size = 'psp-size'
+
+[host_machine]
+system = 'none'
+cpu_family = 'mips'
+cpu = 'misp'
+endian = 'big'
