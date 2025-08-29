@@ -24,10 +24,10 @@ configure_cross.sh
 
 Run in simulator:
 ```
-ninja -C builddir/ gameLD58_run
+ninja -C builddir/ run
 ```
 
 Run on host:
 ```
-ninja -C builddir/ gameLD58_host_run
+ninja -C builddir/ host_run
 ```
