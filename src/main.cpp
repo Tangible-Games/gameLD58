@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 #include <ctime>
 #include <symphony_lite/all_symphony.hpp>
@@ -21,6 +22,7 @@ std::vector<Sprite> all_sprites;
 
 int main(int /* argc */, char* /* argv */[]) {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
+  IMG_Init(IMG_INIT_PNG);
 
   SDL_Window* window = SDL_CreateWindow("window", SDL_WINDOWPOS_UNDEFINED,
                                         SDL_WINDOWPOS_UNDEFINED, 480, 272, 0);
@@ -29,6 +31,15 @@ int main(int /* argc */, char* /* argv */[]) {
       SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
   srand(time(0));
+
+  // Load sprites
+  SDL_Surface * pixels = IMG_Load("assets/psp.png");
+  SDL_Texture * spriteBlack = SDL_CreateTextureFromSurface(renderer, pixels);
+  SDL_FreeSurface(pixels);
+
+  pixels = IMG_Load("assets/psp_red.png");
+  SDL_Texture * spriteRed = SDL_CreateTextureFromSurface(renderer, pixels);
+  SDL_FreeSurface(pixels);
 
   for (int i = 0; i < 100; ++i) {
     all_sprites.push_back(Sprite());
@@ -110,7 +121,6 @@ int main(int /* argc */, char* /* argv */[]) {
         }
       }
     }
-
     // Draw everything on a white background
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
@@ -120,17 +130,18 @@ int main(int /* argc */, char* /* argv */[]) {
     // Draw a red square
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     for (auto& sprite : all_sprites) {
+      SDL_Texture *spriteImg = nullptr;
       if (sprite.collides) {
-        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+        spriteImg = spriteRed;
       } else {
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        spriteImg = spriteBlack;
       }
 
       SDL_Rect square = {(int)sprite.cur_pos.x - (int)sprite.half_sizes.x,
                          (int)sprite.cur_pos.y - (int)sprite.half_sizes.y,
                          (int)sprite.half_sizes.x * 2,
                          (int)sprite.half_sizes.y * 2};
-      SDL_RenderDrawRect(renderer, &square);
+      SDL_RenderCopy(renderer, spriteImg, NULL, &square);
     }
 
     SDL_RenderPresent(renderer);
