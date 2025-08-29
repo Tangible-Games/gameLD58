@@ -71,7 +71,7 @@ if meson.is_cross_build()
     mksfoex_exe = find_program('mksfoex')
     strip_exe = find_program('psp-strip')
     pack_pbp_exe = find_program('pack-pbp')
-    ppsspp_exe = find_program('PPSSPPSDL')
+    ppsspp_exe = find_program('PPSSPPSDL', '/Applications/PPSSPPSDL.app/Contents/MacOS/PPSSPPSDL')
 
     add_project_arguments('-std=c++2a', language: 'cpp')
     add_project_arguments('-std=gnu11', language: 'c')
