@@ -2,6 +2,7 @@
 
 #include "aa_rect2d.hpp"
 #include "angle.hpp"
+#include "audio.hpp"
 #include "circle.hpp"
 #include "hash.hpp"
 #include "point2d.hpp"
@@ -13,3 +14,4 @@
 #include "transformation_matrix3d.hpp"
 #include "vector2d.hpp"
 #include "vector3d.hpp"
+#include "wave_loader.hpp"
