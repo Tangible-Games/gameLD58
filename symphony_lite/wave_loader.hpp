@@ -191,8 +191,9 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
     }
 
     if (!file.good()) {
-      std::cerr << "[WaveFile] Something is wrong with reading file, file_path: "
-                << file_path << std::endl;
+      std::cerr
+          << "[WaveFile] Something is wrong with reading file, file_path: "
+          << file_path << std::endl;
       return false;
     }
 
@@ -216,7 +217,7 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
 }
 
 void WaveFile::ReadSamples(size_t first_sample_offset_in_bytes,
-                          size_t size_in_bytes, void* buffer_out) {
+                           size_t size_in_bytes, void* buffer_out) {
   if (wave_data_.empty()) {
     memcpy(buffer_out, wave_data_.data() + first_sample_offset_in_bytes,
            size_in_bytes);
