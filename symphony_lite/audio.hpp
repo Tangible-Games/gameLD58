@@ -70,8 +70,10 @@ class Device {
 
     std::shared_ptr<WaveFile> wave_file;
     PlayCount play_count;
+    int num_plays{0};
     FadeControl fade_control;
     bool is_playing{false};
+    bool ready_to_stop{false};
     size_t samples_streamed{0};
   };
 
@@ -117,6 +119,7 @@ std::shared_ptr<PlayingStream> Device::Play(std::shared_ptr<WaveFile> wave_file,
       (PlayingStreamInternal*)playing_stream.get();
 
   playing_stream_internal->is_playing = true;
+  playing_stream_internal->ready_to_stop = false;
 
   SDL_LockAudioDevice(sdl_audio_device_);
   playing_streams_.insert(playing_stream);
@@ -138,26 +141,53 @@ void Device::dataCallback(void* userdata, Uint8* stream, int len) {
 
 void Device::onDataRequested(Uint8* stream, int len) const {
   size_t num_requested_samples = len / sample_size_;
+  size_t num_samples_sent = 0;
 
   for (auto playing_stream : playing_streams_) {
     PlayingStreamInternal* playing_stream_internal =
         (PlayingStreamInternal*)playing_stream.get();
 
-    size_t num_samples_to_read = num_requested_samples;
-    if (num_requested_samples + playing_stream_internal->samples_streamed >
-        playing_stream_internal->wave_file->GetNumSamples()) {
-      num_samples_to_read =
-          playing_stream_internal->wave_file->GetNumSamples() -
-          playing_stream_internal->samples_streamed;
+    if (!playing_stream_internal->ready_to_stop) {
+      while (num_samples_sent < num_requested_samples) {
+        bool reset_samples_streamed = false;
+
+        size_t num_samples_to_read = num_requested_samples;
+        if (num_requested_samples + playing_stream_internal->samples_streamed >
+            playing_stream_internal->wave_file->GetNumSamples()) {
+          num_samples_to_read =
+              playing_stream_internal->wave_file->GetNumSamples() -
+              playing_stream_internal->samples_streamed;
+
+          reset_samples_streamed = true;
+
+          playing_stream_internal->num_plays += 1;
+        }
+
+        playing_stream_internal->wave_file->ReadSamples(
+            playing_stream_internal->samples_streamed, num_samples_to_read,
+            stream + num_samples_sent * sample_size_);
+        playing_stream_internal->samples_streamed += num_samples_to_read;
+        num_samples_sent += num_samples_to_read;
+
+        if (reset_samples_streamed) {
+          playing_stream_internal->samples_streamed = 0;
+        }
+
+        if (!playing_stream_internal->play_count.loop_infinite) {
+          if (playing_stream_internal->num_plays >=
+              playing_stream_internal->play_count.num_repeats) {
+            playing_stream_internal->ready_to_stop = true;
+            break;
+          }
+        }
+      }
+    } else {
+      playing_stream_internal->is_playing = false;
     }
 
-    playing_stream_internal->wave_file->ReadSamples(
-        playing_stream_internal->samples_streamed, num_samples_to_read, stream);
-    playing_stream_internal->samples_streamed += num_samples_to_read;
-
-    for (size_t i = num_samples_to_read; i < num_requested_samples; ++i) {
+    for (size_t i = num_samples_sent; i < num_requested_samples; ++i) {
       for (size_t j = 0; j < sample_size_; ++j) {
-        stream[(num_samples_to_read + i) * sample_size_ + j] = 0;
+        stream[(num_samples_sent + i) * sample_size_ + j] = 0;
       }
     }
 

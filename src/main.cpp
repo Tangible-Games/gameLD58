@@ -46,7 +46,7 @@ int main(int /* argc */, char* /* argv */[]) {
       "assets/bioorange.wav",
       Symphony::Audio::WaveFile::kModeStreamingFromFile);
   audio_device->Init();
-  audio_device->Play(music, Symphony::Audio::PlayTimes(4));
+  audio_device->Play(music, Symphony::Audio::PlayTimes(3));
 
   for (int i = 0; i < 100; ++i) {
     all_sprites.push_back(Sprite());
