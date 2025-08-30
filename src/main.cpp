@@ -5,6 +5,7 @@
 #include <symphony_lite/all_symphony.hpp>
 #include <vector>
 
+using namespace Symphony::Audio;
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
 
@@ -33,13 +34,16 @@ int main(int /* argc */, char* /* argv */[]) {
   srand(time(0));
 
   // Load sprites
-  SDL_Surface * pixels = IMG_Load("assets/psp.png");
-  SDL_Texture * spriteBlack = SDL_CreateTextureFromSurface(renderer, pixels);
+  SDL_Surface* pixels = IMG_Load("assets/psp.png");
+  SDL_Texture* spriteBlack = SDL_CreateTextureFromSurface(renderer, pixels);
   SDL_FreeSurface(pixels);
 
   pixels = IMG_Load("assets/psp_red.png");
-  SDL_Texture * spriteRed = SDL_CreateTextureFromSurface(renderer, pixels);
+  SDL_Texture* spriteRed = SDL_CreateTextureFromSurface(renderer, pixels);
   SDL_FreeSurface(pixels);
+
+  WaveFile music;
+  music.Load("assets/bioorange.wav", WaveFile::kModeStreamingFromFile);
 
   for (int i = 0; i < 100; ++i) {
     all_sprites.push_back(Sprite());
@@ -130,7 +134,7 @@ int main(int /* argc */, char* /* argv */[]) {
     // Draw a red square
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     for (auto& sprite : all_sprites) {
-      SDL_Texture *spriteImg = nullptr;
+      SDL_Texture* spriteImg = nullptr;
       if (sprite.collides) {
         spriteImg = spriteRed;
       } else {

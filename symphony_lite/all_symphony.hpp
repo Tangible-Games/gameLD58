@@ -13,4 +13,4 @@
 #include "transformation_matrix3d.hpp"
 #include "vector2d.hpp"
 #include "vector3d.hpp"
-#include "wav_loader.hpp"
+#include "wave_loader.hpp"
