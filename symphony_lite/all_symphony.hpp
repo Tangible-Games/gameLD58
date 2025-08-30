@@ -2,6 +2,7 @@
 
 #include "aa_rect2d.hpp"
 #include "angle.hpp"
+#include "audio.hpp"
 #include "circle.hpp"
 #include "hash.hpp"
 #include "point2d.hpp"

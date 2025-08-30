@@ -5,7 +5,6 @@
 #include <symphony_lite/all_symphony.hpp>
 #include <vector>
 
-using namespace Symphony::Audio;
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
 
@@ -22,7 +21,7 @@ struct Sprite {
 std::vector<Sprite> all_sprites;
 
 int main(int /* argc */, char* /* argv */[]) {
-  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
+  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER);
   IMG_Init(IMG_INIT_PNG);
 
   SDL_Window* window = SDL_CreateWindow("window", SDL_WINDOWPOS_UNDEFINED,
@@ -42,8 +41,12 @@ int main(int /* argc */, char* /* argv */[]) {
   SDL_Texture* spriteRed = SDL_CreateTextureFromSurface(renderer, pixels);
   SDL_FreeSurface(pixels);
 
-  WaveFile music;
-  music.Load("assets/bioorange.wav", WaveFile::kModeStreamingFromFile);
+  auto audio_device = new Symphony::Audio::Device();
+  auto music = Symphony::Audio::LoadWave(
+      "assets/bioorange.wav",
+      Symphony::Audio::WaveFile::kModeStreamingFromFile);
+  audio_device->Init();
+  audio_device->Play(music, Symphony::Audio::PlayTimes(4));
 
   for (int i = 0; i < 100; ++i) {
     all_sprites.push_back(Sprite());
@@ -69,6 +72,8 @@ int main(int /* argc */, char* /* argv */[]) {
     }
 
     prev_time = cur_time;
+
+    audio_device->Update(dt);
 
     // Process input
     if (SDL_PollEvent(&event)) {
