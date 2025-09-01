@@ -43,7 +43,7 @@ int main(int /* argc */, char* /* argv */[]) {
 
   auto audio_device = new Symphony::Audio::Device();
   auto music = Symphony::Audio::LoadWave(
-      "assets/bioorange.wav",
+      "assets/bioorange_44k.wav",
       Symphony::Audio::WaveFile::kModeStreamingFromFile);
   audio_device->Init();
   audio_device->Play(music, Symphony::Audio::PlayTimes(3));

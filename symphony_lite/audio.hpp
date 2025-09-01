@@ -89,7 +89,7 @@ void Device::Init() {
   SDL_AudioSpec sdl_audio_spec;
   SDL_AudioSpec sdl_audio_spec_received;
 
-  sdl_audio_spec.freq = 22050;
+  sdl_audio_spec.freq = 44100;
   sdl_audio_spec.format = AUDIO_S16LSB;
   sdl_audio_spec.channels = 2;
   sdl_audio_spec.samples = 1024;
