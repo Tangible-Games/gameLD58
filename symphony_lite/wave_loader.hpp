@@ -63,7 +63,7 @@ struct WaveFormatCommonFields {
 
   size_t GetFormatCategory() const { return GetValue16(format_category); }
 
-  size_t GetChannels() const { return GetValue16(channels); }
+  size_t GetNumChannels() const { return GetValue16(channels); }
 
   size_t GetSampleRate() const { return GetValue32(sample_rate); }
 
@@ -95,38 +95,42 @@ class WaveFile {
   }
   const WaveFormatPCMFields& GetFormatPCMFields() const { return format_pcm_; }
 
-  size_t GetNumSamples() const { return wave_data_size_ / GetSampleSize(); }
+  size_t GetNumBlocks() const { return wave_data_size_ / GetBlockSize(); }
 
-  size_t GetSampleSize() const {
-    return format_common_.GetChannels() * format_pcm_.GetBitsPerSample() / 8;
-  }
+  size_t GetBlockSize() const { return format_common_.GetBlockAlign(); }
+
+  size_t GetNumChannels() const { return format_common_.GetNumChannels(); }
 
   float GetLengthSec() const {
-    return (float)GetNumSamples() / (float)format_common_.GetSampleRate();
+    return (float)GetNumBlocks() / (float)format_common_.GetSampleRate();
   }
 
-  void ReadSamples(size_t first_sample_offset_in_bytes, size_t size_in_bytes,
-                   void* buffer_out);
+  void ReadBlocks(size_t first_block, size_t num_blocks, float* blocks_out);
 
  private:
+  void convertToFloat(const std::vector<char>& samples_in,
+                      float* samples_out) const;
+
   std::ifstream file_;
   WaveFormatCommonFields format_common_;
   WaveFormatPCMFields format_pcm_;
   size_t wave_data_offset_{0};
   size_t wave_data_size_{0};
-  std::vector<char> wave_data_;
+  std::vector<float> wave_data_;
 };
 
 bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
-  file_.open(file_path, std::ios::binary);
-  if (!file_.is_open()) {
+  std::ifstream file;
+
+  file.open(file_path, std::ios::binary);
+  if (!file.is_open()) {
     std::cerr << "[Symphony::Audio::WaveFile] Can't open file, file_path: "
               << file_path << std::endl;
     return false;
   }
 
   RiffChunkHeader riff;
-  file_.read((char*)&riff, sizeof(RiffChunkHeader));
+  file.read((char*)&riff, sizeof(RiffChunkHeader));
   if (!riff.TestChunk("RIFF")) {
     std::cerr << "[Symphony::Audio::WaveFile] Not a RIFF file, file_path: "
               << file_path << std::endl;
@@ -141,7 +145,7 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
   }
 
   char format_id[4];
-  file_.read(format_id, 4);
+  file.read(format_id, 4);
   if (format_id[0] != 'W' || format_id[1] != 'A' || format_id[2] != 'V' ||
       format_id[3] != 'E') {
     std::cerr << "[Symphony::Audio::WaveFile] Not a WAVE file, file_path: "
@@ -155,7 +159,7 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
   bool wave_data_read = false;
   while (bytes_to_scan >= sizeof(RiffChunkHeader)) {
     RiffChunkHeader chunk;
-    file_.read((char*)&chunk, sizeof(RiffChunkHeader));
+    file.read((char*)&chunk, sizeof(RiffChunkHeader));
     bytes_to_scan -= sizeof(RiffChunkHeader);
 
     if (bytes_to_scan < chunk.GetSize()) {
@@ -168,7 +172,7 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
     if (chunk.TestChunk("fmt ")) {
       size_t fmt_bytes_read = 0;
 
-      file_.read((char*)&format_common_, sizeof(WaveFormatCommonFields));
+      file.read((char*)&format_common_, sizeof(WaveFormatCommonFields));
       fmt_bytes_read += sizeof(WaveFormatCommonFields);
 
       if (format_common_.GetFormatCategory() != kWaveFormatPCM) {
@@ -178,11 +182,19 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
         return false;
       }
 
-      file_.read((char*)&format_pcm_, sizeof(WaveFormatPCMFields));
+      file.read((char*)&format_pcm_, sizeof(WaveFormatPCMFields));
       fmt_bytes_read += sizeof(WaveFormatPCMFields);
 
       if (fmt_bytes_read < chunk.GetSize()) {
-        file_.seekg(chunk.GetSize() - fmt_bytes_read, std::ios::cur);
+        file.seekg(chunk.GetSize() - fmt_bytes_read, std::ios::cur);
+      }
+
+      if (format_pcm_.GetBitsPerSample() != 8 &&
+          format_pcm_.GetBitsPerSample() != 16) {
+        std::cerr << "[Symphony::Audio::WaveFile] Only 8 and 16 bits per "
+                     "sample formats are supported, file_path: "
+                  << file_path << std::endl;
+        return false;
       }
 
       format_read = true;
@@ -194,17 +206,17 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
         return false;
       }
 
-      wave_data_offset_ = file_.tellg();
+      wave_data_offset_ = file.tellg();
       wave_data_size_ = chunk.GetSize();
 
-      file_.seekg(chunk.GetSize(), std::ios::cur);
+      file.seekg(chunk.GetSize(), std::ios::cur);
 
       wave_data_read = true;
     } else {
-      file_.seekg(chunk.GetSize(), std::ios::cur);
+      file.seekg(chunk.GetSize(), std::ios::cur);
     }
 
-    if (!file_.good()) {
+    if (!file.good()) {
       std::cerr << "[Symphony::Audio::WaveFile] Something is wrong with "
                    "reading file, file_path: "
                 << file_path << std::endl;
@@ -222,26 +234,64 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
   }
 
   if (mode == kModeLoadInMemory) {
-    wave_data_.resize(wave_data_size_);
+    std::vector<char> samples_in(wave_data_size_);
 
-    file_.seekg(wave_data_offset_, std::ios::beg);
-    file_.read(&wave_data_[0], wave_data_size_);
+    file.seekg(wave_data_offset_, std::ios::beg);
+    file.read(&samples_in[0], wave_data_size_);
 
-    file_.close();
+    wave_data_.resize(GetNumBlocks() * format_common_.GetNumChannels());
+    convertToFloat(samples_in, &wave_data_[0]);
+  } else {
+    file_ = std::move(file);
   }
 
   return true;
 }
 
-void WaveFile::ReadSamples(size_t first_sample, size_t num_samples,
-                           void* buffer_out) {
-  size_t sample_size = GetSampleSize();
+void WaveFile::ReadBlocks(size_t first_block, size_t num_blocks,
+                          float* blocks_out) {
+  size_t block_size = GetBlockSize();
   if (!wave_data_.empty()) {
-    memcpy(buffer_out, wave_data_.data() + first_sample * sample_size,
-           num_samples * sample_size);
+    memcpy(blocks_out, wave_data_.data() + first_block * sizeof(float),
+           num_blocks * sizeof(float));
   } else {
-    file_.seekg(wave_data_offset_ + first_sample * sample_size, std::ios::beg);
-    file_.read((char*)buffer_out, num_samples * sample_size);
+    file_.seekg(wave_data_offset_ + first_block * block_size, std::ios::beg);
+
+    static std::vector<char> samples_in;
+
+    samples_in.resize(num_blocks * block_size);
+    file_.read(&samples_in[0], samples_in.size());
+
+    convertToFloat(samples_in, blocks_out);
+  }
+}
+
+void WaveFile::convertToFloat(const std::vector<char>& blocks_in,
+                              float* blocks_out) const {
+  float min_value = 0.0f;
+  float max_value = 255.0f;
+  float mid_point = 128.0f;
+  if (format_pcm_.GetBitsPerSample() == 16) {
+    min_value = -32768.0f;
+    max_value = 32767.0f;
+    mid_point = 0.0f;
+  }
+
+  size_t num_blocks = blocks_in.size() / GetBlockSize();
+  size_t num_channels = format_common_.GetNumChannels();
+
+  if (format_pcm_.GetBitsPerSample() == 8) {
+    const uint8_t* blocks_in_typed = (const uint8_t*)blocks_in.data();
+    for (size_t i = 0; i < num_blocks * num_channels; ++i) {
+      blocks_out[i] =
+          (((float)blocks_in_typed[i]) - mid_point) / (max_value - min_value);
+    }
+  } else if (format_pcm_.GetBitsPerSample() == 16) {
+    const int16_t* blocks_in_typed = (const int16_t*)blocks_in.data();
+    for (size_t i = 0; i < num_blocks * num_channels; ++i) {
+      blocks_out[i] =
+          (((float)blocks_in_typed[i]) - mid_point) / (max_value - min_value);
+    }
   }
 }
 

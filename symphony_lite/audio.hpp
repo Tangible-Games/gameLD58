@@ -82,7 +82,7 @@ class Device {
 
   SDL_AudioDeviceID sdl_audio_device_;
   std::unordered_set<std::shared_ptr<PlayingStream>> playing_streams_;
-  unsigned int sample_size_{0};
+  unsigned int block_size_{0};
 };
 
 void Device::Init() {
@@ -105,7 +105,7 @@ void Device::Init() {
               << std::endl;
   }
 
-  sample_size_ = 4;
+  block_size_ = 4;
 
   SDL_PauseAudioDevice(sdl_audio_device_, 0);
 }
@@ -129,7 +129,9 @@ std::shared_ptr<PlayingStream> Device::Play(std::shared_ptr<WaveFile> wave_file,
 }
 
 void Device::Stop(std::shared_ptr<PlayingStream> playing_stream) {
+  SDL_LockAudioDevice(sdl_audio_device_);
   playing_streams_.erase(playing_stream);
+  SDL_UnlockAudioDevice(sdl_audio_device_);
 }
 
 void Device::Update(float dt) { (void)dt; }
@@ -140,7 +142,7 @@ void Device::dataCallback(void* userdata, Uint8* stream, int len) {
 }
 
 void Device::onDataRequested(Uint8* stream, int len) const {
-  size_t num_requested_samples = len / sample_size_;
+  size_t num_requested_samples = len / block_size_;
   size_t num_samples_sent = 0;
 
   for (auto playing_stream : playing_streams_) {
@@ -153,9 +155,9 @@ void Device::onDataRequested(Uint8* stream, int len) const {
 
         size_t num_samples_to_read = num_requested_samples;
         if (num_requested_samples + playing_stream_internal->samples_streamed >
-            playing_stream_internal->wave_file->GetNumSamples()) {
+            playing_stream_internal->wave_file->GetNumBlocks()) {
           num_samples_to_read =
-              playing_stream_internal->wave_file->GetNumSamples() -
+              playing_stream_internal->wave_file->GetNumBlocks() -
               playing_stream_internal->samples_streamed;
 
           reset_samples_streamed = true;
@@ -163,9 +165,22 @@ void Device::onDataRequested(Uint8* stream, int len) const {
           playing_stream_internal->num_plays += 1;
         }
 
-        playing_stream_internal->wave_file->ReadSamples(
+        std::vector<float> blocks(
+            num_samples_to_read *
+            playing_stream_internal->wave_file->GetNumChannels());
+        playing_stream_internal->wave_file->ReadBlocks(
             playing_stream_internal->samples_streamed, num_samples_to_read,
-            stream + num_samples_sent * sample_size_);
+            &blocks[0]);
+
+        int16_t* stream_types = (int16_t*)stream;
+        for (size_t i = 0;
+             i < num_samples_to_read *
+                     playing_stream_internal->wave_file->GetNumChannels();
+             ++i) {
+          stream_types[num_samples_sent * 2 + i] =
+              (int16_t)(blocks[i] * 65535.0f);
+        }
+
         playing_stream_internal->samples_streamed += num_samples_to_read;
         num_samples_sent += num_samples_to_read;
 
@@ -186,8 +201,8 @@ void Device::onDataRequested(Uint8* stream, int len) const {
     }
 
     for (size_t i = num_samples_sent; i < num_requested_samples; ++i) {
-      for (size_t j = 0; j < sample_size_; ++j) {
-        stream[(num_samples_sent + i) * sample_size_ + j] = 0;
+      for (size_t j = 0; j < block_size_; ++j) {
+        stream[(num_samples_sent + i) * block_size_ + j] = 0;
       }
     }
 
