@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "audio_utils.hpp"
 #include "wave_loader.hpp"
 
 namespace Symphony {
@@ -178,7 +179,7 @@ void Device::onDataRequested(Uint8* stream, int len) const {
                      playing_stream_internal->wave_file->GetNumChannels();
              ++i) {
           stream_types[num_samples_sent * 2 + i] =
-              (int16_t)(blocks[i] * 65535.0f);
+              ConvertFloatToPcm<int16_t>(blocks[i]);
         }
 
         playing_stream_internal->samples_streamed += num_samples_to_read;
