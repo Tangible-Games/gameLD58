@@ -1,9 +1,13 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
+#include <chrono>
 #include <ctime>
-#include <symphony_lite/all_symphony.hpp>
+#include <fstream>
+#include <thread>
 #include <vector>
+
+#include "symphony_lite/all_symphony.hpp"
 
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
@@ -20,6 +24,27 @@ struct Sprite {
 
 std::vector<Sprite> all_sprites;
 
+float gravity = -980.0f;
+
+Vector2d character_pos;
+Vector2d character_half_sizes;
+Vector2d character_cur_velocity;
+float character_velocity = 150.0f;
+float character_jump_velocity = 400.0f;
+
+bool characterTouchesFloor(const Vector2d& next_pos, float floor_y,
+                           Vector2d& new_pos_out) {
+  new_pos_out = next_pos;
+
+  float character_down = next_pos.y + character_half_sizes.y;
+  if (character_down >= floor_y) {
+    new_pos_out.y = floor_y - character_half_sizes.y;
+    return true;
+  }
+
+  return false;
+}
+
 int main(int /* argc */, char* /* argv */[]) {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER);
   IMG_Init(IMG_INIT_PNG);
@@ -33,13 +58,22 @@ int main(int /* argc */, char* /* argv */[]) {
   srand(time(0));
 
   // Load sprites
-  SDL_Surface* pixels = IMG_Load("assets/psp.png");
-  SDL_Texture* spriteBlack = SDL_CreateTextureFromSurface(renderer, pixels);
+  SDL_Surface* pixels = IMG_Load("assets/dummy_50x50.png");
+  SDL_Texture* sprite_black = SDL_CreateTextureFromSurface(renderer, pixels);
   SDL_FreeSurface(pixels);
 
-  pixels = IMG_Load("assets/psp_red.png");
-  SDL_Texture* spriteRed = SDL_CreateTextureFromSurface(renderer, pixels);
+  pixels = IMG_Load("assets/dummy_50x50.png");
+  SDL_Texture* sprite_red = SDL_CreateTextureFromSurface(renderer, pixels);
   SDL_FreeSurface(pixels);
+
+  pixels = IMG_Load("assets/character.png");
+  SDL_Texture* sprite_character =
+      SDL_CreateTextureFromSurface(renderer, pixels);
+  character_half_sizes.x = pixels->w / 2.0f;
+  character_half_sizes.y = pixels->h / 2.0f;
+  SDL_FreeSurface(pixels);
+
+  character_pos = Vector2d(480 / 2, 272 / 2);
 
   auto audio_device = new Symphony::Audio::Device();
   auto music = Symphony::Audio::LoadWave(
@@ -47,31 +81,38 @@ int main(int /* argc */, char* /* argv */[]) {
       Symphony::Audio::WaveFile::kModeStreamingFromFile);
   audio_device->Init();
   audio_device->Play(music, Symphony::Audio::PlayTimes(3));
+  Symphony::Audio::PlayTimes(3);
 
   for (int i = 0; i < 100; ++i) {
     all_sprites.push_back(Sprite());
     all_sprites.back().pos = Point2d(rand() % 480, rand() % 272);
     all_sprites.back().cur_pos = all_sprites.back().pos;
-    all_sprites.back().half_sizes = Vector2d(rand() % 10 + 2, rand() % 20 + 4);
+    all_sprites.back().half_sizes = Vector2d(rand() % 10 + 5, rand() % 20 + 5);
     float angle = DegToRad(rand() % 180);
     all_sprites.back().dir = Vector2d(cosf(angle), sinf(angle));
     all_sprites.back().dir.MakeNormalized();
-    all_sprites.back().velocity = rand() % 6 + 2;
+    all_sprites.back().velocity = rand() % 10 + 20;
     all_sprites.back().max_travel_dist = rand() % 50 + 20;
   }
 
   bool running = true;
   SDL_Event event;
-  auto prev_time = SDL_GetTicks64();
+
+  bool is_left = false;
+  bool is_right = false;
+  bool is_up = false;
+
+  std::ofstream log;
+  log.open("log.txt", std::ofstream::out);
+
+  auto prev_frame_start_time{std::chrono::steady_clock::now()};
   while (running) {
-    auto cur_time = SDL_GetTicks64();
-
-    float dt = (cur_time - prev_time) / 1000.0f;
-    if (dt < 1.0f / 60.0f) {
-      dt = 1.0f / 60.0f;
-    }
-
-    prev_time = cur_time;
+    // auto frame_start_time_precise{std::chrono::high_resolution_clock::now()};
+    auto frame_start_time{std::chrono::steady_clock::now()};
+    std::chrono::duration<float> dt_period_seconds{frame_start_time -
+                                                   prev_frame_start_time};
+    float dt = dt_period_seconds.count();
+    prev_frame_start_time = frame_start_time;
 
     audio_device->Update(dt);
 
@@ -79,20 +120,97 @@ int main(int /* argc */, char* /* argv */[]) {
     if (SDL_PollEvent(&event)) {
       switch (event.type) {
         case SDL_QUIT:
-          // End the loop if the programs is being closed
           running = false;
           break;
+
         case SDL_CONTROLLERDEVICEADDED:
-          // Connect a controller when it is connected
           SDL_GameControllerOpen(event.cdevice.which);
           break;
+
         case SDL_CONTROLLERBUTTONDOWN:
+          log << "event.cbutton.button: " << (int)event.cbutton.button
+              << std::endl;
           if (event.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
-            // Close the program if start is pressed
             running = false;
+          }
+          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
+            is_left = true;
+          }
+          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
+            is_right = true;
+          }
+          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
+              event.cbutton.button == 0) {
+            is_up = true;
+          }
+          break;
+
+        case SDL_CONTROLLERBUTTONUP:
+          log << "event.cbutton.button: " << (int)event.cbutton.button
+              << std::endl;
+          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
+            is_left = false;
+          }
+          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
+            is_right = false;
+          }
+          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
+              event.cbutton.button == 0) {
+            is_up = false;
+          }
+          break;
+
+        case SDL_KEYDOWN:
+          if (event.key.keysym.sym == SDLK_LEFT) {
+            is_left = true;
+          }
+          if (event.key.keysym.sym == SDLK_RIGHT) {
+            is_right = true;
+          }
+          if (event.key.keysym.sym == SDLK_UP) {
+            is_up = true;
+          }
+          break;
+
+        case SDL_KEYUP:
+          if (event.key.keysym.sym == SDLK_LEFT) {
+            is_left = false;
+          }
+          if (event.key.keysym.sym == SDLK_RIGHT) {
+            is_right = false;
+          }
+          if (event.key.keysym.sym == SDLK_UP) {
+            is_up = false;
           }
           break;
       }
+    }
+
+    Vector2d character_new_pos;
+    bool character_touches_floor =
+        characterTouchesFloor(character_pos, 272.0f, character_new_pos);
+
+    if (character_touches_floor) {
+      character_cur_velocity.x = 0.0f;
+      if (is_left) {
+        character_cur_velocity.x = -character_velocity;
+      }
+      if (is_right) {
+        character_cur_velocity.x = character_velocity;
+      }
+    }
+    if (is_up) {
+      Vector2d new_pos;
+      if (characterTouchesFloor(character_pos, 272.0f, new_pos)) {
+        character_cur_velocity.y = -character_jump_velocity;
+      }
+    }
+
+    character_cur_velocity.y -= gravity * dt;
+    character_pos = character_pos + character_cur_velocity * dt;
+
+    if (characterTouchesFloor(character_pos, 272.0f, character_new_pos)) {
+      character_pos = character_new_pos;
     }
 
     for (auto& sprite : all_sprites) {
@@ -103,32 +221,32 @@ int main(int /* argc */, char* /* argv */[]) {
       }
     }
 
-    SpatialBin2d<int> broad_phase(50.0f, 50.0f, 256);
-    for (size_t i = 0; i < all_sprites.size(); ++i) {
-      broad_phase.Add(all_sprites[i].cur_pos, all_sprites[i].half_sizes, i);
-    }
+    // SpatialBin2d<int> broad_phase(100.0f, 100.0f, 1024);
+    // for (size_t i = 0; i < all_sprites.size(); ++i) {
+    //   broad_phase.Add(all_sprites[i].cur_pos, all_sprites[i].half_sizes, i);
+    // }
 
     for (size_t i = 0; i < all_sprites.size(); ++i) {
       auto& sprite = all_sprites[i];
 
-      sprite.collides = false;
+      sprite.collides = (rand() % 2) == 0;
 
-      std::vector<int> pcs;
-      broad_phase.Query(sprite.cur_pos, sprite.half_sizes, pcs);
+      // std::vector<int> pcs;
+      // broad_phase.Query(sprite.cur_pos, sprite.half_sizes, pcs);
 
-      AARect2d rect(sprite.cur_pos, sprite.half_sizes);
-      for (int pc_index : pcs) {
-        if (pc_index == static_cast<int>(i)) {
-          continue;
-        }
+      // AARect2d rect(sprite.cur_pos, sprite.half_sizes);
+      // for (int pc_index : pcs) {
+      //   if (pc_index == static_cast<int>(i)) {
+      //     continue;
+      //   }
 
-        AARect2d pc_rect(all_sprites[pc_index].cur_pos,
-                         all_sprites[pc_index].half_sizes);
-        if (rect.Intersect(pc_rect)) {
-          sprite.collides = true;
-          break;
-        }
-      }
+      //   AARect2d pc_rect(all_sprites[pc_index].cur_pos,
+      //                    all_sprites[pc_index].half_sizes);
+      //   if (rect.Intersect(pc_rect)) {
+      //     sprite.collides = true;
+      //     break;
+      //   }
+      // }
     }
     // Draw everything on a white background
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
@@ -136,24 +254,34 @@ int main(int /* argc */, char* /* argv */[]) {
     // Clear the screen
     SDL_RenderClear(renderer);
 
-    // Draw a red square
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     for (auto& sprite : all_sprites) {
-      SDL_Texture* spriteImg = nullptr;
+      SDL_Texture* sprite_img = nullptr;
       if (sprite.collides) {
-        spriteImg = spriteRed;
+        sprite_img = sprite_red;
       } else {
-        spriteImg = spriteBlack;
+        sprite_img = sprite_black;
       }
 
       SDL_Rect square = {(int)sprite.cur_pos.x - (int)sprite.half_sizes.x,
                          (int)sprite.cur_pos.y - (int)sprite.half_sizes.y,
                          (int)sprite.half_sizes.x * 2,
                          (int)sprite.half_sizes.y * 2};
-      SDL_RenderCopy(renderer, spriteImg, NULL, &square);
+      SDL_RenderCopy(renderer, sprite_img, NULL, &square);
     }
 
+    SDL_Rect square = {(int)character_pos.x - (int)character_half_sizes.x,
+                       (int)character_pos.y - (int)character_half_sizes.y,
+                       (int)character_half_sizes.x * 2,
+                       (int)character_half_sizes.y * 2};
+    SDL_RenderCopy(renderer, sprite_character, NULL, &square);
+
     SDL_RenderPresent(renderer);
+
+    // auto frame_end_time_precise{std::chrono::high_resolution_clock::now()};
+    // auto frame_duration_precise{frame_end_time_precise -
+    //                             frame_start_time_precise};
+    // auto to_sleep = std::chrono::milliseconds(100) - frame_duration_precise;
+    // std::this_thread::sleep_for(to_sleep);
   }
 
   SDL_DestroyRenderer(renderer);
