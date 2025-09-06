@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "audio_utils.hpp"
+
 namespace Symphony {
 namespace {
 struct FourCC {
@@ -51,7 +53,7 @@ struct RiffChunkHeader {
 
 namespace Audio {
 enum WaveFormatCategory {
-  kWaveFormatPCM = 1,
+  kWaveFormatPcm = 1,
 };
 
 struct WaveFormatCommonFields {
@@ -175,7 +177,7 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
       file.read((char*)&format_common_, sizeof(WaveFormatCommonFields));
       fmt_bytes_read += sizeof(WaveFormatCommonFields);
 
-      if (format_common_.GetFormatCategory() != kWaveFormatPCM) {
+      if (format_common_.GetFormatCategory() != kWaveFormatPcm) {
         std::cerr << "[Symphony::Audio::WaveFile] Format is not supported, "
                      "file_path: "
                   << file_path << std::endl;
@@ -268,29 +270,18 @@ void WaveFile::ReadBlocks(size_t first_block, size_t num_blocks,
 
 void WaveFile::convertToFloat(const std::vector<char>& blocks_in,
                               float* blocks_out) const {
-  float min_value = 0.0f;
-  float max_value = 255.0f;
-  float mid_point = 128.0f;
-  if (format_pcm_.GetBitsPerSample() == 16) {
-    min_value = -32768.0f;
-    max_value = 32767.0f;
-    mid_point = 0.0f;
-  }
-
   size_t num_blocks = blocks_in.size() / GetBlockSize();
   size_t num_channels = format_common_.GetNumChannels();
 
   if (format_pcm_.GetBitsPerSample() == 8) {
     const uint8_t* blocks_in_typed = (const uint8_t*)blocks_in.data();
     for (size_t i = 0; i < num_blocks * num_channels; ++i) {
-      blocks_out[i] =
-          (((float)blocks_in_typed[i]) - mid_point) / (max_value - min_value);
+      blocks_out[i] = ConvertPcmToFloat<uint8_t>(blocks_in_typed[i]);
     }
   } else if (format_pcm_.GetBitsPerSample() == 16) {
     const int16_t* blocks_in_typed = (const int16_t*)blocks_in.data();
     for (size_t i = 0; i < num_blocks * num_channels; ++i) {
-      blocks_out[i] =
-          (((float)blocks_in_typed[i]) - mid_point) / (max_value - min_value);
+      blocks_out[i] = ConvertPcmToFloat<int16_t>(blocks_in_typed[i]);
     }
   }
 }

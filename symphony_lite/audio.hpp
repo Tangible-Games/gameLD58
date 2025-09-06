@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "audio_utils.hpp"
 #include "wave_loader.hpp"
 
 namespace Symphony {
@@ -17,7 +18,7 @@ struct PlayCount {
 
 static constexpr PlayCount kPlayLooped{.num_repeats = 0, .loop_infinite = true};
 static constexpr PlayCount kPlayOnce{.num_repeats = 1, .loop_infinite = false};
-static PlayCount PlayTimes(int num_repeats) {
+PlayCount PlayTimes(int num_repeats) {
   return PlayCount{.num_repeats = num_repeats, .loop_infinite = false};
 }
 
@@ -121,17 +122,17 @@ std::shared_ptr<PlayingStream> Device::Play(std::shared_ptr<WaveFile> wave_file,
   playing_stream_internal->is_playing = true;
   playing_stream_internal->ready_to_stop = false;
 
-  SDL_LockAudioDevice(sdl_audio_device_);
+  // SDL_LockAudioDevice(sdl_audio_device_);
   playing_streams_.insert(playing_stream);
-  SDL_UnlockAudioDevice(sdl_audio_device_);
+  // SDL_UnlockAudioDevice(sdl_audio_device_);
 
   return playing_stream;
 }
 
 void Device::Stop(std::shared_ptr<PlayingStream> playing_stream) {
-  SDL_LockAudioDevice(sdl_audio_device_);
+  // SDL_LockAudioDevice(sdl_audio_device_);
   playing_streams_.erase(playing_stream);
-  SDL_UnlockAudioDevice(sdl_audio_device_);
+  // SDL_UnlockAudioDevice(sdl_audio_device_);
 }
 
 void Device::Update(float dt) { (void)dt; }
@@ -178,7 +179,7 @@ void Device::onDataRequested(Uint8* stream, int len) const {
                      playing_stream_internal->wave_file->GetNumChannels();
              ++i) {
           stream_types[num_samples_sent * 2 + i] =
-              (int16_t)(blocks[i] * 65535.0f);
+              ConvertFloatToPcm<int16_t>(blocks[i]);
         }
 
         playing_stream_internal->samples_streamed += num_samples_to_read;

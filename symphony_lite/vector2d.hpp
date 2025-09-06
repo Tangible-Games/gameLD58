@@ -12,6 +12,12 @@ class Vector2d {
 
   Vector2d(float new_x, float new_y) : x(new_x), y(new_y) {}
 
+  static Vector2d Zero() { return Vector2d(0.0f, 0.0f); }
+
+  static Vector2d X() { return Vector2d(1.0f, 0.0f); }
+
+  static Vector2d Y() { return Vector2d(0.0f, 1.0f); }
+
   Vector2d operator-() const { return Vector2d(-x, -y); }
 
   Vector2d operator+(const Vector2d& rhv) const {
