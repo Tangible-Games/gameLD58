@@ -2,11 +2,12 @@
 
 #include <SDL2/SDL.h>
 
+#include <algorithm>
 #include <iostream>
+#include <thread>
 #include <unordered_set>
 #include <vector>
 
-#include "audio_utils.hpp"
 #include "wave_loader.hpp"
 
 namespace Symphony {
@@ -29,6 +30,10 @@ struct FadeControl {
 
 static constexpr FadeControl kNoFade{.fade_in_time_sec = 0,
                                      .fade_out_time_sec = 0};
+FadeControl FadeInOut(float fade_in_time_sec, float fade_out_time_sec) {
+  return FadeControl{.fade_in_time_sec = fade_in_time_sec,
+                     .fade_out_time_sec = fade_out_time_sec};
+}
 
 class Device;
 
@@ -36,11 +41,6 @@ class PlayingStream {
  public:
   PlayingStream() = default;
   virtual ~PlayingStream() {}
-
-  virtual bool IsPlaying() const = 0;
-
- private:
-  friend Device;
 };
 
 class Device {
@@ -53,11 +53,21 @@ class Device {
       std::shared_ptr<WaveFile> wave_file, const PlayCount& play_count,
       const FadeControl& fade_control = kNoFade);
 
-  void Stop(std::shared_ptr<PlayingStream> playing_stream);
-
-  void Update(float dt);
+  bool IsPlaying(std::shared_ptr<PlayingStream> playing_stream);
 
  private:
+  static inline constexpr int32_t kMaxGain = 128;
+  static int32_t ToIntGain(float gain) { return (int32_t)(gain * 128.0f); }
+  static int32_t ApplyGain(int32_t sample, int32_t gain) {
+    return (sample * gain) >> 7;
+  }
+
+  static inline constexpr int32_t kSampleMax16 = 32767;
+  static inline constexpr int32_t kSampleMin16 = -32768;
+  static int32_t ClampSample(int32_t sample) {
+    return std::clamp(sample, kSampleMin16, kSampleMax16);
+  }
+
   struct PlayingStreamInternal : public PlayingStream {
    public:
     PlayingStreamInternal(std::shared_ptr<WaveFile> new_wave_file,
@@ -67,33 +77,50 @@ class Device {
           play_count(new_play_count),
           fade_control(new_fade_control) {}
 
-    bool IsPlaying() const override { return is_playing; }
+    enum class GainState { kAttack, kSustain, kRelease };
 
     std::shared_ptr<WaveFile> wave_file;
     PlayCount play_count;
     int num_plays{0};
     FadeControl fade_control;
     bool is_playing{false};
-    bool ready_to_stop{false};
-    size_t samples_streamed{0};
+    size_t blocks_streamed{0};
+    GainState gain_state_{GainState::kAttack};
   };
 
+#pragma pack(push, 1)
+  struct StereoBlock16 {
+    int16_t left;
+    int16_t right;
+  };
+
+  struct StereoBlock32 {
+    int32_t left;
+    int32_t right;
+  };
+#pragma pack(pop)
+
   static void dataCallback(void* userdata, Uint8* stream, int len);
-  void onDataRequested(Uint8* stream, int len) const;
+  void onDataRequested(Uint8* stream, int len);
 
   SDL_AudioDeviceID sdl_audio_device_;
+  std::mutex mutex_;
   std::unordered_set<std::shared_ptr<PlayingStream>> playing_streams_;
-  unsigned int block_size_{0};
+  std::vector<StereoBlock32> mix_buffer_;
+  std::vector<int16_t> read_buffer_;
 };
 
 void Device::Init() {
   SDL_AudioSpec sdl_audio_spec;
   SDL_AudioSpec sdl_audio_spec_received;
 
-  sdl_audio_spec.freq = 44100;
+  size_t num_channels = 2;
+  size_t num_blocks = 512;
+
+  sdl_audio_spec.freq = 22050;
   sdl_audio_spec.format = AUDIO_S16LSB;
-  sdl_audio_spec.channels = 2;
-  sdl_audio_spec.samples = 1024;
+  sdl_audio_spec.channels = num_channels;
+  sdl_audio_spec.samples = num_blocks;
   sdl_audio_spec.padding = 0;
   sdl_audio_spec.callback = dataCallback;
   sdl_audio_spec.userdata = this;
@@ -106,7 +133,8 @@ void Device::Init() {
               << std::endl;
   }
 
-  block_size_ = 4;
+  mix_buffer_.resize(num_blocks);
+  read_buffer_.resize(num_blocks * 2);
 
   SDL_PauseAudioDevice(sdl_audio_device_, 0);
 }
@@ -120,95 +148,127 @@ std::shared_ptr<PlayingStream> Device::Play(std::shared_ptr<WaveFile> wave_file,
       (PlayingStreamInternal*)playing_stream.get();
 
   playing_stream_internal->is_playing = true;
-  playing_stream_internal->ready_to_stop = false;
 
-  // SDL_LockAudioDevice(sdl_audio_device_);
-  playing_streams_.insert(playing_stream);
-  // SDL_UnlockAudioDevice(sdl_audio_device_);
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    playing_streams_.insert(playing_stream);
+  }
 
   return playing_stream;
 }
 
-void Device::Stop(std::shared_ptr<PlayingStream> playing_stream) {
-  // SDL_LockAudioDevice(sdl_audio_device_);
-  playing_streams_.erase(playing_stream);
-  // SDL_UnlockAudioDevice(sdl_audio_device_);
-}
+bool Device::IsPlaying(std::shared_ptr<PlayingStream> playing_stream) {
+  if (!playing_stream) {
+    return false;
+  }
 
-void Device::Update(float dt) { (void)dt; }
+  PlayingStreamInternal* playing_stream_internal =
+      (PlayingStreamInternal*)playing_stream.get();
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  return playing_stream_internal->is_playing;
+}
 
 void Device::dataCallback(void* userdata, Uint8* stream, int len) {
   Device* device = (Device*)userdata;
   device->onDataRequested(stream, len);
 }
 
-void Device::onDataRequested(Uint8* stream, int len) const {
-  size_t num_requested_samples = len / block_size_;
-  size_t num_samples_sent = 0;
+void Device::onDataRequested(Uint8* stream, int len) {
+  std::unordered_set<std::shared_ptr<PlayingStream>> playing_streams_saved;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    playing_streams_saved = playing_streams_;
+  }
 
-  for (auto playing_stream : playing_streams_) {
+  StereoBlock16* stream_typed = (StereoBlock16*)stream;
+  size_t num_requested_blocks = len / (sizeof(StereoBlock16));
+
+  if (mix_buffer_.size() < num_requested_blocks) {
+    mix_buffer_.resize(num_requested_blocks);
+  }
+  for (size_t i = 0; i < num_requested_blocks; ++i) {
+    mix_buffer_[i].left = 0;
+    mix_buffer_[i].right = 0;
+  }
+
+  if (read_buffer_.size() < num_requested_blocks * 2) {
+    read_buffer_.resize(num_requested_blocks * 2);
+  }
+
+  for (auto playing_stream : playing_streams_saved) {
     PlayingStreamInternal* playing_stream_internal =
         (PlayingStreamInternal*)playing_stream.get();
 
-    if (!playing_stream_internal->ready_to_stop) {
-      while (num_samples_sent < num_requested_samples) {
-        bool reset_samples_streamed = false;
+    size_t num_blocks_sent = 0;
+    while (num_blocks_sent < num_requested_blocks) {
+      bool reset_blocks_streamed = false;
 
-        size_t num_samples_to_read = num_requested_samples;
-        if (num_requested_samples + playing_stream_internal->samples_streamed >
-            playing_stream_internal->wave_file->GetNumBlocks()) {
-          num_samples_to_read =
-              playing_stream_internal->wave_file->GetNumBlocks() -
-              playing_stream_internal->samples_streamed;
+      size_t num_blocks_to_read = num_requested_blocks - num_blocks_sent;
+      if (num_blocks_to_read + playing_stream_internal->blocks_streamed >
+          playing_stream_internal->wave_file->GetNumBlocks()) {
+        num_blocks_to_read =
+            playing_stream_internal->wave_file->GetNumBlocks() -
+            playing_stream_internal->blocks_streamed;
 
-          reset_samples_streamed = true;
+        reset_blocks_streamed = true;
 
-          playing_stream_internal->num_plays += 1;
+        playing_stream_internal->num_plays += 1;
+      }
+
+      playing_stream_internal->wave_file->ReadBlocks(
+          playing_stream_internal->blocks_streamed, num_blocks_to_read,
+          &read_buffer_[0]);
+      playing_stream_internal->blocks_streamed += num_blocks_to_read;
+
+      if (playing_stream_internal->wave_file->GetNumChannels() == 2) {
+        const StereoBlock16* stereo_blocks_16 =
+            (const StereoBlock16*)read_buffer_.data();
+        for (size_t i = 0; i < num_blocks_to_read; ++i) {
+          mix_buffer_[num_blocks_sent + i].left += stereo_blocks_16[i].left;
+          mix_buffer_[num_blocks_sent + i].right += stereo_blocks_16[i].right;
         }
-
-        std::vector<float> blocks(
-            num_samples_to_read *
-            playing_stream_internal->wave_file->GetNumChannels());
-        playing_stream_internal->wave_file->ReadBlocks(
-            playing_stream_internal->samples_streamed, num_samples_to_read,
-            &blocks[0]);
-
-        int16_t* stream_types = (int16_t*)stream;
-        for (size_t i = 0;
-             i < num_samples_to_read *
-                     playing_stream_internal->wave_file->GetNumChannels();
-             ++i) {
-          stream_types[num_samples_sent * 2 + i] =
-              ConvertFloatToPcm<int16_t>(blocks[i]);
+      } else {
+        for (size_t i = 0; i < num_blocks_to_read; ++i) {
+          mix_buffer_[num_blocks_sent + i].left += read_buffer_[i];
+          mix_buffer_[num_blocks_sent + i].right += read_buffer_[i];
         }
+      }
 
-        playing_stream_internal->samples_streamed += num_samples_to_read;
-        num_samples_sent += num_samples_to_read;
+      num_blocks_sent += num_blocks_to_read;
 
-        if (reset_samples_streamed) {
-          playing_stream_internal->samples_streamed = 0;
-        }
+      if (reset_blocks_streamed) {
+        playing_stream_internal->blocks_streamed = 0;
 
         if (!playing_stream_internal->play_count.loop_infinite) {
           if (playing_stream_internal->num_plays >=
               playing_stream_internal->play_count.num_repeats) {
-            playing_stream_internal->ready_to_stop = true;
+            playing_stream_internal->is_playing = false;
             break;
           }
         }
       }
-    } else {
-      playing_stream_internal->is_playing = false;
     }
+  }
 
-    for (size_t i = num_samples_sent; i < num_requested_samples; ++i) {
-      for (size_t j = 0; j < block_size_; ++j) {
-        stream[(num_samples_sent + i) * block_size_ + j] = 0;
+  for (size_t i = 0; i < num_requested_blocks; ++i) {
+    mix_buffer_[i].left =
+        std::clamp(mix_buffer_[i].left, kSampleMin16, kSampleMax16);
+    mix_buffer_[i].right =
+        std::clamp(mix_buffer_[i].right, kSampleMin16, kSampleMax16);
+    stream_typed[i].left = (int16_t)mix_buffer_[i].left;
+    stream_typed[i].right = (int16_t)mix_buffer_[i].right;
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto playing_stream : playing_streams_saved) {
+      PlayingStreamInternal* playing_stream_internal =
+          (PlayingStreamInternal*)playing_stream.get();
+      if (!playing_stream_internal->is_playing) {
+        playing_streams_.erase(playing_stream);
       }
     }
-
-    // Now can play only one sound.
-    break;
   }
 }
 
