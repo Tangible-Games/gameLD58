@@ -45,6 +45,8 @@ bool characterTouchesFloor(const Vector2d& next_pos, float floor_y,
   return false;
 }
 
+float music_timeout = 0.0f;
+
 int main(int /* argc */, char* /* argv */[]) {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER);
   IMG_Init(IMG_INIT_PNG);
@@ -77,11 +79,14 @@ int main(int /* argc */, char* /* argv */[]) {
 
   auto audio_device = new Symphony::Audio::Device();
   auto music = Symphony::Audio::LoadWave(
-      "assets/bioorange_44k.wav",
+      "assets/bioorange_22k.wav",
       Symphony::Audio::WaveFile::kModeStreamingFromFile);
+  auto jump = Symphony::Audio::LoadWave(
+      "assets/dummy_22k.wav", Symphony::Audio::WaveFile::kModeLoadInMemory);
   audio_device->Init();
-  audio_device->Play(music, Symphony::Audio::PlayTimes(3));
-  Symphony::Audio::PlayTimes(3);
+
+  music_timeout = (float)(rand() % 3) + 3;
+  std::shared_ptr<Symphony::Audio::PlayingStream> music_stream;
 
   for (int i = 0; i < 100; ++i) {
     all_sprites.push_back(Sprite());
@@ -107,16 +112,24 @@ int main(int /* argc */, char* /* argv */[]) {
 
   auto prev_frame_start_time{std::chrono::steady_clock::now()};
   while (running) {
-    // auto frame_start_time_precise{std::chrono::high_resolution_clock::now()};
     auto frame_start_time{std::chrono::steady_clock::now()};
     std::chrono::duration<float> dt_period_seconds{frame_start_time -
                                                    prev_frame_start_time};
     float dt = dt_period_seconds.count();
     prev_frame_start_time = frame_start_time;
 
-    audio_device->Update(dt);
+    bool is_music_playing = audio_device->IsPlaying(music_stream);
+    if (!is_music_playing) {
+      music_timeout -= dt;
+      if (music_timeout < 0.0f) {
+        music_timeout = 0.0f;
+        music_stream =
+            audio_device->Play(music, Symphony::Audio::PlayTimes(2),
+                               Symphony::Audio::FadeInOut(0.5f, 0.5f));
+        music_timeout = (float)(rand() % 5) + 5;
+      }
+    }
 
-    // Process input
     if (SDL_PollEvent(&event)) {
       switch (event.type) {
         case SDL_QUIT:
@@ -202,6 +215,7 @@ int main(int /* argc */, char* /* argv */[]) {
     if (is_up) {
       Vector2d new_pos;
       if (characterTouchesFloor(character_pos, 272.0f, new_pos)) {
+        audio_device->Play(jump, Symphony::Audio::PlayTimes(1));
         character_cur_velocity.y = -character_jump_velocity;
       }
     }
@@ -221,37 +235,7 @@ int main(int /* argc */, char* /* argv */[]) {
       }
     }
 
-    // SpatialBin2d<int> broad_phase(100.0f, 100.0f, 1024);
-    // for (size_t i = 0; i < all_sprites.size(); ++i) {
-    //   broad_phase.Add(all_sprites[i].cur_pos, all_sprites[i].half_sizes, i);
-    // }
-
-    for (size_t i = 0; i < all_sprites.size(); ++i) {
-      auto& sprite = all_sprites[i];
-
-      sprite.collides = (rand() % 2) == 0;
-
-      // std::vector<int> pcs;
-      // broad_phase.Query(sprite.cur_pos, sprite.half_sizes, pcs);
-
-      // AARect2d rect(sprite.cur_pos, sprite.half_sizes);
-      // for (int pc_index : pcs) {
-      //   if (pc_index == static_cast<int>(i)) {
-      //     continue;
-      //   }
-
-      //   AARect2d pc_rect(all_sprites[pc_index].cur_pos,
-      //                    all_sprites[pc_index].half_sizes);
-      //   if (rect.Intersect(pc_rect)) {
-      //     sprite.collides = true;
-      //     break;
-      //   }
-      // }
-    }
-    // Draw everything on a white background
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-
-    // Clear the screen
     SDL_RenderClear(renderer);
 
     for (auto& sprite : all_sprites) {
@@ -276,12 +260,6 @@ int main(int /* argc */, char* /* argv */[]) {
     SDL_RenderCopy(renderer, sprite_character, NULL, &square);
 
     SDL_RenderPresent(renderer);
-
-    // auto frame_end_time_precise{std::chrono::high_resolution_clock::now()};
-    // auto frame_duration_precise{frame_end_time_precise -
-    //                             frame_start_time_precise};
-    // auto to_sleep = std::chrono::milliseconds(100) - frame_duration_precise;
-    // std::this_thread::sleep_for(to_sleep);
   }
 
   SDL_DestroyRenderer(renderer);
