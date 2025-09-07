@@ -4,8 +4,6 @@
 
 using namespace Symphony::Math;
 
-const double eps = 0.0001;
-
 TEST(AARect2d, Corners) {
   AARect2d rect(Point2d(10.0f, 15.0f),
                 /* new_half_size= */ Vector2d(2.0f, 3.0f));
@@ -193,4 +191,55 @@ TEST(AARect2d, IntersectRayFromInside) {
   ASSERT_NEAR(12.0f, intersection.p.y, eps);
   ASSERT_EQ(0, intersection.dx);
   ASSERT_EQ(-1, intersection.dy);
+}
+
+TEST(AARect2d, Intersect) {
+  AARect2d rect1(Point2d(5.0f, 5.0f),
+                /* new_half_size= */ Vector2d(5.0f, 5.0f));
+  AARect2d rect2(Point2d(10.0f, 10.0f),
+                /* new_half_size= */ Vector2d(5.0f, 5.0f));
+  ASSERT_TRUE(rect1.Intersect(rect2));
+  ASSERT_TRUE(rect2.Intersect(rect1));
+  ASSERT_TRUE(rect1.Intersect(rect1));
+
+  rect2 = AARect2d(Point2d(15.0f, 15.0f), /* new_half_size= */ Vector2d(5.0f, 5.0f));
+  ASSERT_FALSE(rect1.Intersect(rect2));
+  ASSERT_FALSE(rect2.Intersect(rect1));
+
+  rect2 = AARect2d(Point2d(5.0f, 14.0f), /* new_half_size= */ Vector2d(5.0f, 5.0f));
+  ASSERT_TRUE(rect1.Intersect(rect2));
+  ASSERT_TRUE(rect2.Intersect(rect1));
+
+  rect2 = AARect2d(Point2d(14.0f, 5.0f), /* new_half_size= */ Vector2d(5.0f, 5.0f));
+  ASSERT_TRUE(rect1.Intersect(rect2));
+  ASSERT_TRUE(rect2.Intersect(rect1));  
+}
+
+TEST(AARect2d, IntersectRectangle) {
+  AARect2d rect1(Point2d(6.0f, 8.0f),
+                /* new_half_size= */ Vector2d(6.0f, 6.0f));
+  AARect2d rect2(Point2d(10.0f, 10.0f),
+                /* new_half_size= */ Vector2d(6.0f, 6.0f));
+  
+  auto intersection1 = rect1.IntersectRectangle(rect2);
+  auto intersection2 = rect2.IntersectRectangle(rect1);
+  ASSERT_TRUE(intersection1.has_value());
+  ASSERT_TRUE(intersection2.has_value());
+
+  ASSERT_NEAR(intersection2->center.x, intersection1->center.x, eps);
+  ASSERT_NEAR(intersection2->center.y, intersection1->center.y, eps);
+  ASSERT_NEAR(intersection2->half_size.x, intersection1->half_size.x, eps);
+  ASSERT_NEAR(intersection2->half_size.y, intersection1->half_size.y, eps);  
+
+  ASSERT_NEAR(8.0f, intersection1->center.x, eps);
+  ASSERT_NEAR(9.0f, intersection1->center.y, eps);
+  ASSERT_NEAR(4.0f, intersection1->half_size.x, eps);
+  ASSERT_NEAR(5.0f, intersection1->half_size.y, eps);  
+
+  intersection1 = rect1.IntersectRectangle(rect1);
+  ASSERT_TRUE(intersection1.has_value());
+  ASSERT_NEAR(rect1.center.x, intersection1->center.x, eps);
+  ASSERT_NEAR(rect1.center.y, intersection1->center.y, eps);
+  ASSERT_NEAR(rect1.half_size.x, intersection1->half_size.x, eps);
+  ASSERT_NEAR(rect1.half_size.y, intersection1->half_size.y, eps);
 }
