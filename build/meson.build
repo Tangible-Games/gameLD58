@@ -81,7 +81,7 @@ if meson.is_cross_build()
     add_project_arguments('-std=gnu11', language: 'c')
 
     # Always optimized on device
-    # add_project_arguments('-O2', language: ['c', 'cpp'])
+    add_project_arguments('-O2', language: ['c', 'cpp'])
 endif
 
 # Host configurations and deps
