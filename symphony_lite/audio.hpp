@@ -88,7 +88,7 @@ class Device {
     bool is_playing{false};
     size_t looped_blocks_streamed{0};
     size_t total_blocks_streamed{0};
-    GainState gain_state_{GainState::kAttack};
+    GainState gain_state{GainState::kAttack};
   };
 
 #pragma pack(push, 1)
@@ -104,6 +104,10 @@ class Device {
 #pragma pack(pop)
 
   static void dataCallback(void* userdata, Uint8* stream, int len);
+
+  // Returns: gain.
+  static int32_t updateGainState(
+      PlayingStreamInternal* playing_stream_internal);
 
   static void accumulateStereoSamples(StereoBlock32* accumulate_buffer,
                                       const StereoBlock16* stream,
@@ -193,6 +197,66 @@ void Device::dataCallback(void* userdata, Uint8* stream, int len) {
   device->onDataRequested(stream, len);
 }
 
+int32_t Device::updateGainState(
+    PlayingStreamInternal* playing_stream_internal) {
+  int32_t gain = kMaxGain;
+
+  if (playing_stream_internal->gain_state == GainState::kAttack) {
+    size_t num_blocks_to_fade_in =
+        (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
+                 playing_stream_internal->fade_control.fade_in_time_sec);
+    if (playing_stream_internal->total_blocks_streamed >
+        num_blocks_to_fade_in) {
+      gain = kMaxGain;
+
+      playing_stream_internal->gain_state = GainState::kSustain;
+    } else {
+      float gain_f = (float)playing_stream_internal->total_blocks_streamed /
+                     (float)num_blocks_to_fade_in;
+      gain = ToIntGain(gain_f);
+    }
+  }
+
+  if (playing_stream_internal->gain_state == GainState::kSustain) {
+    if (playing_stream_internal->fade_control.fade_out_time_sec > 0.0f) {
+      if (!playing_stream_internal->play_count.loop_infinite) {
+        size_t total_blocks_to_play =
+            playing_stream_internal->wave_file->GetNumBlocks() *
+            playing_stream_internal->play_count.num_repeats;
+        size_t num_blocks_to_fade_out =
+            (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
+                     playing_stream_internal->fade_control.fade_out_time_sec);
+
+        if (playing_stream_internal->total_blocks_streamed +
+                num_blocks_to_fade_out >
+            total_blocks_to_play) {
+          playing_stream_internal->gain_state = GainState::kRelease;
+        }
+      }
+    }
+  }
+
+  if (playing_stream_internal->gain_state == GainState::kRelease) {
+    size_t total_blocks_to_play =
+        playing_stream_internal->wave_file->GetNumBlocks() *
+        playing_stream_internal->play_count.num_repeats;
+    size_t num_blocks_to_fade_out =
+        (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
+                 playing_stream_internal->fade_control.fade_out_time_sec);
+    if (playing_stream_internal->total_blocks_streamed > total_blocks_to_play) {
+      gain = 0;
+    } else {
+      size_t num_blocks_left_to_play =
+          total_blocks_to_play - playing_stream_internal->total_blocks_streamed;
+      float gain_f =
+          (float)num_blocks_left_to_play / (float)num_blocks_to_fade_out;
+      gain = ToIntGain(gain_f);
+    }
+  }
+
+  return gain;
+}
+
 void Device::accumulateStereoSamples(StereoBlock32* accumulate_buffer,
                                      const StereoBlock16* stream,
                                      size_t num_blocks) {
@@ -277,19 +341,7 @@ void Device::onDataRequested(Uint8* stream, int len) {
         (PlayingStreamInternal*)playing_stream.get();
 
     // We apply gain to the whole buffer while it is very small.
-    int32_t gain = kMaxGain;
-    if (playing_stream_internal->gain_state_ == GainState::kAttack) {
-      float seconds_played =
-          (float)playing_stream_internal->total_blocks_streamed /
-          (float)playing_stream_internal->wave_file->GetSampleRate();
-      if (seconds_played >
-          playing_stream_internal->fade_control.fade_in_time_sec) {
-        seconds_played = playing_stream_internal->fade_control.fade_in_time_sec;
-      }
-      float gain_f = seconds_played /
-                     playing_stream_internal->fade_control.fade_in_time_sec;
-      gain = ToIntGain(gain_f);
-    }
+    int32_t gain = updateGainState(playing_stream_internal);
 
     size_t num_blocks_sent = 0;
     while (num_blocks_sent < num_requested_blocks) {
@@ -357,9 +409,9 @@ void Device::PlayingStreamInternal::Play() {
   is_playing = true;
 
   if (fade_control.fade_in_time_sec > 0.0f) {
-    gain_state_ = GainState::kAttack;
+    gain_state = GainState::kAttack;
   } else {
-    gain_state_ = GainState::kSustain;
+    gain_state = GainState::kSustain;
   }
 }
 
