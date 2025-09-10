@@ -79,8 +79,6 @@ class Device {
           play_count(new_play_count),
           fade_control(new_fade_control) {}
 
-    void Play();
-
     std::shared_ptr<WaveFile> wave_file;
     PlayCount play_count;
     int num_plays{0};
@@ -104,6 +102,9 @@ class Device {
 #pragma pack(pop)
 
   static void dataCallback(void* userdata, Uint8* stream, int len);
+
+  static void startPlayingStream(
+      PlayingStreamInternal* playing_stream_internal);
 
   // Returns: gain.
   static int32_t updateGainState(
@@ -170,7 +171,7 @@ std::shared_ptr<PlayingStream> Device::Play(std::shared_ptr<WaveFile> wave_file,
   PlayingStreamInternal* playing_stream_internal =
       (PlayingStreamInternal*)playing_stream.get();
 
-  playing_stream_internal->Play();
+  startPlayingStream(playing_stream_internal);
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -195,6 +196,17 @@ bool Device::IsPlaying(std::shared_ptr<PlayingStream> playing_stream) {
 void Device::dataCallback(void* userdata, Uint8* stream, int len) {
   Device* device = (Device*)userdata;
   device->onDataRequested(stream, len);
+}
+
+void Device::startPlayingStream(
+    PlayingStreamInternal* playing_stream_internal) {
+  playing_stream_internal->is_playing = true;
+
+  if (playing_stream_internal->fade_control.fade_in_time_sec > 0.0f) {
+    playing_stream_internal->gain_state = GainState::kAttack;
+  } else {
+    playing_stream_internal->gain_state = GainState::kSustain;
+  }
 }
 
 int32_t Device::updateGainState(
@@ -402,16 +414,6 @@ void Device::onDataRequested(Uint8* stream, int len) {
         playing_streams_.erase(playing_stream);
       }
     }
-  }
-}
-
-void Device::PlayingStreamInternal::Play() {
-  is_playing = true;
-
-  if (fade_control.fade_in_time_sec > 0.0f) {
-    gain_state = GainState::kAttack;
-  } else {
-    gain_state = GainState::kSustain;
   }
 }
 
