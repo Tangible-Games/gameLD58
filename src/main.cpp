@@ -125,7 +125,7 @@ int main(int /* argc */, char* /* argv */[]) {
         music_timeout = 0.0f;
         music_stream =
             audio_device->Play(music, Symphony::Audio::PlayTimes(2),
-                               Symphony::Audio::FadeInOut(0.5f, 0.5f));
+                               Symphony::Audio::FadeInOut(5.0f, 5.0f));
         music_timeout = (float)(rand() % 5) + 5;
       }
     }

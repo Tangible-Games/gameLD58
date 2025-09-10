@@ -68,6 +68,8 @@ class Device {
     return std::clamp(sample, kSampleMin16, kSampleMax16);
   }
 
+  enum class GainState { kAttack, kSustain, kRelease };
+
   struct PlayingStreamInternal : public PlayingStream {
    public:
     PlayingStreamInternal(std::shared_ptr<WaveFile> new_wave_file,
@@ -77,14 +79,15 @@ class Device {
           play_count(new_play_count),
           fade_control(new_fade_control) {}
 
-    enum class GainState { kAttack, kSustain, kRelease };
+    void Play();
 
     std::shared_ptr<WaveFile> wave_file;
     PlayCount play_count;
     int num_plays{0};
     FadeControl fade_control;
     bool is_playing{false};
-    size_t blocks_streamed{0};
+    size_t looped_blocks_streamed{0};
+    size_t total_blocks_streamed{0};
     GainState gain_state_{GainState::kAttack};
   };
 
@@ -101,6 +104,22 @@ class Device {
 #pragma pack(pop)
 
   static void dataCallback(void* userdata, Uint8* stream, int len);
+
+  static void accumulateStereoSamples(StereoBlock32* accumulate_buffer,
+                                      const StereoBlock16* stream,
+                                      size_t num_blocks);
+  static void accumulateStereoSamplesWithGain(StereoBlock32* accumulate_buffer,
+                                              int32_t gain,
+                                              const StereoBlock16* stream,
+                                              size_t num_blocks);
+  static void accumulateMonoSamples(StereoBlock32* accumulate_buffer,
+                                    const int16_t* stream, size_t num_blocks);
+  static void accumulateMonoSamplesWithGain(StereoBlock32* accumulate_buffer,
+                                            int32_t gain, const int16_t* stream,
+                                            size_t num_blocks);
+  static void accumulateSamples(StereoBlock32* accumulate_buffer, int32_t gain,
+                                size_t num_channels, const int16_t* stream,
+                                size_t num_blocks);
   void onDataRequested(Uint8* stream, int len);
 
   SDL_AudioDeviceID sdl_audio_device_;
@@ -147,7 +166,7 @@ std::shared_ptr<PlayingStream> Device::Play(std::shared_ptr<WaveFile> wave_file,
   PlayingStreamInternal* playing_stream_internal =
       (PlayingStreamInternal*)playing_stream.get();
 
-  playing_stream_internal->is_playing = true;
+  playing_stream_internal->Play();
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -172,6 +191,63 @@ bool Device::IsPlaying(std::shared_ptr<PlayingStream> playing_stream) {
 void Device::dataCallback(void* userdata, Uint8* stream, int len) {
   Device* device = (Device*)userdata;
   device->onDataRequested(stream, len);
+}
+
+void Device::accumulateStereoSamples(StereoBlock32* accumulate_buffer,
+                                     const StereoBlock16* stream,
+                                     size_t num_blocks) {
+  for (size_t i = 0; i < num_blocks; ++i) {
+    accumulate_buffer[i].left += stream[i].left;
+    accumulate_buffer[i].right += stream[i].right;
+  }
+}
+
+void Device::accumulateStereoSamplesWithGain(StereoBlock32* accumulate_buffer,
+                                             int32_t gain,
+                                             const StereoBlock16* stream,
+                                             size_t num_blocks) {
+  for (size_t i = 0; i < num_blocks; ++i) {
+    accumulate_buffer[i].left += ApplyGain(stream[i].left, gain);
+    accumulate_buffer[i].right += ApplyGain(stream[i].right, gain);
+  }
+}
+
+void Device::accumulateMonoSamples(StereoBlock32* accumulate_buffer,
+                                   const int16_t* stream, size_t num_blocks) {
+  for (size_t i = 0; i < num_blocks; ++i) {
+    accumulate_buffer[i].left += stream[i];
+    accumulate_buffer[i].right += stream[i];
+  }
+}
+
+void Device::accumulateMonoSamplesWithGain(StereoBlock32* accumulate_buffer,
+                                           int32_t gain, const int16_t* stream,
+                                           size_t num_blocks) {
+  for (size_t i = 0; i < num_blocks; ++i) {
+    accumulate_buffer[i].left += ApplyGain(stream[i], gain);
+    accumulate_buffer[i].right += ApplyGain(stream[i], gain);
+  }
+}
+
+void Device::accumulateSamples(StereoBlock32* accumulate_buffer, int32_t gain,
+                               size_t num_channels, const int16_t* stream,
+                               size_t num_blocks) {
+  if (num_channels == 1) {
+    if (gain == kMaxGain) {
+      accumulateMonoSamples(accumulate_buffer, stream, num_blocks);
+    } else {
+      accumulateMonoSamplesWithGain(accumulate_buffer, gain, stream,
+                                    num_blocks);
+    }
+  } else if (num_channels == 2) {
+    const StereoBlock16* stereo_blocks_16 = (const StereoBlock16*)stream;
+    if (gain == kMaxGain) {
+      accumulateStereoSamples(accumulate_buffer, stereo_blocks_16, num_blocks);
+    } else {
+      accumulateStereoSamplesWithGain(accumulate_buffer, gain, stereo_blocks_16,
+                                      num_blocks);
+    }
+  }
 }
 
 void Device::onDataRequested(Uint8* stream, int len) {
@@ -200,45 +276,50 @@ void Device::onDataRequested(Uint8* stream, int len) {
     PlayingStreamInternal* playing_stream_internal =
         (PlayingStreamInternal*)playing_stream.get();
 
+    // We apply gain to the whole buffer while it is very small.
+    int32_t gain = kMaxGain;
+    if (playing_stream_internal->gain_state_ == GainState::kAttack) {
+      float seconds_played =
+          (float)playing_stream_internal->total_blocks_streamed /
+          (float)playing_stream_internal->wave_file->GetSampleRate();
+      if (seconds_played >
+          playing_stream_internal->fade_control.fade_in_time_sec) {
+        seconds_played = playing_stream_internal->fade_control.fade_in_time_sec;
+      }
+      float gain_f = seconds_played /
+                     playing_stream_internal->fade_control.fade_in_time_sec;
+      gain = ToIntGain(gain_f);
+    }
+
     size_t num_blocks_sent = 0;
     while (num_blocks_sent < num_requested_blocks) {
-      bool reset_blocks_streamed = false;
+      bool reset_looped_blocks_streamed = false;
 
       size_t num_blocks_to_read = num_requested_blocks - num_blocks_sent;
-      if (num_blocks_to_read + playing_stream_internal->blocks_streamed >
+      if (num_blocks_to_read + playing_stream_internal->looped_blocks_streamed >
           playing_stream_internal->wave_file->GetNumBlocks()) {
         num_blocks_to_read =
             playing_stream_internal->wave_file->GetNumBlocks() -
-            playing_stream_internal->blocks_streamed;
+            playing_stream_internal->looped_blocks_streamed;
 
-        reset_blocks_streamed = true;
+        reset_looped_blocks_streamed = true;
 
         playing_stream_internal->num_plays += 1;
       }
 
       playing_stream_internal->wave_file->ReadBlocks(
-          playing_stream_internal->blocks_streamed, num_blocks_to_read,
+          playing_stream_internal->looped_blocks_streamed, num_blocks_to_read,
           &read_buffer_[0]);
-      playing_stream_internal->blocks_streamed += num_blocks_to_read;
+      playing_stream_internal->looped_blocks_streamed += num_blocks_to_read;
+      playing_stream_internal->total_blocks_streamed += num_blocks_to_read;
 
-      if (playing_stream_internal->wave_file->GetNumChannels() == 2) {
-        const StereoBlock16* stereo_blocks_16 =
-            (const StereoBlock16*)read_buffer_.data();
-        for (size_t i = 0; i < num_blocks_to_read; ++i) {
-          mix_buffer_[num_blocks_sent + i].left += stereo_blocks_16[i].left;
-          mix_buffer_[num_blocks_sent + i].right += stereo_blocks_16[i].right;
-        }
-      } else {
-        for (size_t i = 0; i < num_blocks_to_read; ++i) {
-          mix_buffer_[num_blocks_sent + i].left += read_buffer_[i];
-          mix_buffer_[num_blocks_sent + i].right += read_buffer_[i];
-        }
-      }
-
+      accumulateSamples(&mix_buffer_[num_blocks_sent], gain,
+                        playing_stream_internal->wave_file->GetNumChannels(),
+                        read_buffer_.data(), num_blocks_to_read);
       num_blocks_sent += num_blocks_to_read;
 
-      if (reset_blocks_streamed) {
-        playing_stream_internal->blocks_streamed = 0;
+      if (reset_looped_blocks_streamed) {
+        playing_stream_internal->looped_blocks_streamed = 0;
 
         if (!playing_stream_internal->play_count.loop_infinite) {
           if (playing_stream_internal->num_plays >=
@@ -269,6 +350,16 @@ void Device::onDataRequested(Uint8* stream, int len) {
         playing_streams_.erase(playing_stream);
       }
     }
+  }
+}
+
+void Device::PlayingStreamInternal::Play() {
+  is_playing = true;
+
+  if (fade_control.fade_in_time_sec > 0.0f) {
+    gain_state_ = GainState::kAttack;
+  } else {
+    gain_state_ = GainState::kSustain;
   }
 }
 

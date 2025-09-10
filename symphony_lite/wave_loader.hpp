@@ -101,6 +101,8 @@ class WaveFile {
 
   size_t GetNumChannels() const { return format_common_.GetNumChannels(); }
 
+  size_t GetSampleRate() const { return format_common_.GetSampleRate(); }
+
   float GetLengthSec() const {
     return (float)GetNumBlocks() / (float)format_common_.GetSampleRate();
   }
