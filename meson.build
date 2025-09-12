@@ -23,6 +23,9 @@ subdir('src')
 # Build configuration and dependencies
 subdir('build')
 
+nlohmann_json = subproject('nlohmann_json')
+nlohmann_json_dep = nlohmann_json.get_variable('nlohmann_json_dep')
+
 icon = files('icon.png')
 preview = files('icon.png')
 
@@ -46,7 +49,7 @@ if meson.is_cross_build()
         meson.project_name(),
         srcs,
         include_directories: include_dirs,
-        dependencies: pspdev_deps + [symphony_lite_dep],
+        dependencies: pspdev_deps + [symphony_lite_dep, nlohmann_json_dep],
     )
 
     elf_fixed = custom_target(
