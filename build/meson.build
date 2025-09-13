@@ -79,6 +79,9 @@ if meson.is_cross_build()
 
     add_project_arguments('-std=c++2a', language: 'cpp')
     add_project_arguments('-std=gnu11', language: 'c')
+
+    # Always optimized on device
+    add_project_arguments('-O2', language: ['c', 'cpp'])
 endif
 
 # Host configurations and deps
@@ -87,7 +90,7 @@ add_project_arguments('-std=gnu11', language: 'c', native: true)
 
 add_project_arguments('-DTARGET_HOST=1', language: ['c', 'cpp'], native: true)
 # always debug for the host
-add_project_arguments('-O0', language: ['c', 'cpp'], native: true)
+add_project_arguments('-O3', language: ['c', 'cpp'], native: true)
 add_project_arguments('-ggdb', language: ['c', 'cpp'], native: true)
 
 sdl2_host_dep = dependency('sdl2', required: false, native: true)

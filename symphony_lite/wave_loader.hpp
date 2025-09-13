@@ -6,8 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "audio_utils.hpp"
-
 namespace Symphony {
 namespace {
 struct FourCC {
@@ -103,11 +101,13 @@ class WaveFile {
 
   size_t GetNumChannels() const { return format_common_.GetNumChannels(); }
 
+  size_t GetSampleRate() const { return format_common_.GetSampleRate(); }
+
   float GetLengthSec() const {
     return (float)GetNumBlocks() / (float)format_common_.GetSampleRate();
   }
 
-  void ReadBlocks(size_t first_block, size_t num_blocks, float* blocks_out);
+  void ReadBlocks(size_t first_block, size_t num_blocks, int16_t* blocks_out);
 
  private:
   void convertToFloat(const std::vector<char>& samples_in,
@@ -118,7 +118,7 @@ class WaveFile {
   WaveFormatPCMFields format_pcm_;
   size_t wave_data_offset_{0};
   size_t wave_data_size_{0};
-  std::vector<float> wave_data_;
+  std::vector<int16_t> wave_data_;
 };
 
 bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
@@ -191,9 +191,8 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
         file.seekg(chunk.GetSize() - fmt_bytes_read, std::ios::cur);
       }
 
-      if (format_pcm_.GetBitsPerSample() != 8 &&
-          format_pcm_.GetBitsPerSample() != 16) {
-        std::cerr << "[Symphony::Audio::WaveFile] Only 8 and 16 bits per "
+      if (format_pcm_.GetBitsPerSample() != 16) {
+        std::cerr << "[Symphony::Audio::WaveFile] Only 16 bits per "
                      "sample formats are supported, file_path: "
                   << file_path << std::endl;
         return false;
@@ -236,13 +235,10 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
   }
 
   if (mode == kModeLoadInMemory) {
-    std::vector<char> samples_in(wave_data_size_);
+    wave_data_.resize(GetNumBlocks() * GetNumChannels());
 
     file.seekg(wave_data_offset_, std::ios::beg);
-    file.read(&samples_in[0], wave_data_size_);
-
-    wave_data_.resize(GetNumBlocks() * format_common_.GetNumChannels());
-    convertToFloat(samples_in, &wave_data_[0]);
+    file.read((char*)&wave_data_[0], wave_data_size_);
   } else {
     file_ = std::move(file);
   }
@@ -251,38 +247,13 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
 }
 
 void WaveFile::ReadBlocks(size_t first_block, size_t num_blocks,
-                          float* blocks_out) {
+                          int16_t* blocks_out) {
   size_t block_size = GetBlockSize();
   if (!wave_data_.empty()) {
-    memcpy(blocks_out, wave_data_.data() + first_block * sizeof(float),
-           num_blocks * sizeof(float));
+    memcpy(blocks_out, &wave_data_[first_block * 2], num_blocks * block_size);
   } else {
     file_.seekg(wave_data_offset_ + first_block * block_size, std::ios::beg);
-
-    static std::vector<char> samples_in;
-
-    samples_in.resize(num_blocks * block_size);
-    file_.read(&samples_in[0], samples_in.size());
-
-    convertToFloat(samples_in, blocks_out);
-  }
-}
-
-void WaveFile::convertToFloat(const std::vector<char>& blocks_in,
-                              float* blocks_out) const {
-  size_t num_blocks = blocks_in.size() / GetBlockSize();
-  size_t num_channels = format_common_.GetNumChannels();
-
-  if (format_pcm_.GetBitsPerSample() == 8) {
-    const uint8_t* blocks_in_typed = (const uint8_t*)blocks_in.data();
-    for (size_t i = 0; i < num_blocks * num_channels; ++i) {
-      blocks_out[i] = ConvertPcmToFloat<uint8_t>(blocks_in_typed[i]);
-    }
-  } else if (format_pcm_.GetBitsPerSample() == 16) {
-    const int16_t* blocks_in_typed = (const int16_t*)blocks_in.data();
-    for (size_t i = 0; i < num_blocks * num_channels; ++i) {
-      blocks_out[i] = ConvertPcmToFloat<int16_t>(blocks_in_typed[i]);
-    }
+    file_.read((char*)blocks_out, num_blocks * block_size);
   }
 }
 
