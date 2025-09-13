@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+
+src="$(git rev-parse --show-toplevel)"
+builddir=$(mktemp -d -p "$src")
+
+if ! command -v clang-format >/dev/null 2>&1
+then
+    exit 0
+fi
+
+(cd "$src"; meson setup "$builddir" && ninja -C "$builddir" clang-format && git add $(git ls-files -m)) > /dev/null 2>&1
+
+rm -rf "$builddir"
