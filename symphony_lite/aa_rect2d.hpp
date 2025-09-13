@@ -1,10 +1,15 @@
 #pragma once
 
+#include <optional>
+
 #include "point2d.hpp"
 #include "vector2d.hpp"
 
 namespace Symphony {
 namespace Math {
+
+const float eps = 0.0001f;
+
 class AARect2d {
  public:
   AARect2d() {}
@@ -67,6 +72,7 @@ class AARect2d {
                               FromInsideIntersection& intersection_out);
 
   bool Intersect(const AARect2d& rect);
+  std::optional<AARect2d> IntersectRectangle(const AARect2d& rect);
 
   Point2d center;
   Vector2d half_size;
@@ -153,32 +159,41 @@ inline void AARect2d::IntersectRayFromInside(
   }
 }
 
-inline bool AARect2d::Intersect(const AARect2d& rect) {
-  float right = center.x + half_size.x;
-  float rect_left = rect.center.x - rect.half_size.x;
-  if (right < rect_left) {
-    return false;
-  }
-
+inline std::optional<AARect2d> AARect2d::IntersectRectangle(
+    const AARect2d& rect) {
   float left = center.x - half_size.x;
-  float rect_right = rect.center.x + rect.half_size.x;
-  if (left > rect_right) {
-    return false;
-  }
-
-  float top = center.y + half_size.y;
-  float rect_bottom = rect.center.y - rect.half_size.y;
-  if (top < rect_bottom) {
-    return false;
-  }
-
+  float right = center.x + half_size.x;
   float bottom = center.y - half_size.y;
+  float top = center.y + half_size.y;
+
+  float rect_left = rect.center.x - rect.half_size.x;
+  float rect_right = rect.center.x + rect.half_size.x;
+  float rect_bottom = rect.center.y - rect.half_size.y;
   float rect_top = rect.center.y + rect.half_size.y;
-  if (bottom > rect_top) {
-    return false;
+
+  float possible_left = std::max(left, rect_left);
+  float possible_right = std::min(right, rect_right);
+
+  if (possible_right - possible_left < eps) {
+    return std::nullopt;
   }
 
-  return true;
+  float possible_top = std::min(top, rect_top);
+  float possible_bottom = std::max(bottom, rect_bottom);
+
+  if (possible_top - possible_bottom < eps) {
+    return std::nullopt;
+  }
+
+  Point2d new_center((possible_left + possible_right) * 0.5f,
+                     (possible_bottom + possible_top) * 0.5f);
+  Vector2d new_half_size((possible_right - possible_left) * 0.5f,
+                         (possible_top - possible_bottom) * 0.5f);
+  return AARect2d({new_center}, new_half_size);
+}
+
+inline bool AARect2d::Intersect(const AARect2d& rect) {
+  return IntersectRectangle(rect).has_value();
 }
 
 }  // namespace Math
