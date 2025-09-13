@@ -1,8 +1,9 @@
 #pragma once
 
+#include <optional>
+
 #include "point2d.hpp"
 #include "vector2d.hpp"
-#include <optional>
 
 namespace Symphony {
 namespace Math {
@@ -158,7 +159,8 @@ inline void AARect2d::IntersectRayFromInside(
   }
 }
 
-inline std::optional<AARect2d> AARect2d::IntersectRectangle(const AARect2d& rect) {
+inline std::optional<AARect2d> AARect2d::IntersectRectangle(
+    const AARect2d& rect) {
   float left = center.x - half_size.x;
   float right = center.x + half_size.x;
   float bottom = center.y - half_size.y;
