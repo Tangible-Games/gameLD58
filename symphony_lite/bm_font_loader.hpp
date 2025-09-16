@@ -115,6 +115,7 @@ class BmFont : public GlyphLibrary {
     kBlockChars,
     kBlockChar,
     kBlockKerning,
+    kBlockUnknown,
   };
 
   Info info_;
@@ -208,7 +209,7 @@ bool BmFont::Load(const std::string& file_path) {
     std::string block_type_string;
     block_stream >> block_type_string;
 
-    BlockType block_type;
+    BlockType block_type = kBlockUnknown;
     if (block_type_string == "info") {
       block_type = kBlockInfo;
     } else if (block_type_string == "common") {
@@ -224,6 +225,8 @@ bool BmFont::Load(const std::string& file_path) {
     } else if (block_type_string == "kerning") {
       block_type = kBlockKerning;
       kernings_.push_back(Kerning());
+    } else if (block_type == kBlockUnknown) {
+        continue;
     }
 
     while (!block_stream.eof()) {
