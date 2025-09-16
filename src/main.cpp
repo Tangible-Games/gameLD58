@@ -75,6 +75,9 @@ int main(int /* argc */, char* /* argv */[]) {
   character_half_sizes.y = pixels->h / 2.0f;
   SDL_FreeSurface(pixels);
 
+  Symphony::Text::LoadFormattedTextFromFile(
+      "assets/system_counters.txt", Symphony::Text::StyleWithAlignment(), {});
+
   character_pos = Vector2d(480 / 2, 272 / 2);
 
   auto audio_device = new Symphony::Audio::Device();
@@ -85,7 +88,7 @@ int main(int /* argc */, char* /* argv */[]) {
       "assets/dummy_22k.wav", Symphony::Audio::WaveFile::kModeLoadInMemory);
   audio_device->Init();
 
-  auto fps_font = Symphony::Text::LoadBmFont("assets/fps_24.fnt");
+  auto fps_font = Symphony::Text::LoadBmFont("assets/system_30.fnt");
 
   music_timeout = (float)(rand() % 3) + 3;
   std::shared_ptr<Symphony::Audio::PlayingStream> music_stream;
