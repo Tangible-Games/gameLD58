@@ -226,7 +226,7 @@ bool BmFont::Load(const std::string& file_path) {
       block_type = kBlockKerning;
       kernings_.push_back(Kerning());
     } else if (block_type == kBlockUnknown) {
-        continue;
+      continue;
     }
 
     while (!block_stream.eof()) {

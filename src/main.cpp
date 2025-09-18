@@ -85,7 +85,7 @@ int main(int /* argc */, char* /* argv */[]) {
       "assets/dummy_22k.wav", Symphony::Audio::WaveFile::kModeLoadInMemory);
   audio_device->Init();
 
-  auto fps_font = Symphony::Text::LoadBmFont("assets/fps_24.fnt");
+  auto fps_font = Symphony::Text::LoadBmFont("assets/system_30.fnt");
 
   music_timeout = (float)(rand() % 3) + 3;
   std::shared_ptr<Symphony::Audio::PlayingStream> music_stream;
