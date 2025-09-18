@@ -5,7 +5,7 @@
 #include "audio.hpp"
 #include "bm_font_loader.hpp"
 #include "circle.hpp"
-#include "formatted_text_loader.hpp"
+#include "formatted_text.hpp"
 #include "hash.hpp"
 #include "point2d.hpp"
 #include "point3d.hpp"

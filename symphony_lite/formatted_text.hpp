@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <optional>
@@ -66,12 +67,6 @@ ParseErrorSource MakeParseErrorSource(std::istringstream& input_stream) {
   return result;
 }
 
-enum Tag {
-  kTagP,
-  kTagStyle,
-  kTagSub,
-};
-
 void PrintParseError(std::istringstream& input_stream,
                      const std::string& error_message) {
   std::cerr << error_message << std::endl;
@@ -79,6 +74,25 @@ void PrintParseError(std::istringstream& input_stream,
   std::cerr << parse_error_source.source << std::endl;
   std::cerr << parse_error_source.marker << std::endl;
 }
+
+// TODO(truvorskameikin): Implement parsing AARRBBGG colors.
+std::optional<uint32_t> ColorFromString(const std::string& value) {
+  if (value == "red") {
+    return 0xFFFF0000;
+  } else if (value == "green") {
+    return 0xFF00FF00;
+  } else if (value == "blue") {
+    return 0xFF0000FF;
+  }
+
+  return std::nullopt;
+}
+
+enum Tag {
+  kTagP,
+  kTagStyle,
+  kTagSub,
+};
 }  // namespace
 
 namespace Text {
@@ -111,16 +125,39 @@ std::optional<HorizontalAlignment> HorizontalAlignmentFromString(
   return std::nullopt;
 }
 
-struct StyleWithAlignment {
-  std::string font;
-  uint32_t color;
-  HorizontalAlignment align;
-};
-
 struct Style {
   std::string font;
   uint32_t color;
 };
+
+namespace {
+struct StyleWithAlignment {
+  // We can optimize here, use not font name, but pointer to GlyphLibrary.
+  std::optional<std::string> font_opt;
+  std::optional<uint32_t> color_opt;
+  std::optional<HorizontalAlignment> align_opt;
+};
+
+Style StyleFromStyleWithAlignment(const StyleWithAlignment& value) {
+  Style result;
+  if (value.font_opt) {
+    result.font = value.font_opt.value();
+  }
+  if (value.color_opt) {
+    result.color = value.color_opt.value();
+  }
+  return result;
+}
+
+StyleWithAlignment StyleWithAlignmentFromStyleAndAligment(
+    const Style& style, HorizontalAlignment align) {
+  StyleWithAlignment result;
+  result.font_opt = style.font;
+  result.color_opt = style.color;
+  result.align_opt = align;
+  return result;
+}
+}  // namespace
 
 struct StyleRun {
   Style style;
@@ -128,11 +165,13 @@ struct StyleRun {
 };
 
 struct Paragraph {
+  Paragraph() = default;
+
   Paragraph(StyleWithAlignment style_with_alignment)
-      : align(style_with_alignment.align) {
+      : align(style_with_alignment.align_opt.value_or(
+            HorizontalAlignment::kLeft)) {
     style_runs.push_back(StyleRun());
-    style_runs.back().style.font = style_with_alignment.font;
-    style_runs.back().style.color = style_with_alignment.color;
+    style_runs.back().style = StyleFromStyleWithAlignment(style_with_alignment);
   }
 
   HorizontalAlignment align{HorizontalAlignment::kLeft};
@@ -155,15 +194,18 @@ struct FormattedText {
 };
 
 std::optional<FormattedText> LoadFormattedText(
-    const std::string& input, const StyleWithAlignment& default_style,
+    const std::string& input, const Style& default_style,
+    HorizontalAlignment align,
     const std::map<std::string, std::string>& variables) {
-  (void)variables;
   FormattedText result;
 
-  result.paragraphs.push_back(Paragraph(default_style));
+  StyleWithAlignment default_style_with_aligment =
+      StyleWithAlignmentFromStyleAndAligment(default_style, align);
+
+  result.paragraphs.push_back(Paragraph(default_style_with_aligment));
 
   std::stack<StyleWithAlignment> styles_stack;
-  styles_stack.push(default_style);
+  styles_stack.push(default_style_with_aligment);
 
   std::istringstream input_stream(input);
   while (!input_stream.eof()) {
@@ -174,6 +216,8 @@ std::optional<FormattedText> LoadFormattedText(
 
       next_char = input_stream.peek();
       if (next_char == '<') {
+        input_stream.get();
+
         result.paragraphs.back().style_runs.back().text.push_back('<');
         continue;
       } else if (next_char == '/') {
@@ -196,6 +240,12 @@ std::optional<FormattedText> LoadFormattedText(
           // Note: styles_stack has also default style.
           if (styles_stack.size() > 1) {
             styles_stack.pop();
+
+            if (!result.paragraphs.back().style_runs.back().text.empty()) {
+              result.paragraphs.back().style_runs.push_back(StyleRun());
+              result.paragraphs.back().style_runs.back().style =
+                  StyleFromStyleWithAlignment(styles_stack.top());
+            }
           }
         }
 
@@ -220,8 +270,8 @@ std::optional<FormattedText> LoadFormattedText(
         return std::nullopt;
       }
 
-      StyleWithAlignment style = styles_stack.top();
-      std::string sub_value;
+      StyleWithAlignment style_with_alignment = styles_stack.top();
+      std::string variable_value;
 
       while (input_stream.peek() != '>') {
         while (input_stream.peek() == ' ') {
@@ -243,15 +293,48 @@ std::optional<FormattedText> LoadFormattedText(
         std::string value;
         std::getline(input_stream, value, '\"');
 
-        std::cout << key << " -> " << value << std::endl;
-
         if (tag == kTagStyle) {
           if (key == "font") {
-            std::swap(style.font, value);
+            style_with_alignment.font_opt = value;
+          } else if (key == "color") {
+            auto color_opt = ColorFromString(value);
+            if (!color_opt) {
+              PrintParseError(input_stream,
+                              "[Symphony::Text::FormattedText] Can't read "
+                              "color parameter:");
+              return std::nullopt;
+            }
+            style_with_alignment.color_opt = color_opt.value();
+          } else if (key == "align") {
+            auto align_opt = HorizontalAlignmentFromString(value);
+            if (!align_opt) {
+              PrintParseError(input_stream,
+                              "[Symphony::Text::FormattedText] Can't read "
+                              "align parameter:");
+              return std::nullopt;
+            }
+            style_with_alignment.align_opt = align_opt.value();
           }
         } else if (tag == kTagSub) {
           if (key == "variable") {
-            std::swap(sub_value, value);
+            if (value.empty() || value[0] != '$') {
+              PrintParseError(input_stream,
+                              "[Symphony::Text::FormattedText] Variables "
+                              "should start with $:");
+              return std::nullopt;
+            }
+
+            std::string variable_name = value.substr(1);
+
+            auto variable_it = variables.find(variable_name);
+            if (variable_it == variables.end()) {
+              PrintParseError(
+                  input_stream,
+                  "[Symphony::Text::FormattedText] Variable is not specified:");
+              return std::nullopt;
+            }
+
+            variable_value = variable_it->second;
           } else {
             PrintParseError(input_stream,
                             "[Symphony::Text::FormattedText] Unknown parameter "
@@ -265,39 +348,50 @@ std::optional<FormattedText> LoadFormattedText(
       input_stream.get();
 
       if (tag == kTagStyle) {
-        styles_stack.push(style);
+        // Latest align is used as paragraph align.
+        if (style_with_alignment.align_opt) {
+          result.paragraphs.back().align =
+              style_with_alignment.align_opt.value();
+        }
+
+        if (!result.paragraphs.back().style_runs.back().text.empty()) {
+          result.paragraphs.back().style_runs.push_back(StyleRun());
+        }
+
+        result.paragraphs.back().style_runs.back().style =
+            StyleFromStyleWithAlignment(style_with_alignment);
+
+        styles_stack.push(style_with_alignment);
+      } else if (tag == kTagSub) {
+        result.paragraphs.back().style_runs.back().text.insert(
+            result.paragraphs.back().style_runs.back().text.end(),
+            variable_value.begin(), variable_value.end());
       }
     } else {
       char c = 0;
       input_stream.get(c);
+      if (c == 0) {
+        continue;
+      }
 
-      result.paragraphs.back().style_runs.back().text.push_back(c);
+      if (c == '\n') {
+        result.paragraphs.push_back(Paragraph(styles_stack.top()));
+      } else {
+        result.paragraphs.back().style_runs.back().text.push_back(c);
+      }
+    }
+  }
+
+  // We don't need empty style runs in the end of paragraph. But let's keep
+  // empty paragraphs.
+  for (auto& paragraph : result.paragraphs) {
+    while (paragraph.style_runs.back().text.empty()) {
+      paragraph.style_runs.pop_back();
     }
   }
 
   return result;
 }
 
-std::optional<FormattedText> LoadFormattedTextFromFile(
-    const std::string& file_path, const StyleWithAlignment& default_style,
-    const std::map<std::string, std::string>& variables) {
-  std::ifstream file(file_path);
-  if (!file.is_open()) {
-    std::cerr << "[Symphony::Text::FormattedText] Can't open file, file_path: "
-              << file_path << std::endl;
-    return std::nullopt;
-  }
-
-  file.seekg(0, std::ios::end);
-  size_t file_size = file.tellg();
-  file.seekg(0, std::ios::beg);
-
-  std::string file_content;
-  file_content.resize(file_size);
-
-  file.read(&file_content[0], file_size);
-
-  return LoadFormattedText(file_content, default_style, variables);
-}
 }  // namespace Text
 }  // namespace Symphony

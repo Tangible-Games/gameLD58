@@ -75,9 +75,6 @@ int main(int /* argc */, char* /* argv */[]) {
   character_half_sizes.y = pixels->h / 2.0f;
   SDL_FreeSurface(pixels);
 
-  Symphony::Text::LoadFormattedTextFromFile(
-      "assets/system_counters.txt", Symphony::Text::StyleWithAlignment(), {});
-
   character_pos = Vector2d(480 / 2, 272 / 2);
 
   auto audio_device = new Symphony::Audio::Device();
