@@ -31,3 +31,9 @@ Run on host:
 ```
 ninja -C builddir/ host_run
 ```
+
+Create a release on GitHub (use the next version number for the tag):
+```
+git tag v0.0.1
+git push origin v0.0.1
+```
