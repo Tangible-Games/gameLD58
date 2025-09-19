@@ -12,13 +12,15 @@
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
 
+namespace {
+
 struct Sprite {
   Point2d pos;
   Point2d cur_pos;
   Vector2d half_sizes;
   Vector2d dir;
-  float velocity;
-  float max_travel_dist;
+  float velocity{};
+  float max_travel_dist{};
   bool collides{false};
 };
 
@@ -47,6 +49,8 @@ bool characterTouchesFloor(const Vector2d& next_pos, float floor_y,
 
 float music_timeout = 0.0f;
 
+}  // namespace
+
 int main(int /* argc */, char* /* argv */[]) {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER);
   IMG_Init(IMG_INIT_PNG);
@@ -56,7 +60,7 @@ int main(int /* argc */, char* /* argv */[]) {
   SDL_Renderer* renderer = SDL_CreateRenderer(
       window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-  srand(time(0));
+  srand(time(nullptr));
 
   // Load sprites
   SDL_Surface* pixels = IMG_Load("assets/dummy_50x50.png");
@@ -76,7 +80,7 @@ int main(int /* argc */, char* /* argv */[]) {
 
   character_pos = Vector2d(480 / 2, 272 / 2);
 
-  auto audio_device = new Symphony::Audio::Device();
+  auto* audio_device = new Symphony::Audio::Device();
   auto music = Symphony::Audio::LoadWave(
       "assets/bioorange_22k.wav",
       Symphony::Audio::WaveFile::kModeStreamingFromFile);
@@ -90,10 +94,11 @@ int main(int /* argc */, char* /* argv */[]) {
   std::shared_ptr<Symphony::Audio::PlayingStream> music_stream;
 
   for (int i = 0; i < 100; ++i) {
-    all_sprites.push_back(Sprite());
+    all_sprites.emplace_back(Sprite());
     all_sprites.back().pos = Point2d(rand() % 480, rand() % 272);
     all_sprites.back().cur_pos = all_sprites.back().pos;
-    all_sprites.back().half_sizes = Vector2d(rand() % 10 + 5, rand() % 20 + 5);
+    all_sprites.back().half_sizes =
+        Vector2d((rand() % 10) + 5, (rand() % 20) + 5);
     float angle = DegToRad(rand() % 180);
     all_sprites.back().dir = Vector2d(cosf(angle), sinf(angle));
     all_sprites.back().dir.MakeNormalized();
@@ -131,7 +136,7 @@ int main(int /* argc */, char* /* argv */[]) {
       }
     }
 
-    if (SDL_PollEvent(&event)) {
+    if (SDL_PollEvent(&event) != 0) {
       switch (event.type) {
         case SDL_QUIT:
           running = false;
@@ -197,6 +202,9 @@ int main(int /* argc */, char* /* argv */[]) {
             is_up = false;
           }
           break;
+
+        default:
+          break;
       }
     }
 
@@ -251,14 +259,14 @@ int main(int /* argc */, char* /* argv */[]) {
                          (int)sprite.cur_pos.y - (int)sprite.half_sizes.y,
                          (int)sprite.half_sizes.x * 2,
                          (int)sprite.half_sizes.y * 2};
-      SDL_RenderCopy(renderer, sprite_img, NULL, &square);
+      SDL_RenderCopy(renderer, sprite_img, nullptr, &square);
     }
 
     SDL_Rect square = {(int)character_pos.x - (int)character_half_sizes.x,
                        (int)character_pos.y - (int)character_half_sizes.y,
                        (int)character_half_sizes.x * 2,
                        (int)character_half_sizes.y * 2};
-    SDL_RenderCopy(renderer, sprite_character, NULL, &square);
+    SDL_RenderCopy(renderer, sprite_character, nullptr, &square);
 
     SDL_RenderPresent(renderer);
   }
