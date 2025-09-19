@@ -92,6 +92,19 @@ if meson.is_cross_build()
         command: [ppsspp_exe, '--escape-exit', eboot_pbp.full_path()],
         depends: [eboot_pbp, assets_link],
     )
+
+    game_zip = custom_target(
+        input: eboot_pbp,
+        output: meson.project_name() + '.zip',
+        command: [
+            python_exe,
+            meson.project_source_root() / 'build' / 'build_zip.py',
+            '@OUTPUT@',
+            meson.project_build_root(),
+            '@INPUT@',
+            meson.project_source_root() / 'assets',
+        ],
+    )
 endif
 
 if sdl2_host_dep.found()
