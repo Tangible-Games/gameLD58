@@ -5,7 +5,7 @@
 using namespace Symphony::Text;
 
 TEST(FormattedText, SingleLine) {
-  auto formatted_text = LoadFormattedText(
+  auto formatted_text = FormatText(
       "<style font=\"system_24.fnt\">Fps:</> <style "
       "font=\"system_50.fnt\"><sub variable=\"$fps_count\"></>",
       Style(), HorizontalAlignment::kLeft, {{"fps_count", "60"}});
@@ -23,9 +23,8 @@ TEST(FormattedText, SingleLine) {
 }
 
 TEST(FormattedText, OutputsLessThanSign) {
-  auto formatted_text =
-      LoadFormattedText("<<<style font=\"system_24.fnt\">Text</>", Style(),
-                        HorizontalAlignment::kLeft, {});
+  auto formatted_text = FormatText("<<<style font=\"system_24.fnt\">Text</>",
+                                   Style(), HorizontalAlignment::kLeft, {});
   ASSERT_TRUE(formatted_text.has_value());
   ASSERT_EQ((int)formatted_text->paragraphs.size(), 1);
   ASSERT_EQ((int)formatted_text->paragraphs[0].style_runs.size(), 2);
@@ -36,7 +35,7 @@ TEST(FormattedText, OutputsLessThanSign) {
 }
 
 TEST(FormattedText, SpecifyStyle) {
-  auto formatted_text = LoadFormattedText(
+  auto formatted_text = FormatText(
       "<style font=\"system_24.fnt\"><style color=\"red\"><style "
       "align=\"right\">Text</></></>",
       Style(), HorizontalAlignment::kLeft, {});
@@ -52,7 +51,7 @@ TEST(FormattedText, SpecifyStyle) {
 }
 
 TEST(FormattedText, LineBreakProducesNextParagraph) {
-  auto formatted_text = LoadFormattedText(
+  auto formatted_text = FormatText(
       "<style font=\"system_24.fnt\">Fps:</> <style "
       "font=\"system_50.fnt\"><sub variable=\"$fps_count\"></>\n<style "
       "font=\"system_24.fnt\">Audio streams playing:</> <style "
@@ -85,7 +84,7 @@ TEST(FormattedText, LineBreakProducesNextParagraph) {
 }
 
 TEST(FormattedText, AlignsParagraphs) {
-  auto formatted_text = LoadFormattedText(
+  auto formatted_text = FormatText(
       "Left align\n<style align=\"right\">Right align\n<style "
       "align=\"center\">Center align</></>\nAgain left align",
       Style(), HorizontalAlignment::kLeft, {});
