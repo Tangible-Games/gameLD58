@@ -87,11 +87,13 @@ if meson.is_cross_build()
         ],
     )
 
-    run_target(
-        'run',
-        command: [ppsspp_exe, '--escape-exit', eboot_pbp.full_path()],
-        depends: [eboot_pbp, assets_link],
-    )
+    if ppsspp_exe.found()
+        run_target(
+            'run',
+            command: [ppsspp_exe, '--escape-exit', eboot_pbp.full_path()],
+            depends: [eboot_pbp, assets_link],
+        )
+    endif
 
     game_zip = custom_target(
         input: eboot_pbp,

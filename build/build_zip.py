@@ -32,7 +32,7 @@ with zipfile.ZipFile(ZIP, "w", zipfile.ZIP_DEFLATED) as zipf:
             # Create the full file path
             file_path = os.path.join(root, file)
             # Add file to the ZIP archive, maintaining the directory structure
-            zipf.write(file_path, os.path.relpath(file_path, ZIP))
+            zipf.write(file_path, os.path.relpath(file_path, root_dir))
 
 # remove tmp dir
 shutil.rmtree(root_dir)
