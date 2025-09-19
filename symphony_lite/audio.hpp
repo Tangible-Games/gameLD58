@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <memory>
 #include <thread>
 #include <unordered_set>
 #include <vector>
@@ -125,6 +126,9 @@ class Device {
   static void accumulateSamples(StereoBlock32* accumulate_buffer, int32_t gain,
                                 size_t num_channels, const int16_t* stream,
                                 size_t num_blocks);
+
+  void allocateMixBuffer(size_t num_blocks);
+  void allocateReadBuffer(size_t num_blocks);
   void onDataRequested(Uint8* stream, int len);
 
   SDL_AudioDeviceID sdl_audio_device_;
@@ -157,8 +161,8 @@ void Device::Init() {
               << std::endl;
   }
 
-  mix_buffer_.resize(num_blocks);
-  read_buffer_.resize(num_blocks * 2);
+  allocateMixBuffer(num_blocks);
+  allocateReadBuffer(num_blocks);
 
   SDL_PauseAudioDevice(sdl_audio_device_, 0);
 }
@@ -326,6 +330,18 @@ void Device::accumulateSamples(StereoBlock32* accumulate_buffer, int32_t gain,
   }
 }
 
+void Device::allocateMixBuffer(size_t num_blocks) {
+  if (mix_buffer_.size() < num_blocks) {
+    mix_buffer_.resize(num_blocks);
+  }
+}
+
+void Device::allocateReadBuffer(size_t num_blocks) {
+  if (read_buffer_.size() < num_blocks * 2) {
+    read_buffer_.resize(num_blocks * 2);
+  }
+}
+
 void Device::onDataRequested(Uint8* stream, int len) {
   std::unordered_set<std::shared_ptr<PlayingStream>> playing_streams_saved;
   {
@@ -336,16 +352,12 @@ void Device::onDataRequested(Uint8* stream, int len) {
   StereoBlock16* stream_typed = (StereoBlock16*)stream;
   size_t num_requested_blocks = len / (sizeof(StereoBlock16));
 
-  if (mix_buffer_.size() < num_requested_blocks) {
-    mix_buffer_.resize(num_requested_blocks);
-  }
+  allocateMixBuffer(num_requested_blocks);
+  allocateReadBuffer(num_requested_blocks);
+
   for (size_t i = 0; i < num_requested_blocks; ++i) {
     mix_buffer_[i].left = 0;
     mix_buffer_[i].right = 0;
-  }
-
-  if (read_buffer_.size() < num_requested_blocks * 2) {
-    read_buffer_.resize(num_requested_blocks * 2);
   }
 
   for (auto playing_stream : playing_streams_saved) {
