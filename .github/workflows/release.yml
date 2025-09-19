@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          fetch-depth: 0
+    - name: Install deps
+      run: sudo apt install -y meson pkg-config
+    - name: Instal PSPDEV
+      run: |
+        wget https://github.com/pspdev/pspdev/releases/download/v20250901/pspdev-ubuntu-latest-x86_64.tar.gz
+        tar xf  pspdev-ubuntu-latest-x86_64.tar.gz -C $HOME
+    - name: Build ZIP
+      run: |
+        source build_env.sh
+        ./configure_cross.sh
+        ninja -C builddir gameLD58.zip
+    - name: Create release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref_name }}
+      run: |
+        gh release create "$tag" \
+            ./builddir/gameLD58.zip \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="${tag#v}" \
+            --generate-notes
