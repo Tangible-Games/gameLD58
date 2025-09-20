@@ -1,0 +1,1 @@
+subdir('symphony_lite')
