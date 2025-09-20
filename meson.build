@@ -17,7 +17,7 @@ project(
 srcs = []
 include_dirs = []
 
-subdir('symphony_lite')
+subdir('libs')
 subdir('src')
 
 # Build configuration and dependencies
