@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <vlog/vlog.h>
 
 #include <chrono>
 #include <ctime>
@@ -52,6 +53,12 @@ float music_timeout = 0.0f;
 }  // namespace
 
 int main(int /* argc */, char* /* argv */[]) {
+  vlog::Logger::init()
+      .set_verbosity(vlog::Logger::Verbosity::DEBUG)
+      .add_sink(vlog::FileSink::create(LOG_FILE));
+
+  LOGI("Game starting...");
+
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER);
   IMG_Init(IMG_INIT_PNG);
 
@@ -113,9 +120,6 @@ int main(int /* argc */, char* /* argv */[]) {
   bool is_right = false;
   bool is_up = false;
 
-  std::ofstream log;
-  log.open("log.txt", std::ofstream::out);
-
   auto prev_frame_start_time{std::chrono::steady_clock::now()};
   while (running) {
     auto frame_start_time{std::chrono::steady_clock::now()};
@@ -147,8 +151,7 @@ int main(int /* argc */, char* /* argv */[]) {
           break;
 
         case SDL_CONTROLLERBUTTONDOWN:
-          log << "event.cbutton.button: " << (int)event.cbutton.button
-              << std::endl;
+          LOGD("event.cbutton.button: {}", (int)event.cbutton.button);
           if (event.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
             running = false;
           }
@@ -165,8 +168,7 @@ int main(int /* argc */, char* /* argv */[]) {
           break;
 
         case SDL_CONTROLLERBUTTONUP:
-          log << "event.cbutton.button: " << (int)event.cbutton.button
-              << std::endl;
+          LOGD("event.cbutton.button: {}", (int)event.cbutton.button);
           if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
             is_left = false;
           }

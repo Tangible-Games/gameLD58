@@ -25,7 +25,7 @@ jobs:
     - name: Build ZIP
       run: |
         source build_env.sh
-        ./configure_cross.sh
+        meson setup builddir --cross-file crosscompile.txt -Dlogging=false --buildtype=release
         ninja -C builddir gameLD58.zip
     - name: Create release
       env:
