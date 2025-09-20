@@ -19,6 +19,7 @@ if meson.is_cross_build()
 
     pspdev_sdk_inc = include_directories(pspdev_sdk / 'include')
 
+    add_project_arguments('-DPSP', language: ['c', 'cpp'])
     add_project_arguments('-DSAMPLE_CONFIG_PLATFORM_PSP', language: ['c', 'cpp'])
     add_project_arguments('-D_PSP_FW_VERSION=600', language: ['c', 'cpp'])
 
@@ -75,6 +76,7 @@ if meson.is_cross_build()
     mksfoex_exe = find_program('mksfoex')
     strip_exe = find_program('psp-strip')
     pack_pbp_exe = find_program('pack-pbp')
+    sh_exe = find_program('sh')
     ppsspp_exe = find_program(
         'PPSSPPSDL',
         '/Applications/PPSSPPSDL.app/Contents/MacOS/PPSSPPSDL',
@@ -86,6 +88,7 @@ if meson.is_cross_build()
 
     # Always optimized on device
     add_project_arguments('-O2', language: ['c', 'cpp'])
+    add_project_arguments('-DLOG_FILE="log.txt"', language: ['c', 'cpp'])
 endif
 
 # Host configurations and deps
@@ -96,6 +99,8 @@ add_project_arguments('-DTARGET_HOST=1', language: ['c', 'cpp'], native: true)
 # always debug for the host
 add_project_arguments('-O3', language: ['c', 'cpp'], native: true)
 add_project_arguments('-ggdb', language: ['c', 'cpp'], native: true)
+
+add_project_arguments('-DLOG_FILE="host_log.txt"', language: ['c', 'cpp'], native: true)
 
 sdl2_host_dep = dependency('sdl2', required: false, native: true)
 sdl2image_host_dep = dependency('SDL2_image', required: false, native: true)
@@ -112,8 +117,9 @@ if muon_exe.found()
     meson_files = [
         meson.project_source_root() / 'meson.build',
         meson.project_source_root() / 'build' / 'meson.build',
-        meson.project_source_root() / 'symphony_lite' / 'meson.build',
-        meson.project_source_root() / 'src' / 'meson.build',
+        meson.project_source_root() / 'libs' / 'meson.build',
+        meson.project_source_root() / 'libs' / 'symphony_lite' / 'meson.build',
+        meson.project_source_root() / 'libs' / 'vlog' / 'meson.build',
         meson.project_source_root() / 'src' / 'meson.build',
     ]
     run_target('format-meson', command: [muon_exe, 'fmt', '-i'] + meson_files)

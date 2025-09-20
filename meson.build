@@ -26,6 +26,8 @@ subdir('build')
 nlohmann_json = subproject('nlohmann_json')
 nlohmann_json_dep = nlohmann_json.get_variable('nlohmann_json_dep')
 
+common_deps = [symphony_lite_dep, vlog_dep, nlohmann_json_dep]
+
 icon = files('icon.png')
 preview = files('icon.png')
 
@@ -49,7 +51,7 @@ if meson.is_cross_build()
         meson.project_name(),
         srcs,
         include_directories: include_dirs,
-        dependencies: pspdev_deps + [symphony_lite_dep, nlohmann_json_dep],
+        dependencies: pspdev_deps + common_deps,
     )
 
     elf_fixed = custom_target(
@@ -114,7 +116,7 @@ if sdl2_host_dep.found()
         meson.project_name() + '_host_exe',
         srcs,
         include_directories: include_dirs,
-        dependencies: [sdl2_host_dep, sdl2image_host_dep, symphony_lite_dep],
+        dependencies: [sdl2_host_dep, sdl2image_host_dep] + common_deps,
         native: true,
     )
 
