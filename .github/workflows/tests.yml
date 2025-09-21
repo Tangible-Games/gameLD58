@@ -13,19 +13,19 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install deps
       run: sudo apt install -y meson libgtest-dev pkg-config 
-    - name: Run tests with ASan
-      run: |
-        meson setup builddir -Db_sanitize=address
-        ninja -C builddir test
-    - name: Build host app
-      run: |
-        ninja -C builddir gameLD58_host_exe
     - name: Instal PSPDEV
       run: |
         wget https://github.com/pspdev/pspdev/releases/download/v20250901/pspdev-ubuntu-latest-x86_64.tar.gz
         tar xf  pspdev-ubuntu-latest-x86_64.tar.gz -C $HOME
+    - name: Run tests with ASan
+      run: |
+        meson setup builddir -Db_sanitize=address
+        ninja -C builddir test
     - name: Build PSP ZIP
       run: |
         source build_env.sh
         meson setup builddirpsp --cross-file crosscompile.txt
         ninja -C builddirpsp gameLD58.zip
+    - name: Build host app
+      run: |
+        ninja -C builddirpsp gameLD58_host_exe
