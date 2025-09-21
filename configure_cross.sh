@@ -1,2 +1,5 @@
 source ./build_env.sh
-meson setup builddir -Db_ndebug=true --cross-file crosscompile.txt
+ARGS=$@
+# hack for build on macos
+[[ $OSTYPE == 'darwin'* ]] && ARGS=$ARGS -Db_ndebug=true
+meson setup builddir --cross-file crosscompile.txt $ARGS
