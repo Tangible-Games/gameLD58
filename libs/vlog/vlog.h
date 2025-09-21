@@ -27,7 +27,13 @@ class LoggerSink {
 class ConsoleSink : public LoggerSink {
  public:
   static std::unique_ptr<LoggerSink> create() {
-    return std::unique_ptr<LoggerSink>(new ConsoleSink);
+    auto sink = std::unique_ptr<LoggerSink>(new ConsoleSink);
+#if VLOG_ENABLED
+    sink->out(std::format("--- [{}] vlog::ConsoleSink started ---\n",
+                          std::chrono::system_clock::now()),
+              true);
+#endif
+    return sink;
   }
   virtual ~ConsoleSink() override = default;
 
@@ -38,19 +44,19 @@ class ConsoleSink : public LoggerSink {
   }
 
  private:
-  ConsoleSink() {
-#if VLOG_ENABLED
-    out(std::format("--- [{}] vlog::ConsoleSink started ---",
-                    std::chrono::system_clock::now()))
-        .endl();
-#endif
-  }
+  ConsoleSink() = default;
 };
 
 class FileSink : public LoggerSink {
  public:
   static std::unique_ptr<LoggerSink> create(const std::string& file) {
-    return std::unique_ptr<LoggerSink>(new FileSink(file));
+    auto sink = std::unique_ptr<LoggerSink>(new FileSink(file));
+#if VLOG_ENABLED
+    sink->out(std::format("--- [{}] vlog::FileSink started ---\n",
+                          std::chrono::system_clock::now()),
+              true);
+#endif
+    return sink;
   }
   virtual ~FileSink() override { log_.flush(); }
 
@@ -68,18 +74,15 @@ class FileSink : public LoggerSink {
   }
 
  private:
-  FileSink(const std::string& file) : file_(file) {
-#if VLOG_ENABLED
-    out(std::format("--- [{}] vlog::FileSink started ---",
-                    std::chrono::system_clock::now()))
-        .endl();
-#endif
-  }
+  FileSink(const std::string& file) : file_(file) {}
 
  private:
   std::string file_;
   std::ofstream log_;
 };
+
+constexpr std::array<std::string, 5> kVerbosityStrings = {"E", "W", "I", "D",
+                                                          "T"};
 
 class Logger {
  public:
@@ -102,15 +105,12 @@ class Logger {
       .level = Verbosity::INFO,
   };
 
-  static constexpr std::array<std::string, 5> kVerbosityStrings = {
-      "E", "W", "I", "D", "T"};
-
   static Logger& instance() {
     static Logger logger;
     return logger;
   }
 
-  static Logger& set_verbosity(Verbosity level) {
+  Logger& set_verbosity(Verbosity level) {
     auto& logger = Logger::instance();
     logger.configuration_.level = level;
     return logger;
@@ -126,7 +126,7 @@ class Logger {
     return logger;
   }
 
-  static Logger& add_sink(std::unique_ptr<LoggerSink> sink) {
+  Logger& add_sink(std::unique_ptr<LoggerSink> sink) {
     auto& logger = Logger::instance();
 #if VLOG_ENABLED
     logger.sinks_.emplace_back(std::move(sink));
