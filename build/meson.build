@@ -96,8 +96,6 @@ add_project_arguments('-std=c++2a', language: 'cpp', native: true)
 add_project_arguments('-std=gnu11', language: 'c', native: true)
 
 add_project_arguments('-DTARGET_HOST=1', language: ['c', 'cpp'], native: true)
-# always debug for the host
-add_project_arguments('-O3', language: ['c', 'cpp'], native: true)
 add_project_arguments('-ggdb', language: ['c', 'cpp'], native: true)
 
 add_project_arguments('-DLOG_FILE="host_log.txt"', language: ['c', 'cpp'], native: true)
