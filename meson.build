@@ -20,9 +20,6 @@ include_dirs = []
 subdir('libs')
 subdir('src')
 
-# Build configuration and dependencies
-subdir('build')
-
 nlohmann_json = subproject('nlohmann_json')
 nlohmann_json_dep = nlohmann_json.get_variable('nlohmann_json_dep')
 
@@ -37,7 +34,7 @@ assets_link = custom_target(
     command: [
         python_exe,
         [
-            meson.project_source_root() / 'build' / 'link_assets.py',
+            meson.project_source_root() / 'libs' / 'build' / 'link_assets.py',
             meson.project_source_root() / 'assets',
             meson.project_build_root(),
         ],
@@ -102,7 +99,7 @@ if meson.is_cross_build()
         output: meson.project_name() + '.zip',
         command: [
             python_exe,
-            meson.project_source_root() / 'build' / 'build_zip.py',
+            meson.project_source_root() / 'libs' / 'build' / 'build_zip.py',
             '@OUTPUT@',
             meson.project_build_root(),
             '@INPUT@',

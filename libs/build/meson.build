@@ -114,8 +114,8 @@ muon_exe = find_program('muon', required: false)
 if muon_exe.found()
     meson_files = [
         meson.project_source_root() / 'meson.build',
-        meson.project_source_root() / 'build' / 'meson.build',
         meson.project_source_root() / 'libs' / 'meson.build',
+        meson.project_source_root() / 'libs' / 'build' / 'meson.build',
         meson.project_source_root() / 'libs' / 'symphony_lite' / 'meson.build',
         meson.project_source_root() / 'libs' / 'vlog' / 'meson.build',
         meson.project_source_root() / 'src' / 'meson.build',
