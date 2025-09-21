@@ -5,15 +5,18 @@
 #include <chrono>
 #include <ctime>
 #include <fstream>
+#include <symphony_lite/all_symphony.hpp>
 #include <thread>
 #include <vector>
-
-#include "symphony_lite/all_symphony.hpp"
 
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
 
 namespace {
+
+constexpr float kGravity = -980.0f;
+constexpr float kCharacter_velocity = 150.0f;
+constexpr float kCharacter_jump_velocity = 400.0f;
 
 struct Sprite {
   Point2d pos;
@@ -25,34 +28,94 @@ struct Sprite {
   bool collides{false};
 };
 
-std::vector<Sprite> all_sprites;
-
-float gravity = -980.0f;
-
-Vector2d character_pos;
-Vector2d character_half_sizes;
-Vector2d character_cur_velocity;
-float character_velocity = 150.0f;
-float character_jump_velocity = 400.0f;
-
-bool characterTouchesFloor(const Vector2d& next_pos, float floor_y,
-                           Vector2d& new_pos_out) {
+bool characterTouchesFloor(const Vector2d& next_pos, const Vector2d& half_sizes,
+                           float floor_y, Vector2d& new_pos_out) {
   new_pos_out = next_pos;
 
-  float character_down = next_pos.y + character_half_sizes.y;
+  float character_down = next_pos.y + half_sizes.y;
   if (character_down >= floor_y) {
-    new_pos_out.y = floor_y - character_half_sizes.y;
+    new_pos_out.y = floor_y - half_sizes.y;
     return true;
   }
 
   return false;
 }
 
-float music_timeout = 0.0f;
+void handleControllerButtonDownEvent(SDL_Event& event, bool& running,
+                                     bool& is_left, bool& is_right,
+                                     bool& is_up) {
+  LOGD("event.cbutton.button: {}", (int)event.cbutton.button);
+  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+    running = false;
+  }
+  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
+    is_left = true;
+  }
+  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
+    is_right = true;
+  }
+  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
+      event.cbutton.button == 0) {
+    is_up = true;
+  }
+}
+
+void handleControllerButtonUpEvent(SDL_Event& event,
+                                   [[maybe_unused]] bool& running,
+                                   bool& is_left, bool& is_right, bool& is_up) {
+  LOGD("event.cbutton.button: {}", (int)event.cbutton.button);
+  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
+    is_left = false;
+  }
+  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
+    is_right = false;
+  }
+  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
+      event.cbutton.button == 0) {
+    is_up = false;
+  }
+}
+
+void handleKeyDownEvent(SDL_Event& event, bool& running, bool& is_left,
+                        bool& is_right, bool& is_up) {
+  if (event.key.keysym.sym == SDLK_ESCAPE) {
+    running = false;
+  }
+  if (event.key.keysym.sym == SDLK_LEFT) {
+    is_left = true;
+  }
+  if (event.key.keysym.sym == SDLK_RIGHT) {
+    is_right = true;
+  }
+  if (event.key.keysym.sym == SDLK_UP) {
+    is_up = true;
+  }
+}
+
+void handleKeyUpEvent(SDL_Event& event, [[maybe_unused]] bool& running,
+                      bool& is_left, bool& is_right, bool& is_up) {
+  if (event.key.keysym.sym == SDLK_LEFT) {
+    is_left = false;
+  }
+  if (event.key.keysym.sym == SDLK_RIGHT) {
+    is_right = false;
+  }
+  if (event.key.keysym.sym == SDLK_UP) {
+    is_up = false;
+  }
+}
 
 }  // namespace
 
 int main(int /* argc */, char* /* argv */[]) {
+  std::vector<Sprite> all_sprites;
+
+  Vector2d character_pos;
+  Vector2d character_half_sizes;
+  Vector2d character_cur_velocity;
+
+  float music_timeout = 0.0f;
+
   vlog::Logger::init()
       .set_verbosity(vlog::Logger::Verbosity::DEBUG)
       .add_sink(vlog::FileSink::create(LOG_FILE));
@@ -85,9 +148,9 @@ int main(int /* argc */, char* /* argv */[]) {
   character_half_sizes.y = pixels->h / 2.0f;
   SDL_FreeSurface(pixels);
 
-  character_pos = Vector2d(480 / 2, 272 / 2);
+  character_pos = Vector2d(480.0f / 2, 272.0f / 2);
 
-  auto* audio_device = new Symphony::Audio::Device();
+  auto audio_device = std::make_unique<Symphony::Audio::Device>();
   auto music = Symphony::Audio::LoadWave(
       "assets/bioorange_22k.wav",
       Symphony::Audio::WaveFile::kModeStreamingFromFile);
@@ -101,21 +164,21 @@ int main(int /* argc */, char* /* argv */[]) {
   std::shared_ptr<Symphony::Audio::PlayingStream> music_stream;
 
   for (int i = 0; i < 100; ++i) {
-    all_sprites.emplace_back(Sprite());
-    all_sprites.back().pos = Point2d(rand() % 480, rand() % 272);
-    all_sprites.back().cur_pos = all_sprites.back().pos;
-    all_sprites.back().half_sizes =
-        Vector2d((rand() % 10) + 5, (rand() % 20) + 5);
+    Sprite sprite;
+    sprite.pos = Point2d(rand() % 480, rand() % 272);
+    sprite.cur_pos = sprite.pos;
+    sprite.half_sizes = Vector2d((rand() % 10) + 5, (rand() % 20) + 5);
     float angle = DegToRad(rand() % 180);
-    all_sprites.back().dir = Vector2d(cosf(angle), sinf(angle));
-    all_sprites.back().dir.MakeNormalized();
-    all_sprites.back().velocity = rand() % 10 + 20;
-    all_sprites.back().max_travel_dist = rand() % 50 + 20;
+    sprite.dir = Vector2d(cosf(angle), sinf(angle));
+    sprite.dir.MakeNormalized();
+    sprite.velocity = rand() % 10 + 20;
+    sprite.max_travel_dist = rand() % 50 + 20;
+    all_sprites.emplace_back(sprite);
   }
 
-  bool running = true;
   SDL_Event event;
 
+  bool running = true;
   bool is_left = false;
   bool is_right = false;
   bool is_up = false;
@@ -151,58 +214,21 @@ int main(int /* argc */, char* /* argv */[]) {
           break;
 
         case SDL_CONTROLLERBUTTONDOWN:
-          LOGD("event.cbutton.button: {}", (int)event.cbutton.button);
-          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
-            running = false;
-          }
-          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
-            is_left = true;
-          }
-          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
-            is_right = true;
-          }
-          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
-              event.cbutton.button == 0) {
-            is_up = true;
-          }
+          handleControllerButtonDownEvent(event, running, is_left, is_right,
+                                          is_up);
           break;
 
         case SDL_CONTROLLERBUTTONUP:
-          LOGD("event.cbutton.button: {}", (int)event.cbutton.button);
-          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
-            is_left = false;
-          }
-          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
-            is_right = false;
-          }
-          if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
-              event.cbutton.button == 0) {
-            is_up = false;
-          }
+          handleControllerButtonUpEvent(event, running, is_left, is_right,
+                                        is_up);
           break;
 
         case SDL_KEYDOWN:
-          if (event.key.keysym.sym == SDLK_LEFT) {
-            is_left = true;
-          }
-          if (event.key.keysym.sym == SDLK_RIGHT) {
-            is_right = true;
-          }
-          if (event.key.keysym.sym == SDLK_UP) {
-            is_up = true;
-          }
+          handleKeyDownEvent(event, running, is_left, is_right, is_up);
           break;
 
         case SDL_KEYUP:
-          if (event.key.keysym.sym == SDLK_LEFT) {
-            is_left = false;
-          }
-          if (event.key.keysym.sym == SDLK_RIGHT) {
-            is_right = false;
-          }
-          if (event.key.keysym.sym == SDLK_UP) {
-            is_up = false;
-          }
+          handleKeyUpEvent(event, running, is_left, is_right, is_up);
           break;
 
         default:
@@ -211,30 +237,32 @@ int main(int /* argc */, char* /* argv */[]) {
     }
 
     Vector2d character_new_pos;
-    bool character_touches_floor =
-        characterTouchesFloor(character_pos, 272.0f, character_new_pos);
+    bool character_touches_floor = characterTouchesFloor(
+        character_pos, character_half_sizes, 272.0f, character_new_pos);
 
     if (character_touches_floor) {
       character_cur_velocity.x = 0.0f;
       if (is_left) {
-        character_cur_velocity.x = -character_velocity;
+        character_cur_velocity.x = -kCharacter_velocity;
       }
       if (is_right) {
-        character_cur_velocity.x = character_velocity;
+        character_cur_velocity.x = kCharacter_velocity;
       }
     }
     if (is_up) {
       Vector2d new_pos;
-      if (characterTouchesFloor(character_pos, 272.0f, new_pos)) {
+      if (characterTouchesFloor(character_pos, character_half_sizes, 272.0f,
+                                new_pos)) {
         audio_device->Play(jump, Symphony::Audio::PlayTimes(1));
-        character_cur_velocity.y = -character_jump_velocity;
+        character_cur_velocity.y = -kCharacter_jump_velocity;
       }
     }
 
-    character_cur_velocity.y -= gravity * dt;
+    character_cur_velocity.y -= kGravity * dt;
     character_pos = character_pos + character_cur_velocity * dt;
 
-    if (characterTouchesFloor(character_pos, 272.0f, character_new_pos)) {
+    if (characterTouchesFloor(character_pos, character_half_sizes, 272.0f,
+                              character_new_pos)) {
       character_pos = character_new_pos;
     }
 
