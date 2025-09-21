@@ -9,7 +9,8 @@ on:
 jobs:
   linux-tests:
     runs-on: ubuntu-latest
-
+      with:
+          fetch-depth: 0
     steps:
     - uses: actions/checkout@v4
     - name: Install deps
@@ -18,3 +19,33 @@ jobs:
       run: |
         meson setup builddir -Db_sanitize=address
         ninja -C builddir test
+
+  build-host-app:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          fetch-depth: 0
+    - name: Build host app
+      run: |
+        source build_env.sh
+        meson setup builddir
+        ninja -C builddir gameLD58_host_exe
+
+  build-app:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          fetch-depth: 0
+    - name: Instal PSPDEV
+      run: |
+        wget https://github.com/pspdev/pspdev/releases/download/v20250901/pspdev-ubuntu-latest-x86_64.tar.gz
+        tar xf  pspdev-ubuntu-latest-x86_64.tar.gz -C $HOME
+    - name: Build ZIP
+      run: |
+        source build_env.sh
+        meson setup builddir --cross-file crosscompile.txt
+        ninja -C builddir gameLD58.zip
