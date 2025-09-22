@@ -50,12 +50,12 @@ class TextRenderer {
     std::unordered_map<Font*, RenderBuffers> font_to_buffers;
   };
 
-  static SDL_Color SdlColorFromUInt32(uint32_t color) {
+  static SDL_Color SdlColorFromUInt32(uint32_t /*color*/) {
     SDL_Color sdl_color;
-    sdl_color.a = ((color >> 24) & 0xFF);
-    sdl_color.r = ((color >> 16) & 0xFF);
-    sdl_color.g = ((color >> 8) & 0xFF);
-    sdl_color.b = (color & 0xFF);
+    sdl_color.a = 255;  // ((color >> 24) & 0xFF);
+    sdl_color.r = 0;    //((color >> 16) & 0xFF);
+    sdl_color.g = 255;  // ((color >> 8) & 0xFF);
+    sdl_color.b = 255;  // (color & 0xFF);
     return sdl_color;
   }
 
@@ -115,6 +115,7 @@ void TextRenderer::ReFormat(
 
   lines_.resize(measured_text.measured_lines.size());
 
+  float line_y = 0.0f;
   for (size_t i = 0; i < lines_.size(); ++i) {
     Line& line = lines_[i];
     const MeasuredTextLine& measured_line = measured_text.measured_lines[i];
@@ -148,14 +149,15 @@ void TextRenderer::ReFormat(
         SDL_Vertex* vertex =
             &render_buffers.vertices[num_glyphs_processed * 4 + 0];
         vertex->position.x = (float)measured_glyph.x;
-        vertex->position.y = (float)measured_glyph.y;
+        vertex->position.y = line_y + (float)measured_glyph.y;
         vertex->color = sdl_color;
         vertex->tex_coord.x = (float)glyph.texture_x / texture_width_f;
         vertex->tex_coord.y = (float)glyph.texture_y / texture_height_f;
 
         vertex = &render_buffers.vertices[num_glyphs_processed * 4 + 1];
         vertex->position.x = (float)measured_glyph.x;
-        vertex->position.y = (float)(measured_glyph.y + glyph.texture_height);
+        vertex->position.y =
+            line_y + (float)(measured_glyph.y + glyph.texture_height);
         vertex->color = sdl_color;
         vertex->tex_coord.x = (float)glyph.texture_x / texture_width_f;
         vertex->tex_coord.y =
@@ -163,7 +165,8 @@ void TextRenderer::ReFormat(
 
         vertex = &render_buffers.vertices[num_glyphs_processed * 4 + 2];
         vertex->position.x = (float)(measured_glyph.x + glyph.texture_width);
-        vertex->position.y = (float)(measured_glyph.y + glyph.texture_height);
+        vertex->position.y =
+            line_y + (float)(measured_glyph.y + glyph.texture_height);
         vertex->color = sdl_color;
         vertex->tex_coord.x =
             (float)(glyph.texture_x + glyph.texture_width) / texture_width_f;
@@ -172,7 +175,7 @@ void TextRenderer::ReFormat(
 
         vertex = &render_buffers.vertices[num_glyphs_processed * 4 + 3];
         vertex->position.x = (float)(measured_glyph.x + glyph.texture_width);
-        vertex->position.y = (float)(measured_glyph.y);
+        vertex->position.y = line_y + (float)(measured_glyph.y);
         vertex->color = sdl_color;
         vertex->tex_coord.x =
             (float)(glyph.texture_x + glyph.texture_width) / texture_width_f;
@@ -181,19 +184,21 @@ void TextRenderer::ReFormat(
         render_buffers.indices[num_glyphs_processed * 6 + 0] =
             num_glyphs_processed * 4 + 0;
         render_buffers.indices[num_glyphs_processed * 6 + 1] =
-            num_glyphs_processed * 4 + 1;
-        render_buffers.indices[num_glyphs_processed * 6 + 2] =
             num_glyphs_processed * 4 + 2;
+        render_buffers.indices[num_glyphs_processed * 6 + 2] =
+            num_glyphs_processed * 4 + 1;
         render_buffers.indices[num_glyphs_processed * 6 + 3] =
             num_glyphs_processed * 4 + 0;
         render_buffers.indices[num_glyphs_processed * 6 + 4] =
-            num_glyphs_processed * 4 + 2;
-        render_buffers.indices[num_glyphs_processed * 6 + 5] =
             num_glyphs_processed * 4 + 3;
+        render_buffers.indices[num_glyphs_processed * 6 + 5] =
+            num_glyphs_processed * 4 + 2;
 
         ++num_glyphs_processed;
       }
     }
+
+    line_y += (float)measured_line.line_height;
   }
 }
 
@@ -206,14 +211,13 @@ void TextRenderer::Render() {
     return;
   }
 
-  SDL_SetRenderDrawBlendMode(sdl_renderer_.get(), SDL_BLENDMODE_BLEND);
   for (const auto& line : lines_) {
     for (const auto& [font, buffers] : line.font_to_buffers) {
-      SDL_RenderGeometry(sdl_renderer_.get(), (SDL_Texture*)font->GetTexture(),
-                         &buffers.vertices[0], buffers.vertices.size(),
-                         &buffers.indices[0], buffers.indices.size());
+      SDL_Texture* sdl_texture = (SDL_Texture*)font->GetTexture();
+      SDL_RenderGeometry(sdl_renderer_.get(), sdl_texture, &buffers.vertices[0],
+                         buffers.vertices.size(), &buffers.indices[0],
+                         buffers.indices.size());
     }
-    break;
   }
 }
 

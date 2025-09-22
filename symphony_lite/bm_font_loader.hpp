@@ -89,7 +89,7 @@ class BmFont : public Font {
   ~BmFont() = default;
 
   bool Load(const std::string& file_path);
-  bool LoadTexture(SDL_Renderer* renderer);
+  bool LoadTexture(std::shared_ptr<SDL_Renderer> renderer);
 
   const Info GetInfo() const { return info_; }
 
@@ -395,7 +395,7 @@ bool BmFont::Load(const std::string& file_path) {
   return true;
 }
 
-bool BmFont::LoadTexture(SDL_Renderer* renderer) {
+bool BmFont::LoadTexture(std::shared_ptr<SDL_Renderer> sdl_renderer) {
   auto font_path = std::filesystem::path(file_path_);
   auto texture_path = font_path.parent_path() / pages_[0].file;
 
@@ -408,7 +408,7 @@ bool BmFont::LoadTexture(SDL_Renderer* renderer) {
     return false;
   }
 
-  sdl_texture_.reset(SDL_CreateTextureFromSurface(renderer, pixels),
+  sdl_texture_.reset(SDL_CreateTextureFromSurface(sdl_renderer.get(), pixels),
                      &deleteTexture);
   if (!sdl_texture_) {
     std::cerr
@@ -416,8 +416,6 @@ bool BmFont::LoadTexture(SDL_Renderer* renderer) {
         << texture_path << ", font_file_path: " << file_path_ << std::endl;
     return false;
   }
-
-  SDL_SetTextureBlendMode(sdl_texture_.get(), SDL_BLENDMODE_BLEND);
 
   SDL_FreeSurface(pixels);
 
