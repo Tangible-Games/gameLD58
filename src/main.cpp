@@ -163,9 +163,9 @@ int main(int /* argc */, char* /* argv */[]) {
   audio_device->Init();
 
   auto system_font_30 = Symphony::Text::LoadBmFont("assets/system_30.fnt");
-  system_font_30->LoadTexture(renderer.get());
+  system_font_30->LoadTexture(renderer);
   auto system_font_50 = Symphony::Text::LoadBmFont("assets/system_50.fnt");
-  system_font_50->LoadTexture(renderer.get());
+  system_font_50->LoadTexture(renderer);
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts{
       {"system_30.fnt", system_font_30}, {"system_50.fnt", system_font_50}};
   Symphony::Text::TextRenderer system_info_renderer(renderer);
