@@ -1,4 +1,4 @@
-#include "point2d.hpp"
+#include "../point2d.hpp"
 
 #include <gtest/gtest.h>
 

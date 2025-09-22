@@ -1,10 +1,10 @@
-#include "transformation_matrix3d.hpp"
+#include "../transformation_matrix3d.hpp"
 
 #include <gtest/gtest.h>
 
-#include "angle.hpp"
-#include "point2d.hpp"
-#include "segment2d.hpp"
+#include "../angle.hpp"
+#include "../point2d.hpp"
+#include "../segment2d.hpp"
 
 using namespace Symphony::Math;
 

@@ -1,4 +1,4 @@
-#include "formatted_text.hpp"
+#include "../formatted_text.hpp"
 
 #include <gtest/gtest.h>
 

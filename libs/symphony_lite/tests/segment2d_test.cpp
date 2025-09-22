@@ -1,4 +1,4 @@
-#include "segment2d.hpp"
+#include "../segment2d.hpp"
 
 #include <gtest/gtest.h>
 

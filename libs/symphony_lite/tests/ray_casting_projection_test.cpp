@@ -1,8 +1,8 @@
-#include "ray_casting_projection.hpp"
+#include "../ray_casting_projection.hpp"
 
 #include <gtest/gtest.h>
 
-#include "segment2d.hpp"
+#include "../segment2d.hpp"
 
 using namespace Symphony::Math;
 using namespace Symphony::Visibility;

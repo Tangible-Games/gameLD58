@@ -1,8 +1,8 @@
-#include "vector2d.hpp"
+#include "../vector2d.hpp"
 
 #include <gtest/gtest.h>
 
-#include "angle.hpp"
+#include "../angle.hpp"
 
 using namespace Symphony::Math;
 

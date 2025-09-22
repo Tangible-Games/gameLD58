@@ -1,4 +1,4 @@
-#include "aa_rect2d.hpp"
+#include "../aa_rect2d.hpp"
 
 #include <gtest/gtest.h>
 
