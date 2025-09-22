@@ -53,23 +53,27 @@ int main(int /* argc */, char* /* argv */[]) {
 
   SDL_Window* window = SDL_CreateWindow("window", SDL_WINDOWPOS_UNDEFINED,
                                         SDL_WINDOWPOS_UNDEFINED, 480, 272, 0);
-  SDL_Renderer* renderer = SDL_CreateRenderer(
-      window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  std::shared_ptr<SDL_Renderer> renderer{
+      SDL_CreateRenderer(window, -1,
+                         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
+      &SDL_DestroyRenderer};
 
   srand(time(0));
 
   // Load sprites
   SDL_Surface* pixels = IMG_Load("assets/dummy_50x50.png");
-  SDL_Texture* sprite_black = SDL_CreateTextureFromSurface(renderer, pixels);
+  SDL_Texture* sprite_black =
+      SDL_CreateTextureFromSurface(renderer.get(), pixels);
   SDL_FreeSurface(pixels);
 
   pixels = IMG_Load("assets/dummy_50x50.png");
-  SDL_Texture* sprite_red = SDL_CreateTextureFromSurface(renderer, pixels);
+  SDL_Texture* sprite_red =
+      SDL_CreateTextureFromSurface(renderer.get(), pixels);
   SDL_FreeSurface(pixels);
 
   pixels = IMG_Load("assets/character.png");
   SDL_Texture* sprite_character =
-      SDL_CreateTextureFromSurface(renderer, pixels);
+      SDL_CreateTextureFromSurface(renderer.get(), pixels);
   character_half_sizes.x = pixels->w / 2.0f;
   character_half_sizes.y = pixels->h / 2.0f;
   SDL_FreeSurface(pixels);
@@ -84,7 +88,16 @@ int main(int /* argc */, char* /* argv */[]) {
       "assets/dummy_22k.wav", Symphony::Audio::WaveFile::kModeLoadInMemory);
   audio_device->Init();
 
-  auto fps_font = Symphony::Text::LoadBmFont("assets/system_30.fnt");
+  auto system_font_30 = Symphony::Text::LoadBmFont("assets/system_30.fnt");
+  system_font_30->LoadTexture(renderer.get());
+  auto system_font_50 = Symphony::Text::LoadBmFont("assets/system_50.fnt");
+  system_font_50->LoadTexture(renderer.get());
+  std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts{
+      {"system_30.fnt", system_font_30}, {"system_50.fnt", system_font_50}};
+  Symphony::Text::TextRenderer system_info_renderer(renderer);
+  system_info_renderer.LoadFromFile("assets/system_counters.txt");
+  system_info_renderer.SetPosition(5, 5);
+  system_info_renderer.SetSizes(475, 267);
 
   music_timeout = (float)(rand() % 3) + 3;
   std::shared_ptr<Symphony::Audio::PlayingStream> music_stream;
@@ -236,8 +249,8 @@ int main(int /* argc */, char* /* argv */[]) {
       }
     }
 
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_RenderClear(renderer);
+    SDL_SetRenderDrawColor(renderer.get(), 255, 128, 128, 128);
+    SDL_RenderClear(renderer.get());
 
     for (auto& sprite : all_sprites) {
       SDL_Texture* sprite_img = nullptr;
@@ -251,19 +264,23 @@ int main(int /* argc */, char* /* argv */[]) {
                          (int)sprite.cur_pos.y - (int)sprite.half_sizes.y,
                          (int)sprite.half_sizes.x * 2,
                          (int)sprite.half_sizes.y * 2};
-      SDL_RenderCopy(renderer, sprite_img, NULL, &square);
+      SDL_RenderCopy(renderer.get(), sprite_img, NULL, &square);
     }
 
     SDL_Rect square = {(int)character_pos.x - (int)character_half_sizes.x,
                        (int)character_pos.y - (int)character_half_sizes.y,
                        (int)character_half_sizes.x * 2,
                        (int)character_half_sizes.y * 2};
-    SDL_RenderCopy(renderer, sprite_character, NULL, &square);
+    SDL_RenderCopy(renderer.get(), sprite_character, NULL, &square);
 
-    SDL_RenderPresent(renderer);
+    system_info_renderer.ReFormat(
+        {{"fps_count", "60"}, {"audio_streams_playing", "0"}}, "system_30.fnt",
+        known_fonts);
+    system_info_renderer.Render();
+
+    SDL_RenderPresent(renderer.get());
   }
 
-  SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();
 
