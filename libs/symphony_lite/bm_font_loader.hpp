@@ -1,11 +1,16 @@
 #pragma once
 
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "font.hpp"
@@ -84,6 +89,7 @@ class BmFont : public Font {
   ~BmFont() = default;
 
   bool Load(const std::string& file_path);
+  bool LoadTexture(SDL_Renderer* renderer);
 
   const Info GetInfo() const { return info_; }
 
@@ -95,14 +101,17 @@ class BmFont : public Font {
 
   const std::vector<Kerning> GetKernings() const { return kernings_; }
 
-  int GetLineHeight() override { return common_.line_height; }
-
-  int GetBase() override { return common_.base; }
-
-  Glyph GetGlyph(uint32_t code_position) override {
-    (void)code_position;
-    return Glyph();
+  FontMeasurements GetFontMeasurements() const override {
+    FontMeasurements result;
+    result.line_height = common_.line_height;
+    result.base = common_.base;
+    result.space_width = (common_.line_height * 2) / 3;
+    return result;
   }
+
+  Glyph GetGlyph(uint32_t code_position) const override;
+
+  void* GetTexture() override { return sdl_texture_.get(); }
 
  private:
   enum BlockType {
@@ -115,11 +124,18 @@ class BmFont : public Font {
     kBlockUnknown,
   };
 
+  static void deleteTexture(SDL_Texture* sdl_texture) {
+    SDL_DestroyTexture(sdl_texture);
+  }
+
+  std::string file_path_;
   Info info_;
   Common common_;
   std::vector<Page> pages_;
   std::vector<Char> chars_;
   std::vector<Kerning> kernings_;
+  std::unordered_map<uint32_t, size_t> code_position_to_char_;
+  std::shared_ptr<SDL_Texture> sdl_texture_;
 };
 
 std::string BmFont::InfoToString(const Info& info) {
@@ -339,10 +355,18 @@ bool BmFont::Load(const std::string& file_path) {
     }
   }
 
+  if (pages_.size() != 1) {
+    std::cerr << "[Symphony::Text::BmFont] Only fonts with single page are "
+                 "supported, file_path: "
+              << file_path << std::endl;
+    return false;
+  }
+
   if (common_.packed != 0) {
     std::cerr << "[Symphony::Text::BmFont] Characters shouldn't be packed in "
                  "separate color channels, file_path: "
               << file_path << std::endl;
+    return false;
   }
 
   if (num_chars != chars_.size()) {
@@ -361,7 +385,64 @@ bool BmFont::Load(const std::string& file_path) {
     }
   }
 
+  for (size_t index = 0; const auto& c : chars_) {
+    code_position_to_char_[(uint32_t)c.id] = index;
+    ++index;
+  }
+
+  file_path_ = file_path;
+
   return true;
+}
+
+bool BmFont::LoadTexture(SDL_Renderer* renderer) {
+  auto font_path = std::filesystem::path(file_path_);
+  auto texture_path = font_path.parent_path() / pages_[0].file;
+
+  SDL_Surface* pixels = IMG_Load(texture_path.c_str());
+  if (!pixels) {
+    std::cerr
+        << "[Symphony::Text::BmFont] Failed to load image file, file_path: "
+        << texture_path << ", font_file_path: " << file_path_ << std::endl;
+    SDL_FreeSurface(pixels);
+    return false;
+  }
+
+  sdl_texture_.reset(SDL_CreateTextureFromSurface(renderer, pixels),
+                     &deleteTexture);
+  if (!sdl_texture_) {
+    std::cerr
+        << "[Symphony::Text::BmFont] Failed to create texture, file_path: "
+        << texture_path << ", font_file_path: " << file_path_ << std::endl;
+    return false;
+  }
+
+  SDL_SetTextureBlendMode(sdl_texture_.get(), SDL_BLENDMODE_BLEND);
+
+  SDL_FreeSurface(pixels);
+
+  return true;
+}
+
+Glyph BmFont::GetGlyph(uint32_t code_position) const {
+  Glyph result;
+
+  auto it = code_position_to_char_.find(code_position);
+  if (it == code_position_to_char_.end()) {
+    return result;
+  }
+
+  const auto& c = chars_[it->second];
+  result.texture_x = c.x;
+  result.texture_y = c.y;
+  result.texture_width = c.width;
+  result.texture_height = c.height;
+  result.x_offset = c.x_offset;
+  result.y_offset = c.y_offset;
+  result.x_advance = c.x_advance;
+  result.code_position = code_position;
+
+  return result;
 }
 
 std::shared_ptr<BmFont> LoadBmFont(const std::string& file_path) {
