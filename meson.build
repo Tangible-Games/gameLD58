@@ -108,12 +108,12 @@ if meson.is_cross_build()
     )
 endif
 
-if sdl2_host_dep.found()
+if sdl3_host_dep.found()
     host_elf = executable(
         meson.project_name() + '_host_exe',
         srcs,
         include_directories: include_dirs,
-        dependencies: [sdl2_host_dep, sdl2image_host_dep] + common_deps,
+        dependencies: [sdl3_host_dep, sdl3image_host_dep] + common_deps,
         native: true,
     )
 

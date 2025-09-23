@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <tuple>
+#include <unordered_map>
 
 #include "font.hpp"
 #include "formatted_text.hpp"

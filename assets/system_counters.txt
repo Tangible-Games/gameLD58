@@ -1,2 +1,2 @@
-<style font="system_30.fnt" align="left" wrapping="noclip">Fps:</> <style font="system_50.fnt"><sub variable="$fps_count"></>
-<style font="system_30.fnt" align="left" wrapping="noclip">Audio streams playing:</> <style font="system_50.fnt"><sub variable="$audio_streams_playing"></>
+<style font="system_20.fnt" align="left" wrapping="noclip">Fps:</> <style font="system_30.fnt"><sub variable="$fps_count"></>
+<style font="system_20.fnt" align="left" wrapping="noclip">Audio streams playing:</> <style font="system_30.fnt"><sub variable="$audio_streams_playing"></>

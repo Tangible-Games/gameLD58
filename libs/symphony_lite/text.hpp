@@ -1,8 +1,10 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include <vlog/vlog.h>
 
 #include <fstream>
+#include <unordered_map>
 
 #include "formatted_text.hpp"
 #include "measured_text.hpp"
@@ -50,12 +52,12 @@ class TextRenderer {
     std::unordered_map<Font*, RenderBuffers> font_to_buffers;
   };
 
-  static SDL_Color SdlColorFromUInt32(uint32_t /*color*/) {
-    SDL_Color sdl_color;
-    sdl_color.a = 255;  // ((color >> 24) & 0xFF);
-    sdl_color.r = 0;    //((color >> 16) & 0xFF);
-    sdl_color.g = 255;  // ((color >> 8) & 0xFF);
-    sdl_color.b = 255;  // (color & 0xFF);
+  static SDL_FColor SdlColorFromUInt32(uint32_t color) {
+    SDL_FColor sdl_color;
+    sdl_color.a = (float)((color >> 24) & 0xFF) / 255.0f;
+    sdl_color.r = (float)((color >> 16) & 0xFF) / 255.0f;
+    sdl_color.g = (float)((color >> 8) & 0xFF) / 255.0f;
+    sdl_color.b = (float)(color & 0xFF) / 255.0f;
     return sdl_color;
   }
 
@@ -131,16 +133,10 @@ void TextRenderer::ReFormat(
         continue;
       }
 
-      int texture_width = 0;
-      int texture_height = 0;
-      SDL_QueryTexture(sdl_texture, nullptr, nullptr, &texture_width,
-                       &texture_height);
+      int texture_width = sdl_texture->w;
+      int texture_height = sdl_texture->h;
       float texture_width_scale = 1.0f / (float)texture_width;
       float texture_height_scale = 1.0f / (float)texture_height;
-#if defined __PSP__
-      // texture_width_scale = 1.0f;
-      // texture_height_scale = 1.0f;
-#endif
 
       (void)texture_width_scale;
       (void)texture_height_scale;
@@ -151,8 +147,7 @@ void TextRenderer::ReFormat(
         const auto& measured_glyph = measured_line.glyphs[glyph_index];
         const auto& glyph = measured_glyph.glyph;
 
-        SDL_Color sdl_color = SdlColorFromUInt32(measured_glyph.color);
-        (void)sdl_color;
+        SDL_FColor sdl_color = SdlColorFromUInt32(measured_glyph.color);
 
         SDL_Vertex* vertex =
             &render_buffers.vertices[num_glyphs_processed * 4 + 0];
@@ -221,22 +216,15 @@ void TextRenderer::Render() {
 
   SDL_SetRenderDrawBlendMode(sdl_renderer_.get(), SDL_BLENDMODE_BLEND);
 
-  int x = 20;
-  int y = 80;
   for (const auto& line : lines_) {
     for (const auto& [font, buffers] : line.font_to_buffers) {
       SDL_Texture* sdl_texture = (SDL_Texture*)font->GetTexture();
       SDL_SetTextureBlendMode(sdl_texture, SDL_BLENDMODE_BLEND);
 
-      SDL_Rect rect = {x, y, x + 50, y + 50};
-      SDL_RenderCopy(sdl_renderer_.get(), sdl_texture, NULL, &rect);
-
       SDL_RenderGeometry(sdl_renderer_.get(), sdl_texture, &buffers.vertices[0],
                          buffers.vertices.size(), &buffers.indices[0],
                          buffers.indices.size());
-      x += 30;
     }
-    y += 30;
   }
 }
 

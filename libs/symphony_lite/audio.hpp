@@ -1,6 +1,8 @@
 #pragma once
 
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_audio.h>
+#include <vlog/vlog.h>
 
 #include <algorithm>
 #include <iostream>
@@ -65,9 +67,6 @@ class Device {
 
   static inline constexpr int32_t kSampleMax16 = 32767;
   static inline constexpr int32_t kSampleMin16 = -32768;
-  static int32_t ClampSample(int32_t sample) {
-    return std::clamp(sample, kSampleMin16, kSampleMax16);
-  }
 
   enum class GainState { kAttack, kSustain, kRelease };
 
@@ -102,8 +101,6 @@ class Device {
   };
 #pragma pack(pop)
 
-  static void dataCallback(void* userdata, Uint8* stream, int len);
-
   static void startPlayingStream(
       PlayingStreamInternal* playing_stream_internal);
 
@@ -129,42 +126,47 @@ class Device {
 
   void allocateMixBuffer(size_t num_blocks);
   void allocateReadBuffer(size_t num_blocks);
-  void onDataRequested(Uint8* stream, int len);
 
-  SDL_AudioDeviceID sdl_audio_device_;
+  static void dataCallback(void* userdata, SDL_AudioStream* stream,
+                           int additional_amount, int total_amount);
+  void fillMixBuffer(int bytes_amount);
+  void sendMixedToMainStream(int bytes_amount);
+
+  struct NoCopySendBuffer {
+    bool is_free{true};
+    size_t self_index{0};
+    std::vector<StereoBlock16> buffer;
+  };
+
+  std::shared_ptr<SDL_AudioStream> sdl_audio_stream_;
   std::mutex mutex_;
   std::unordered_set<std::shared_ptr<PlayingStream>> playing_streams_;
   std::vector<StereoBlock32> mix_buffer_;
+  std::vector<StereoBlock16> send_buffer_;
   std::vector<int16_t> read_buffer_;
 };
 
 void Device::Init() {
   SDL_AudioSpec sdl_audio_spec;
-  SDL_AudioSpec sdl_audio_spec_received;
-
-  size_t num_channels = 2;
-  size_t num_blocks = 512;
 
   sdl_audio_spec.freq = 22050;
-  sdl_audio_spec.format = AUDIO_S16LSB;
-  sdl_audio_spec.channels = num_channels;
-  sdl_audio_spec.samples = num_blocks;
-  sdl_audio_spec.padding = 0;
-  sdl_audio_spec.callback = dataCallback;
-  sdl_audio_spec.userdata = this;
+  sdl_audio_spec.format = SDL_AUDIO_S16;
+  sdl_audio_spec.channels = 2;
 
-  sdl_audio_device_ =
-      SDL_OpenAudioDevice(/*device=*/nullptr, /*iscapture=*/0, &sdl_audio_spec,
-                          &sdl_audio_spec_received, 0);
-  if (sdl_audio_device_ == 0) {
-    std::cerr << "[Symphony::Audio::Device] Failed to create device"
-              << std::endl;
+  sdl_audio_stream_.reset(
+      SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
+                                &sdl_audio_spec, dataCallback, this),
+      SDL_DestroyAudioStream);
+  if (!sdl_audio_stream_) {
+    LOGE("[Symphony::Audio::Device] Failed to create stream: {}",
+         SDL_GetError());
   }
 
-  allocateMixBuffer(num_blocks);
-  allocateReadBuffer(num_blocks);
+  allocateMixBuffer(512);
+  allocateReadBuffer(512);
+  send_buffer_.resize(512);
 
-  SDL_PauseAudioDevice(sdl_audio_device_, 0);
+  SDL_ResumeAudioStreamDevice(sdl_audio_stream_.get());
 }
 
 std::shared_ptr<PlayingStream> Device::Play(std::shared_ptr<WaveFile> wave_file,
@@ -195,11 +197,6 @@ bool Device::IsPlaying(std::shared_ptr<PlayingStream> playing_stream) {
 
   std::lock_guard<std::mutex> lock(mutex_);
   return playing_stream_internal->is_playing;
-}
-
-void Device::dataCallback(void* userdata, Uint8* stream, int len) {
-  Device* device = (Device*)userdata;
-  device->onDataRequested(stream, len);
 }
 
 void Device::startPlayingStream(
@@ -342,15 +339,21 @@ void Device::allocateReadBuffer(size_t num_blocks) {
   }
 }
 
-void Device::onDataRequested(Uint8* stream, int len) {
+void Device::dataCallback(void* userdata, SDL_AudioStream* /*stream*/,
+                          int additional_amount, int /*total_amount*/) {
+  Device* device = (Device*)userdata;
+  device->fillMixBuffer(additional_amount);
+  device->sendMixedToMainStream(additional_amount);
+}
+
+void Device::fillMixBuffer(int bytes_amount) {
   std::unordered_set<std::shared_ptr<PlayingStream>> playing_streams_saved;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     playing_streams_saved = playing_streams_;
   }
 
-  StereoBlock16* stream_typed = (StereoBlock16*)stream;
-  size_t num_requested_blocks = len / (sizeof(StereoBlock16));
+  size_t num_requested_blocks = bytes_amount / (sizeof(StereoBlock16));
 
   allocateMixBuffer(num_requested_blocks);
   allocateReadBuffer(num_requested_blocks);
@@ -413,8 +416,6 @@ void Device::onDataRequested(Uint8* stream, int len) {
         std::clamp(mix_buffer_[i].left, kSampleMin16, kSampleMax16);
     mix_buffer_[i].right =
         std::clamp(mix_buffer_[i].right, kSampleMin16, kSampleMax16);
-    stream_typed[i].left = (int16_t)mix_buffer_[i].left;
-    stream_typed[i].right = (int16_t)mix_buffer_[i].right;
   }
 
   {
@@ -427,6 +428,17 @@ void Device::onDataRequested(Uint8* stream, int len) {
       }
     }
   }
+}
+
+void Device::sendMixedToMainStream(int bytes_amount) {
+  size_t num_requested_blocks = bytes_amount / (sizeof(StereoBlock16));
+  for (size_t i = 0; i < num_requested_blocks; ++i) {
+    send_buffer_[i].left = (int16_t)mix_buffer_[i].left;
+    send_buffer_[i].right = (int16_t)mix_buffer_[i].right;
+  }
+
+  SDL_PutAudioStreamData(sdl_audio_stream_.get(), &send_buffer_[0],
+                         bytes_amount);
 }
 
 }  // namespace Audio

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
+#include <SDL3/SDL.h>
+#include <SDL3_image/SDL_image.h>
 
 #include <filesystem>
 #include <fstream>
@@ -399,16 +399,7 @@ bool BmFont::LoadTexture(std::shared_ptr<SDL_Renderer> sdl_renderer) {
   auto font_path = std::filesystem::path(file_path_);
   auto texture_path = font_path.parent_path() / pages_[0].file;
 
-  SDL_Surface* pixels = IMG_Load(texture_path.c_str());
-  if (!pixels) {
-    std::cerr
-        << "[Symphony::Text::BmFont] Failed to load image file, file_path: "
-        << texture_path << ", font_file_path: " << file_path_ << std::endl;
-    SDL_FreeSurface(pixels);
-    return false;
-  }
-
-  sdl_texture_.reset(SDL_CreateTextureFromSurface(sdl_renderer.get(), pixels),
+  sdl_texture_.reset(IMG_LoadTexture(sdl_renderer.get(), texture_path.c_str()),
                      &deleteTexture);
   if (!sdl_texture_) {
     std::cerr
@@ -416,8 +407,6 @@ bool BmFont::LoadTexture(std::shared_ptr<SDL_Renderer> sdl_renderer) {
         << texture_path << ", font_file_path: " << file_path_ << std::endl;
     return false;
   }
-
-  SDL_FreeSurface(pixels);
 
   return true;
 }

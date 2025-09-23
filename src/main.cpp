@@ -1,5 +1,6 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3_image/SDL_image.h>
 #include <vlog/vlog.h>
 
 #include <chrono>
@@ -44,18 +45,18 @@ bool characterTouchesFloor(const Vector2d& next_pos, const Vector2d& half_sizes,
 void handleControllerButtonDownEvent(SDL_Event& event, bool& running,
                                      bool& is_left, bool& is_right,
                                      bool& is_up) {
-  LOGD("event.cbutton.button: {}", (int)event.cbutton.button);
-  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+  LOGD("event.button.button: {}", (int)event.button.button);
+  if (event.button.button == SDL_GAMEPAD_BUTTON_START) {
     running = false;
   }
-  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
+  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT) {
     is_left = true;
   }
-  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
+  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
     is_right = true;
   }
-  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
-      event.cbutton.button == 0) {
+  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
+      event.button.button == 0) {
     is_up = true;
   }
 }
@@ -63,44 +64,44 @@ void handleControllerButtonDownEvent(SDL_Event& event, bool& running,
 void handleControllerButtonUpEvent(SDL_Event& event,
                                    [[maybe_unused]] bool& running,
                                    bool& is_left, bool& is_right, bool& is_up) {
-  LOGD("event.cbutton.button: {}", (int)event.cbutton.button);
-  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
+  LOGD("event.button.button: {}", (int)event.button.button);
+  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT) {
     is_left = false;
   }
-  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
+  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
     is_right = false;
   }
-  if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
-      event.cbutton.button == 0) {
+  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
+      event.button.button == 0) {
     is_up = false;
   }
 }
 
 void handleKeyDownEvent(SDL_Event& event, bool& running, bool& is_left,
                         bool& is_right, bool& is_up) {
-  if (event.key.keysym.sym == SDLK_ESCAPE) {
+  if (event.key.key == SDLK_ESCAPE) {
     running = false;
   }
-  if (event.key.keysym.sym == SDLK_LEFT) {
+  if (event.key.key == SDLK_LEFT) {
     is_left = true;
   }
-  if (event.key.keysym.sym == SDLK_RIGHT) {
+  if (event.key.key == SDLK_RIGHT) {
     is_right = true;
   }
-  if (event.key.keysym.sym == SDLK_UP) {
+  if (event.key.key == SDLK_UP) {
     is_up = true;
   }
 }
 
 void handleKeyUpEvent(SDL_Event& event, [[maybe_unused]] bool& running,
                       bool& is_left, bool& is_right, bool& is_up) {
-  if (event.key.keysym.sym == SDLK_LEFT) {
+  if (event.key.key == SDLK_LEFT) {
     is_left = false;
   }
-  if (event.key.keysym.sym == SDLK_RIGHT) {
+  if (event.key.key == SDLK_RIGHT) {
     is_right = false;
   }
-  if (event.key.keysym.sym == SDLK_UP) {
+  if (event.key.key == SDLK_UP) {
     is_up = false;
   }
 }
@@ -122,35 +123,50 @@ int main(int /* argc */, char* /* argv */[]) {
 
   LOGI("Game starting...");
 
-  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER);
-  IMG_Init(IMG_INIT_PNG);
+  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD);
 
-  SDL_Window* window = SDL_CreateWindow("window", SDL_WINDOWPOS_UNDEFINED,
-                                        SDL_WINDOWPOS_UNDEFINED, 480, 272, 0);
-  std::shared_ptr<SDL_Renderer> renderer{
-      SDL_CreateRenderer(window, -1,
-                         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
-      &SDL_DestroyRenderer};
+  LOGI("SDL initialized.");
+
+  SDL_Window* window = SDL_CreateWindow("window", 480, 272, 0);
+  std::shared_ptr<SDL_Renderer> renderer{SDL_CreateRenderer(window, nullptr),
+                                         &SDL_DestroyRenderer};
+  if (!renderer) {
+    LOGI("Creating renderer failed, error: {}", SDL_GetError());
+  }
+  LOGI("Window is created.");
 
   srand(time(nullptr));
 
+  LOGI("Loading resources...");
+
   // Load sprites
-  SDL_Surface* pixels = IMG_Load("assets/dummy_50x50.png");
   SDL_Texture* sprite_black =
-      SDL_CreateTextureFromSurface(renderer.get(), pixels);
-  SDL_FreeSurface(pixels);
+      IMG_LoadTexture(renderer.get(), "assets/dummy_50x50.png");
+  if (!sprite_black) {
+    LOGI("Loading 'assets/dummy_50x50.png' failed, error: {}", SDL_GetError());
+  }
 
-  pixels = IMG_Load("assets/dummy_50x50.png");
+  LOGI("Path: {}", SDL_GetBasePath());
+
+  LOGI("Loading resources 1...");
+
   SDL_Texture* sprite_red =
-      SDL_CreateTextureFromSurface(renderer.get(), pixels);
-  SDL_FreeSurface(pixels);
+      IMG_LoadTexture(renderer.get(), "assets/dummy_50x50.png");
+  if (!sprite_red) {
+    LOGI("Loading 'assets/dummy_50x50.png' failed.");
+  }
 
-  pixels = IMG_Load("assets/character.png");
+  LOGI("Loading resources 2...");
+
   SDL_Texture* sprite_character =
-      SDL_CreateTextureFromSurface(renderer.get(), pixels);
-  character_half_sizes.x = pixels->w / 2.0f;
-  character_half_sizes.y = pixels->h / 2.0f;
-  SDL_FreeSurface(pixels);
+      IMG_LoadTexture(renderer.get(), "assets/character.png");
+  if (!sprite_character) {
+    LOGI("Loading 'assets/character.png' failed.");
+  }
+  character_half_sizes.x = sprite_character->w / 2.0f;
+  character_half_sizes.y = sprite_character->h / 2.0f;
+
+  LOGI("Loading resources 3...");
 
   character_pos = Vector2d(480.0f / 2, 272.0f / 2);
 
@@ -162,12 +178,16 @@ int main(int /* argc */, char* /* argv */[]) {
       "assets/dummy_22k.wav", Symphony::Audio::WaveFile::kModeLoadInMemory);
   audio_device->Init();
 
+  auto system_font_20 = Symphony::Text::LoadBmFont("assets/system_20.fnt");
+  system_font_20->LoadTexture(renderer);
   auto system_font_30 = Symphony::Text::LoadBmFont("assets/system_30.fnt");
   system_font_30->LoadTexture(renderer);
   auto system_font_50 = Symphony::Text::LoadBmFont("assets/system_50.fnt");
   system_font_50->LoadTexture(renderer);
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts{
-      {"system_30.fnt", system_font_30}, {"system_50.fnt", system_font_50}};
+      {"system_20.fnt", system_font_20},
+      {"system_30.fnt", system_font_30},
+      {"system_50.fnt", system_font_50}};
   Symphony::Text::TextRenderer system_info_renderer(renderer);
   system_info_renderer.LoadFromFile("assets/system_counters.txt");
   system_info_renderer.SetPosition(5, 5);
@@ -196,6 +216,8 @@ int main(int /* argc */, char* /* argv */[]) {
   bool is_right = false;
   bool is_up = false;
 
+  LOGI("Starting main loop...");
+
   auto prev_frame_start_time{std::chrono::steady_clock::now()};
   while (running) {
     auto frame_start_time{std::chrono::steady_clock::now()};
@@ -218,29 +240,29 @@ int main(int /* argc */, char* /* argv */[]) {
 
     if (SDL_PollEvent(&event) != 0) {
       switch (event.type) {
-        case SDL_QUIT:
+        case SDL_EVENT_QUIT:
           running = false;
           break;
 
-        case SDL_CONTROLLERDEVICEADDED:
-          SDL_GameControllerOpen(event.cdevice.which);
+        case SDL_EVENT_GAMEPAD_ADDED:
+          SDL_OpenGamepad(event.cdevice.which);
           break;
 
-        case SDL_CONTROLLERBUTTONDOWN:
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
           handleControllerButtonDownEvent(event, running, is_left, is_right,
                                           is_up);
           break;
 
-        case SDL_CONTROLLERBUTTONUP:
+        case SDL_EVENT_GAMEPAD_BUTTON_UP:
           handleControllerButtonUpEvent(event, running, is_left, is_right,
                                         is_up);
           break;
 
-        case SDL_KEYDOWN:
+        case SDL_EVENT_KEY_DOWN:
           handleKeyDownEvent(event, running, is_left, is_right, is_up);
           break;
 
-        case SDL_KEYUP:
+        case SDL_EVENT_KEY_UP:
           handleKeyUpEvent(event, running, is_left, is_right, is_up);
           break;
 
@@ -298,21 +320,19 @@ int main(int /* argc */, char* /* argv */[]) {
         sprite_img = sprite_black;
       }
 
-      SDL_Rect square = {(int)sprite.cur_pos.x - (int)sprite.half_sizes.x,
-                         (int)sprite.cur_pos.y - (int)sprite.half_sizes.y,
-                         (int)sprite.half_sizes.x * 2,
-                         (int)sprite.half_sizes.y * 2};
-      SDL_RenderCopy(renderer.get(), sprite_img, NULL, &square);
+      SDL_FRect square = {sprite.cur_pos.x - sprite.half_sizes.x,
+                          sprite.cur_pos.y - sprite.half_sizes.y,
+                          sprite.half_sizes.x * 2, sprite.half_sizes.y * 2};
+      SDL_RenderTexture(renderer.get(), sprite_img, NULL, &square);
     }
 
-    SDL_Rect square = {(int)character_pos.x - (int)character_half_sizes.x,
-                       (int)character_pos.y - (int)character_half_sizes.y,
-                       (int)character_half_sizes.x * 2,
-                       (int)character_half_sizes.y * 2};
-    SDL_RenderCopy(renderer.get(), sprite_character, NULL, &square);
+    SDL_FRect square = {character_pos.x - character_half_sizes.x,
+                        character_pos.y - character_half_sizes.y,
+                        character_half_sizes.x * 2, character_half_sizes.y * 2};
+    SDL_RenderTexture(renderer.get(), sprite_character, NULL, &square);
 
     system_info_renderer.ReFormat(
-        {{"fps_count", "60"}, {"audio_streams_playing", "0"}}, "system_30.fnt",
+        {{"fps_count", "60"}, {"audio_streams_playing", "0"}}, "system_20.fnt",
         known_fonts);
     system_info_renderer.Render();
 
