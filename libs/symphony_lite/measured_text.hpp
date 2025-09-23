@@ -7,6 +7,14 @@
 
 namespace Symphony {
 namespace Text {
+namespace {
+struct FormattedTextReader {
+  size_t current_paragraph{0};
+  size_t current_style_run{0};
+  size_t current_char{0};
+};
+};  // namespace
+
 struct MeasuredGlyph {
   int x{0};
   int y{0};
@@ -30,6 +38,7 @@ MeasuredText MeasureText(
     int container_width, const FormattedText& formatted_text,
     const std::map<std::string, std::string>& variables,
     const std::map<std::string, std::shared_ptr<Font>>& fonts) {
+  (void)container_width;
   (void)variables;
   MeasuredText result;
   result.fonts = fonts;
