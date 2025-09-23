@@ -168,12 +168,14 @@ struct Paragraph {
   Paragraph() = default;
 
   Paragraph(StyleWithAlignment style_with_alignment)
-      : align(style_with_alignment.align_opt.value_or(
+      : font(style_with_alignment.font_opt.value_or("")),
+        align(style_with_alignment.align_opt.value_or(
             HorizontalAlignment::kLeft)) {
     style_runs.push_back(StyleRun());
     style_runs.back().style = StyleFromStyleWithAlignment(style_with_alignment);
   }
 
+  std::string font;
   HorizontalAlignment align{HorizontalAlignment::kLeft};
   std::vector<StyleRun> style_runs;
 };
@@ -193,7 +195,7 @@ struct FormattedText {
   std::vector<Paragraph> paragraphs;
 };
 
-std::optional<FormattedText> LoadFormattedText(
+std::optional<FormattedText> FormatText(
     const std::string& input, const Style& default_style,
     HorizontalAlignment align,
     const std::map<std::string, std::string>& variables) {

@@ -8,18 +8,11 @@
 #include <string>
 #include <vector>
 
+#include "font.hpp"
+
 namespace Symphony {
 namespace Text {
-struct Glyph {};
-
-class GlyphLibrary {
- public:
-  virtual ~GlyphLibrary() = default;
-
-  virtual Glyph Get(uint32_t code_position) = 0;
-};
-
-class BmFont : public GlyphLibrary {
+class BmFont : public Font {
  public:
   struct Info {
     std::string face;
@@ -60,9 +53,9 @@ class BmFont : public GlyphLibrary {
     int y{0};
     int width{0};
     int height{0};
-    int xoffset{0};
-    int yoffset{0};
-    int xadvance{0};
+    int x_offset{0};
+    int y_offset{0};
+    int x_advance{0};
     int page{0};
     int chnl{0};
   };
@@ -102,7 +95,11 @@ class BmFont : public GlyphLibrary {
 
   const std::vector<Kerning> GetKernings() const { return kernings_; }
 
-  Glyph Get(uint32_t code_position) {
+  int GetLineHeight() override { return common_.line_height; }
+
+  int GetBase() override { return common_.base; }
+
+  Glyph GetGlyph(uint32_t code_position) override {
     (void)code_position;
     return Glyph();
   }
@@ -173,8 +170,8 @@ std::string BmFont::CharToString(const Char& c) {
   result_stream << "char"
                 << " id=" << c.id << " x=" << c.x << " y=" << c.y
                 << " width=" << c.width << " height=" << c.height
-                << " xoffset=" << c.xoffset << " yoffset=" << c.yoffset
-                << " xadvance=" << c.xadvance << " page=" << c.page
+                << " xoffset=" << c.x_offset << " yoffset=" << c.y_offset
+                << " xadvance=" << c.x_advance << " page=" << c.page
                 << " chnl=" << c.chnl;
 
   return result_stream.str();
@@ -320,11 +317,11 @@ bool BmFont::Load(const std::string& file_path) {
         } else if (key == "height") {
           chars_.back().height = std::stoi(value);
         } else if (key == "xoffset") {
-          chars_.back().xoffset = std::stoi(value);
+          chars_.back().x_offset = std::stoi(value);
         } else if (key == "yoffset") {
-          chars_.back().yoffset = std::stoi(value);
+          chars_.back().y_offset = std::stoi(value);
         } else if (key == "xadvance") {
-          chars_.back().xadvance = std::stoi(value);
+          chars_.back().x_advance = std::stoi(value);
         } else if (key == "page") {
           chars_.back().page = std::stoi(value);
         } else if (key == "chnl") {
