@@ -58,6 +58,8 @@ class Device {
 
   bool IsPlaying(std::shared_ptr<PlayingStream> playing_stream);
 
+  size_t GetNumPlaying();
+
  private:
   static inline constexpr int32_t kMaxGain = 128;
   static int32_t ToIntGain(float gain) { return (int32_t)(gain * 128.0f); }
@@ -197,6 +199,11 @@ bool Device::IsPlaying(std::shared_ptr<PlayingStream> playing_stream) {
 
   std::lock_guard<std::mutex> lock(mutex_);
   return playing_stream_internal->is_playing;
+}
+
+size_t Device::GetNumPlaying() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return playing_streams_.size();
 }
 
 void Device::startPlayingStream(

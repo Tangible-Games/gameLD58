@@ -330,9 +330,11 @@ int main(int /* argc */, char* /* argv */[]) {
                         character_half_sizes.x * 2, character_half_sizes.y * 2};
     SDL_RenderTexture(renderer.get(), sprite_character, NULL, &square);
 
+    size_t num_playing_audio_streams = audio_device->GetNumPlaying();
     system_info_renderer.ReFormat(
-        {{"fps_count", "60"}, {"audio_streams_playing", "0"}}, "system_20.fnt",
-        known_fonts);
+        {{"fps_count", "60"},
+         {"audio_streams_playing", std::to_string(num_playing_audio_streams)}},
+        "system_20.fnt", known_fonts);
     system_info_renderer.Render();
 
     SDL_RenderPresent(renderer.get());
