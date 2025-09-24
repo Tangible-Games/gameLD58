@@ -12,11 +12,29 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install deps
-      run: sudo apt install -y meson libgtest-dev pkg-config libsdl2-dev libsdl2-image-dev
+      run: sudo apt install -y meson libgtest-dev pkg-config libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev  libwayland-dev
     - name: Instal PSPDEV
       run: |
         wget https://github.com/pspdev/pspdev/releases/download/v20250901/pspdev-ubuntu-latest-x86_64.tar.gz
         tar xf  pspdev-ubuntu-latest-x86_64.tar.gz -C $HOME
+    - name: Instal SDL3
+      run: |
+        mkdir ~/sdl3 && cd ~/sdl3
+        wget https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.2.22.tar.gz
+        tar xf release-3.2.22.tar.gz
+        cd SDL-release-3.2.22/
+        mkdir build && cd build
+        cmake ..
+        sudo make install -j
+    - name: Instal SDL3_image
+      run: |
+        mkdir ~/sdl3_image && cd ~/sdl3_image
+        wget https://github.com/libsdl-org/SDL_image/archive/refs/tags/release-3.2.4.tar.gz
+        tar xf release-3.2.4.tar.gz
+        cd SDL_image-release-3.2.4/
+        mkdir build && cd build
+        cmake ..
+        sudo make install -j
     - name: Run tests with ASan
       run: |
         meson setup builddir -Db_sanitize=address
