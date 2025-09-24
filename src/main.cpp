@@ -217,6 +217,7 @@ int main(int /* argc */, char* /* argv */[]) {
 
   LOGI("Starting main loop...");
 
+  float fps = 0.0f;
   auto prev_frame_start_time{std::chrono::steady_clock::now()};
   while (running) {
     auto frame_start_time{std::chrono::steady_clock::now()};
@@ -330,9 +331,10 @@ int main(int /* argc */, char* /* argv */[]) {
                         character_half_sizes.x * 2, character_half_sizes.y * 2};
     SDL_RenderTexture(renderer.get(), sprite_character, NULL, &square);
 
+    fps = (1.0f / dt) * 0.1f + fps * 0.9f;
     size_t num_playing_audio_streams = audio_device->GetNumPlaying();
     system_info_renderer.ReFormat(
-        {{"fps_count", "60"},
+        {{"fps_count", std::format("{:.1f}", fps)},
          {"audio_streams_playing", std::to_string(num_playing_audio_streams)}},
         "system_20.fnt", known_fonts);
     system_info_renderer.Render();
