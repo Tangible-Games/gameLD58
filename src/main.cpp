@@ -45,18 +45,18 @@ bool characterTouchesFloor(const Vector2d& next_pos, const Vector2d& half_sizes,
 void handleControllerButtonDownEvent(SDL_Event& event, bool& running,
                                      bool& is_left, bool& is_right,
                                      bool& is_up) {
-  LOGD("event.button.button: {}", (int)event.button.button);
-  if (event.button.button == SDL_GAMEPAD_BUTTON_START) {
+  LOGD("event.button.button: {}", (int)event.gbutton.button);
+  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_START) {
     running = false;
   }
-  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT) {
+  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT) {
     is_left = true;
   }
-  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
+  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
     is_right = true;
   }
-  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
-      event.button.button == 0) {
+  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
+      event.gbutton.button == 0) {
     is_up = true;
   }
 }
@@ -64,15 +64,14 @@ void handleControllerButtonDownEvent(SDL_Event& event, bool& running,
 void handleControllerButtonUpEvent(SDL_Event& event,
                                    [[maybe_unused]] bool& running,
                                    bool& is_left, bool& is_right, bool& is_up) {
-  LOGD("event.button.button: {}", (int)event.button.button);
-  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT) {
+  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT) {
     is_left = false;
   }
-  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
+  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
     is_right = false;
   }
-  if (event.button.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
-      event.button.button == 0) {
+  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
+      event.gbutton.button == 0) {
     is_up = false;
   }
 }
