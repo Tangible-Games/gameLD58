@@ -8,6 +8,6 @@ tests_srcs = files(
     'ray_casting_projection_test.cpp',
     'segment2d_test.cpp',
     'transformation_matrix3d_test.cpp',
-    'vector2d_test.cpp',
     'utf8_test.cpp',
+    'vector2d_test.cpp',
 )
