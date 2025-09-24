@@ -51,9 +51,8 @@ if meson.is_cross_build()
         'pspvfpu',
         'pspvram',
         # sdl
-        'SDL2',
-        'SDL2main',
-        'SDL2_image',
+        'SDL3',
+        'SDL3_image',
         'GL',
         'jpeg',
         'png',
@@ -100,8 +99,8 @@ add_project_arguments('-ggdb', language: ['c', 'cpp'], native: true)
 
 add_project_arguments('-DLOG_FILE="host_log.txt"', language: ['c', 'cpp'], native: true)
 
-sdl2_host_dep = dependency('sdl2', required: false, native: true)
-sdl2image_host_dep = dependency('SDL2_image', required: false, native: true)
+sdl3_host_dep = dependency('sdl3', required: false, native: true)
+sdl3image_host_dep = dependency('SDL3_image', required: false, native: true)
 gtest_dep = dependency('gtest', required: false, native: true)
 gtest_main_dep = dependency('gtest_main', required: false, native: true)
 

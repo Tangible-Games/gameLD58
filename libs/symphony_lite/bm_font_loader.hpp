@@ -1,25 +1,23 @@
 #pragma once
 
+#include <SDL3/SDL.h>
+#include <SDL3_image/SDL_image.h>
+
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+#include "font.hpp"
 
 namespace Symphony {
 namespace Text {
-struct Glyph {};
-
-class GlyphLibrary {
- public:
-  virtual ~GlyphLibrary() = default;
-
-  virtual Glyph Get(uint32_t code_position) = 0;
-};
-
-class BmFont : public GlyphLibrary {
+class BmFont : public Font {
  public:
   struct Info {
     std::string face;
@@ -60,9 +58,9 @@ class BmFont : public GlyphLibrary {
     int y{0};
     int width{0};
     int height{0};
-    int xoffset{0};
-    int yoffset{0};
-    int xadvance{0};
+    int x_offset{0};
+    int y_offset{0};
+    int x_advance{0};
     int page{0};
     int chnl{0};
   };
@@ -91,6 +89,7 @@ class BmFont : public GlyphLibrary {
   ~BmFont() = default;
 
   bool Load(const std::string& file_path);
+  bool LoadTexture(std::shared_ptr<SDL_Renderer> renderer);
 
   const Info GetInfo() const { return info_; }
 
@@ -102,10 +101,17 @@ class BmFont : public GlyphLibrary {
 
   const std::vector<Kerning> GetKernings() const { return kernings_; }
 
-  Glyph Get(uint32_t code_position) {
-    (void)code_position;
-    return Glyph();
+  FontMeasurements GetFontMeasurements() const override {
+    FontMeasurements result;
+    result.line_height = common_.line_height;
+    result.base = common_.base;
+    result.space_width = (common_.line_height * 2) / 3;
+    return result;
   }
+
+  Glyph GetGlyph(uint32_t code_position) const override;
+
+  void* GetTexture() override { return sdl_texture_.get(); }
 
  private:
   enum BlockType {
@@ -118,11 +124,18 @@ class BmFont : public GlyphLibrary {
     kBlockUnknown,
   };
 
+  static void deleteTexture(SDL_Texture* sdl_texture) {
+    SDL_DestroyTexture(sdl_texture);
+  }
+
+  std::string file_path_;
   Info info_;
   Common common_;
   std::vector<Page> pages_;
   std::vector<Char> chars_;
   std::vector<Kerning> kernings_;
+  std::unordered_map<uint32_t, size_t> code_position_to_char_;
+  std::shared_ptr<SDL_Texture> sdl_texture_;
 };
 
 std::string BmFont::InfoToString(const Info& info) {
@@ -173,8 +186,8 @@ std::string BmFont::CharToString(const Char& c) {
   result_stream << "char"
                 << " id=" << c.id << " x=" << c.x << " y=" << c.y
                 << " width=" << c.width << " height=" << c.height
-                << " xoffset=" << c.xoffset << " yoffset=" << c.yoffset
-                << " xadvance=" << c.xadvance << " page=" << c.page
+                << " xoffset=" << c.x_offset << " yoffset=" << c.y_offset
+                << " xadvance=" << c.x_advance << " page=" << c.page
                 << " chnl=" << c.chnl;
 
   return result_stream.str();
@@ -320,11 +333,11 @@ bool BmFont::Load(const std::string& file_path) {
         } else if (key == "height") {
           chars_.back().height = std::stoi(value);
         } else if (key == "xoffset") {
-          chars_.back().xoffset = std::stoi(value);
+          chars_.back().x_offset = std::stoi(value);
         } else if (key == "yoffset") {
-          chars_.back().yoffset = std::stoi(value);
+          chars_.back().y_offset = std::stoi(value);
         } else if (key == "xadvance") {
-          chars_.back().xadvance = std::stoi(value);
+          chars_.back().x_advance = std::stoi(value);
         } else if (key == "page") {
           chars_.back().page = std::stoi(value);
         } else if (key == "chnl") {
@@ -342,10 +355,18 @@ bool BmFont::Load(const std::string& file_path) {
     }
   }
 
+  if (pages_.size() != 1) {
+    std::cerr << "[Symphony::Text::BmFont] Only fonts with single page are "
+                 "supported, file_path: "
+              << file_path << std::endl;
+    return false;
+  }
+
   if (common_.packed != 0) {
     std::cerr << "[Symphony::Text::BmFont] Characters shouldn't be packed in "
                  "separate color channels, file_path: "
               << file_path << std::endl;
+    return false;
   }
 
   if (num_chars != chars_.size()) {
@@ -364,7 +385,51 @@ bool BmFont::Load(const std::string& file_path) {
     }
   }
 
+  for (size_t index = 0; const auto& c : chars_) {
+    code_position_to_char_[(uint32_t)c.id] = index;
+    ++index;
+  }
+
+  file_path_ = file_path;
+
   return true;
+}
+
+bool BmFont::LoadTexture(std::shared_ptr<SDL_Renderer> sdl_renderer) {
+  auto font_path = std::filesystem::path(file_path_);
+  auto texture_path = font_path.parent_path() / pages_[0].file;
+
+  sdl_texture_.reset(IMG_LoadTexture(sdl_renderer.get(), texture_path.c_str()),
+                     &deleteTexture);
+  if (!sdl_texture_) {
+    std::cerr
+        << "[Symphony::Text::BmFont] Failed to create texture, file_path: "
+        << texture_path << ", font_file_path: " << file_path_ << std::endl;
+    return false;
+  }
+
+  return true;
+}
+
+Glyph BmFont::GetGlyph(uint32_t code_position) const {
+  Glyph result;
+
+  auto it = code_position_to_char_.find(code_position);
+  if (it == code_position_to_char_.end()) {
+    return result;
+  }
+
+  const auto& c = chars_[it->second];
+  result.texture_x = c.x;
+  result.texture_y = c.y;
+  result.texture_width = c.width;
+  result.texture_height = c.height;
+  result.x_offset = c.x_offset;
+  result.y_offset = c.y_offset;
+  result.x_advance = c.x_advance;
+  result.code_position = code_position;
+
+  return result;
 }
 
 std::shared_ptr<BmFont> LoadBmFont(const std::string& file_path) {

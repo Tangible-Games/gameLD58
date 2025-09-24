@@ -101,6 +101,7 @@ namespace Text {
 //   - font="font_name.fnt|$variable_name"
 //   - color="AARRGGBB|$variable_name"
 //   - align="left|right|center|$variable_name"
+//   - wrapping="word|clip|noclip|$variable_name"
 // 2. <sub> tag has only one parameter: variable="$variable_name".
 //
 // <style> tag has closing tag </>.
@@ -125,20 +126,54 @@ std::optional<HorizontalAlignment> HorizontalAlignmentFromString(
   return std::nullopt;
 }
 
+enum class Wrapping {
+  kWordWrap,
+  kClip,
+  kNoClip,
+};
+
+std::optional<Wrapping> WrappingFromString(const std::string& value) {
+  if (value == "word") {
+    return Wrapping::kWordWrap;
+  } else if (value == "clip") {
+    return Wrapping::kClip;
+  } else if (value == "noclip") {
+    return Wrapping::kNoClip;
+  }
+  return std::nullopt;
+}
+
+struct ParagraphParameters {
+  ParagraphParameters() = default;
+
+  ParagraphParameters(HorizontalAlignment new_align, Wrapping new_wrapping)
+      : align(new_align), wrapping(new_wrapping) {}
+
+  HorizontalAlignment align{HorizontalAlignment::kLeft};
+  Wrapping wrapping{Wrapping::kClip};
+};
+
 struct Style {
+  Style() = default;
+
+  Style(const std::string& new_font, uint32_t new_color)
+      : font(new_font), color(new_color) {}
+
   std::string font;
   uint32_t color;
 };
 
 namespace {
-struct StyleWithAlignment {
+struct StyleWithParagraphParameters {
   // We can optimize here, use not font name, but pointer to GlyphLibrary.
   std::optional<std::string> font_opt;
   std::optional<uint32_t> color_opt;
   std::optional<HorizontalAlignment> align_opt;
+  std::optional<Wrapping> wrapping_opt;
 };
 
-Style StyleFromStyleWithAlignment(const StyleWithAlignment& value) {
+Style StyleFromStyleWithParagraphParameters(
+    const StyleWithParagraphParameters& value) {
   Style result;
   if (value.font_opt) {
     result.font = value.font_opt.value();
@@ -149,12 +184,14 @@ Style StyleFromStyleWithAlignment(const StyleWithAlignment& value) {
   return result;
 }
 
-StyleWithAlignment StyleWithAlignmentFromStyleAndAligment(
-    const Style& style, HorizontalAlignment align) {
-  StyleWithAlignment result;
+StyleWithParagraphParameters
+StyleWithParagraphParametersFromStyleAndParagraphParameters(
+    const Style& style, ParagraphParameters paragraph_parameters) {
+  StyleWithParagraphParameters result;
   result.font_opt = style.font;
   result.color_opt = style.color;
-  result.align_opt = align;
+  result.align_opt = paragraph_parameters.align;
+  result.wrapping_opt = paragraph_parameters.wrapping;
   return result;
 }
 }  // namespace
@@ -167,44 +204,38 @@ struct StyleRun {
 struct Paragraph {
   Paragraph() = default;
 
-  Paragraph(StyleWithAlignment style_with_alignment)
-      : align(style_with_alignment.align_opt.value_or(
-            HorizontalAlignment::kLeft)) {
+  Paragraph(StyleWithParagraphParameters style_with_alignment)
+      : font(style_with_alignment.font_opt.value_or("")),
+        paragraph_parameters(
+            style_with_alignment.align_opt.value_or(HorizontalAlignment::kLeft),
+            style_with_alignment.wrapping_opt.value_or(Wrapping::kClip)) {
     style_runs.push_back(StyleRun());
-    style_runs.back().style = StyleFromStyleWithAlignment(style_with_alignment);
+    style_runs.back().style =
+        StyleFromStyleWithParagraphParameters(style_with_alignment);
   }
 
-  HorizontalAlignment align{HorizontalAlignment::kLeft};
+  std::string font;
+  ParagraphParameters paragraph_parameters;
   std::vector<StyleRun> style_runs;
 };
-
-bool IsEmpty(const Paragraph& paragraph) {
-  if (paragraph.style_runs.size() == 0) {
-    return true;
-  }
-  if (paragraph.style_runs.size() == 1 &&
-      paragraph.style_runs[0].text.empty()) {
-    return true;
-  }
-  return false;
-}
 
 struct FormattedText {
   std::vector<Paragraph> paragraphs;
 };
 
-std::optional<FormattedText> LoadFormattedText(
+std::optional<FormattedText> FormatText(
     const std::string& input, const Style& default_style,
-    HorizontalAlignment align,
+    const ParagraphParameters& default_paragraph_parameters,
     const std::map<std::string, std::string>& variables) {
   FormattedText result;
 
-  StyleWithAlignment default_style_with_aligment =
-      StyleWithAlignmentFromStyleAndAligment(default_style, align);
+  StyleWithParagraphParameters default_style_with_aligment =
+      StyleWithParagraphParametersFromStyleAndParagraphParameters(
+          default_style, default_paragraph_parameters);
 
   result.paragraphs.push_back(Paragraph(default_style_with_aligment));
 
-  std::stack<StyleWithAlignment> styles_stack;
+  std::stack<StyleWithParagraphParameters> styles_stack;
   styles_stack.push(default_style_with_aligment);
 
   std::istringstream input_stream(input);
@@ -244,7 +275,7 @@ std::optional<FormattedText> LoadFormattedText(
             if (!result.paragraphs.back().style_runs.back().text.empty()) {
               result.paragraphs.back().style_runs.push_back(StyleRun());
               result.paragraphs.back().style_runs.back().style =
-                  StyleFromStyleWithAlignment(styles_stack.top());
+                  StyleFromStyleWithParagraphParameters(styles_stack.top());
             }
           }
         }
@@ -270,7 +301,7 @@ std::optional<FormattedText> LoadFormattedText(
         return std::nullopt;
       }
 
-      StyleWithAlignment style_with_alignment = styles_stack.top();
+      StyleWithParagraphParameters style_with_alignment = styles_stack.top();
       std::string variable_value;
 
       while (input_stream.peek() != '>') {
@@ -314,6 +345,15 @@ std::optional<FormattedText> LoadFormattedText(
               return std::nullopt;
             }
             style_with_alignment.align_opt = align_opt.value();
+          } else if (key == "wrapping") {
+            auto wrapping_opt = WrappingFromString(value);
+            if (!wrapping_opt) {
+              PrintParseError(input_stream,
+                              "[Symphony::Text::FormattedText] Can't read "
+                              "wrapping parameter:");
+              return std::nullopt;
+            }
+            style_with_alignment.wrapping_opt = wrapping_opt.value();
           }
         } else if (tag == kTagSub) {
           if (key == "variable") {
@@ -350,8 +390,14 @@ std::optional<FormattedText> LoadFormattedText(
       if (tag == kTagStyle) {
         // Latest align is used as paragraph align.
         if (style_with_alignment.align_opt) {
-          result.paragraphs.back().align =
+          result.paragraphs.back().paragraph_parameters.align =
               style_with_alignment.align_opt.value();
+        }
+
+        // Latest wrapping is used as paragraph wrapping.
+        if (style_with_alignment.wrapping_opt) {
+          result.paragraphs.back().paragraph_parameters.wrapping =
+              style_with_alignment.wrapping_opt.value();
         }
 
         if (!result.paragraphs.back().style_runs.back().text.empty()) {
@@ -359,7 +405,7 @@ std::optional<FormattedText> LoadFormattedText(
         }
 
         result.paragraphs.back().style_runs.back().style =
-            StyleFromStyleWithAlignment(style_with_alignment);
+            StyleFromStyleWithParagraphParameters(style_with_alignment);
 
         styles_stack.push(style_with_alignment);
       } else if (tag == kTagSub) {
@@ -385,7 +431,8 @@ std::optional<FormattedText> LoadFormattedText(
   // We don't need empty style runs in the end of paragraph. But let's keep
   // empty paragraphs.
   for (auto& paragraph : result.paragraphs) {
-    while (paragraph.style_runs.back().text.empty()) {
+    while (!paragraph.style_runs.empty() &&
+           paragraph.style_runs.back().text.empty()) {
       paragraph.style_runs.pop_back();
     }
   }
