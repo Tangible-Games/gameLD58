@@ -15,7 +15,6 @@ class MonoFont : public Font {
     FontMeasurements result;
     result.line_height = line_height_;
     result.base = base_;
-    result.space_width = width_;
     return result;
   }
 

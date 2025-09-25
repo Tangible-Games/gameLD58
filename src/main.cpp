@@ -183,14 +183,30 @@ int main(int /* argc */, char* /* argv */[]) {
   system_font_30->LoadTexture(renderer);
   auto system_font_50 = Symphony::Text::LoadBmFont("assets/system_50.fnt");
   system_font_50->LoadTexture(renderer);
+  auto multi_paragraph =
+      Symphony::Text::LoadBmFont("assets/multi_paragraph.fnt");
+  multi_paragraph->LoadTexture(renderer);
+  auto multi_paragraph_25 =
+      Symphony::Text::LoadBmFont("assets/multi_paragraph_25.fnt");
+  multi_paragraph_25->LoadTexture(renderer);
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts{
       {"system_20.fnt", system_font_20},
       {"system_30.fnt", system_font_30},
-      {"system_50.fnt", system_font_50}};
+      {"system_50.fnt", system_font_50},
+      {"multi_paragraph.fnt", multi_paragraph},
+      {"multi_paragraph_25.fnt", multi_paragraph_25}};
+
   Symphony::Text::TextRenderer system_info_renderer(renderer);
   system_info_renderer.LoadFromFile("assets/system_counters.txt");
   system_info_renderer.SetPosition(5, 5);
-  system_info_renderer.SetSizes(475, 267);
+  system_info_renderer.SetSizes(480 - 10, 272 - 10);
+
+  Symphony::Text::TextRenderer multi_paragraph_demo_renderer(renderer);
+  multi_paragraph_demo_renderer.LoadFromFile("assets/multi_paragraph.txt");
+  multi_paragraph_demo_renderer.SetPosition(100, 5);
+  multi_paragraph_demo_renderer.SetSizes(475 - 110, 272 - 10);
+  multi_paragraph_demo_renderer.ReFormat({}, "multi_paragraph.fnt",
+                                         known_fonts);
 
   music_timeout = (float)(rand() % 3) + 3;
   std::shared_ptr<Symphony::Audio::PlayingStream> music_stream;
@@ -338,6 +354,8 @@ int main(int /* argc */, char* /* argv */[]) {
          {"audio_streams_playing", std::to_string(num_playing_audio_streams)}},
         "system_20.fnt", known_fonts);
     system_info_renderer.Render();
+
+    multi_paragraph_demo_renderer.Render();
 
     SDL_RenderPresent(renderer.get());
   }
