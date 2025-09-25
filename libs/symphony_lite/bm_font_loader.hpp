@@ -105,7 +105,6 @@ class BmFont : public Font {
     FontMeasurements result;
     result.line_height = common_.line_height;
     result.base = common_.base;
-    result.space_width = (common_.line_height * 2) / 3;
     return result;
   }
 

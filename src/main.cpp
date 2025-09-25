@@ -183,14 +183,30 @@ int main(int /* argc */, char* /* argv */[]) {
   system_font_30->LoadTexture(renderer);
   auto system_font_50 = Symphony::Text::LoadBmFont("assets/system_50.fnt");
   system_font_50->LoadTexture(renderer);
+  auto multi_paragraph =
+      Symphony::Text::LoadBmFont("assets/multi_paragraph.fnt");
+  multi_paragraph->LoadTexture(renderer);
+  auto multi_paragraph_25 =
+      Symphony::Text::LoadBmFont("assets/multi_paragraph_25.fnt");
+  multi_paragraph_25->LoadTexture(renderer);
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts{
       {"system_20.fnt", system_font_20},
       {"system_30.fnt", system_font_30},
-      {"system_50.fnt", system_font_50}};
+      {"system_50.fnt", system_font_50},
+      {"multi_paragraph.fnt", multi_paragraph},
+      {"multi_paragraph_25.fnt", multi_paragraph_25}};
+
   Symphony::Text::TextRenderer system_info_renderer(renderer);
   system_info_renderer.LoadFromFile("assets/system_counters.txt");
   system_info_renderer.SetPosition(5, 5);
-  system_info_renderer.SetSizes(475, 267);
+  system_info_renderer.SetSizes(480 - 10, 272);
+
+  Symphony::Text::TextRenderer multi_paragraph_demo_renderer(renderer);
+  multi_paragraph_demo_renderer.LoadFromFile("assets/multi_paragraph.txt");
+  multi_paragraph_demo_renderer.SetPosition(100, 5);
+  multi_paragraph_demo_renderer.SetSizes(480 - 110, 272 - 10);
+  multi_paragraph_demo_renderer.ReFormat({}, "multi_paragraph.fnt",
+                                         known_fonts);
 
   music_timeout = (float)(rand() % 3) + 3;
   std::shared_ptr<Symphony::Audio::PlayingStream> music_stream;
@@ -217,8 +233,12 @@ int main(int /* argc */, char* /* argv */[]) {
 
   LOGI("Starting main loop...");
 
-  float fps = 0.0f;
+  // float fps = 0.0f;
   auto prev_frame_start_time{std::chrono::steady_clock::now()};
+
+  float multi_paragraph_demo_scroll_y = 0.0f;
+  float multi_paragraph_demo_no_scroll_timeout = 3.0f;
+
   while (running) {
     auto frame_start_time{std::chrono::steady_clock::now()};
     std::chrono::duration<float> dt_period_seconds{frame_start_time -
@@ -331,13 +351,29 @@ int main(int /* argc */, char* /* argv */[]) {
                         character_half_sizes.x * 2, character_half_sizes.y * 2};
     SDL_RenderTexture(renderer.get(), sprite_character, NULL, &square);
 
-    fps = (1.0f / dt) * 0.1f + fps * 0.9f;
-    size_t num_playing_audio_streams = audio_device->GetNumPlaying();
-    system_info_renderer.ReFormat(
-        {{"fps_count", std::format("{:.1f}", fps)},
-         {"audio_streams_playing", std::to_string(num_playing_audio_streams)}},
-        "system_20.fnt", known_fonts);
-    system_info_renderer.Render();
+    // fps = (1.0f / dt) * 0.1f + fps * 0.9f;
+    // size_t num_playing_audio_streams = audio_device->GetNumPlaying();
+    // system_info_renderer.ReFormat(
+    //     {{"fps_count", std::format("{:.1f}", fps)},
+    //      {"audio_streams_playing",
+    //      std::to_string(num_playing_audio_streams)}},
+    //     "system_20.fnt", known_fonts);
+    // system_info_renderer.Render(0);
+
+    multi_paragraph_demo_renderer.Render((int)multi_paragraph_demo_scroll_y);
+    if (multi_paragraph_demo_no_scroll_timeout == 0.0f) {
+      multi_paragraph_demo_scroll_y -= dt * 200.0f;
+      if (multi_paragraph_demo_scroll_y <
+          -(multi_paragraph_demo_renderer.GetContentHeight() - 140)) {
+        multi_paragraph_demo_scroll_y =
+            -(float)(multi_paragraph_demo_renderer.GetContentHeight() - 140);
+      }
+    } else {
+      multi_paragraph_demo_no_scroll_timeout -= dt;
+      if (multi_paragraph_demo_no_scroll_timeout < 0.0f) {
+        multi_paragraph_demo_no_scroll_timeout = 0.0f;
+      }
+    }
 
     SDL_RenderPresent(renderer.get());
   }

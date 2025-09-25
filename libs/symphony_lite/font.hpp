@@ -12,7 +12,6 @@ struct FontMeasurements {
 
   int line_height{0};
   int base{0};
-  int space_width{0};
 };
 
 struct Glyph {

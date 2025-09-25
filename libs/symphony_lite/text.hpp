@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SDL3/SDL.h>
 #include <vlog/vlog.h>
 
 #include <fstream>
@@ -7,7 +8,6 @@
 
 #include "formatted_text.hpp"
 #include "measured_text.hpp"
-#include "point2d.hpp"
 
 namespace Symphony {
 namespace Text {
@@ -39,15 +39,20 @@ class TextRenderer {
                 const std::string& default_font,
                 const std::map<std::string, std::shared_ptr<Font>>& fonts);
 
-  void Render();
+  int GetContentHeight() const { return content_height_; }
+
+  void Render(int scroll_y);
 
  private:
   struct RenderBuffers {
+    std::vector<float> original_ys;
     std::vector<SDL_Vertex> vertices;
     std::vector<int> indices;
   };
 
   struct Line {
+    int min_y{0};
+    int max_y{0};
     std::unordered_map<Font*, RenderBuffers> font_to_buffers;
   };
 
@@ -69,6 +74,8 @@ class TextRenderer {
   int y_{0};
   int width_{0};
   int height_{0};
+  int content_height_{0};
+  int prev_scroll_y_{0};
 };
 
 bool TextRenderer::LoadFromFile(const std::string& file_path) {
@@ -116,15 +123,17 @@ void TextRenderer::ReFormat(
 
   lines_.resize(measured_text.measured_lines.size());
 
-  float line_y = 0.0f;
+  int line_y = 0;
+  float line_y_f = 0;
   for (size_t i = 0; i < lines_.size(); ++i) {
     Line& line = lines_[i];
     const MeasuredTextLine& measured_line = measured_text.measured_lines[i];
+    float align_offset = static_cast<float>(measured_line.align_offset);
 
     for (const auto& [font, glyph_indices] :
          measured_line.font_to_glyph_index) {
-      auto p = line.font_to_buffers.insert(
-          std::make_pair(font, std::vector<SDL_Vertex>()));
+      auto p =
+          line.font_to_buffers.insert(std::make_pair(font, RenderBuffers()));
       auto& render_buffers = p.first->second;
 
       SDL_Texture* sdl_texture = (SDL_Texture*)font->GetTexture();
@@ -140,6 +149,7 @@ void TextRenderer::ReFormat(
       (void)texture_width_scale;
       (void)texture_height_scale;
 
+      render_buffers.original_ys.resize(glyph_indices.size());
       render_buffers.vertices.resize(glyph_indices.size() * 4);
       render_buffers.indices.resize(glyph_indices.size() * 6);
       for (size_t num_glyphs_processed = 0; auto glyph_index : glyph_indices) {
@@ -148,27 +158,29 @@ void TextRenderer::ReFormat(
 
         SDL_FColor sdl_color = SdlColorFromUInt32(measured_glyph.color);
 
+        float glyph_x = x_ + align_offset + (float)measured_glyph.x;
+        float glyph_y = y_ + line_y_f + (float)measured_glyph.y;
+        render_buffers.original_ys[num_glyphs_processed] = glyph_y;
+
         SDL_Vertex* vertex =
             &render_buffers.vertices[num_glyphs_processed * 4 + 0];
-        vertex->position.x = (float)measured_glyph.x;
-        vertex->position.y = line_y + (float)measured_glyph.y;
+        vertex->position.x = glyph_x;
+        vertex->position.y = glyph_y;
         vertex->color = sdl_color;
         vertex->tex_coord.x = (float)glyph.texture_x * texture_width_scale;
         vertex->tex_coord.y = (float)glyph.texture_y * texture_height_scale;
 
         vertex = &render_buffers.vertices[num_glyphs_processed * 4 + 1];
-        vertex->position.x = (float)measured_glyph.x;
-        vertex->position.y =
-            line_y + (float)(measured_glyph.y + glyph.texture_height);
+        vertex->position.x = glyph_x;
+        vertex->position.y = glyph_y + (float)glyph.texture_height;
         vertex->color = sdl_color;
         vertex->tex_coord.x = (float)glyph.texture_x * texture_width_scale;
         vertex->tex_coord.y = (float)(glyph.texture_y + glyph.texture_height) *
                               texture_height_scale;
 
         vertex = &render_buffers.vertices[num_glyphs_processed * 4 + 2];
-        vertex->position.x = (float)(measured_glyph.x + glyph.texture_width);
-        vertex->position.y =
-            line_y + (float)(measured_glyph.y + glyph.texture_height);
+        vertex->position.x = glyph_x + (float)glyph.texture_width;
+        vertex->position.y = glyph_y + (float)glyph.texture_height;
         vertex->color = sdl_color;
         vertex->tex_coord.x = (float)(glyph.texture_x + glyph.texture_width) *
                               texture_width_scale;
@@ -176,8 +188,8 @@ void TextRenderer::ReFormat(
                               texture_height_scale;
 
         vertex = &render_buffers.vertices[num_glyphs_processed * 4 + 3];
-        vertex->position.x = (float)(measured_glyph.x + glyph.texture_width);
-        vertex->position.y = line_y + (float)(measured_glyph.y);
+        vertex->position.x = glyph_x + (float)glyph.texture_width;
+        vertex->position.y = glyph_y;
         vertex->color = sdl_color;
         vertex->tex_coord.x = (float)(glyph.texture_x + glyph.texture_width) *
                               texture_width_scale;
@@ -200,11 +212,19 @@ void TextRenderer::ReFormat(
       }
     }
 
-    line_y += (float)measured_line.line_height;
+    line.min_y = line_y;
+    line.max_y = line_y + measured_line.line_height;
+    line_y += measured_line.line_height;
+    line_y_f += (float)measured_line.line_height;
+  }
+
+  content_height_ = 0;
+  if (!lines_.empty()) {
+    content_height_ = lines_.back().max_y;
   }
 }
 
-void TextRenderer::Render() {
+void TextRenderer::Render(int scroll_y) {
   if (!formatted_text_.has_value()) {
     return;
   }
@@ -213,10 +233,43 @@ void TextRenderer::Render() {
     return;
   }
 
+  SDL_Rect prev_clip_rect;
+  SDL_GetRenderClipRect(sdl_renderer_.get(), &prev_clip_rect);
+
+  SDL_Rect clip_rect(x_, y_, width_, height_);
+  SDL_SetRenderClipRect(sdl_renderer_.get(), &clip_rect);
+
   SDL_SetRenderDrawBlendMode(sdl_renderer_.get(), SDL_BLENDMODE_BLEND);
 
   for (const auto& line : lines_) {
-    for (const auto& [font, buffers] : line.font_to_buffers) {
+    if ((scroll_y + line.max_y) < y_) {
+      continue;
+    }
+    if ((scroll_y + line.min_y) > y_ + height_) {
+      break;
+    }
+
+    for (auto& [font, buffers] : line.font_to_buffers) {
+      if (prev_scroll_y_ != scroll_y) {
+        for (size_t i = 0; i < buffers.vertices.size() / 4; ++i) {
+          float y = buffers.original_ys[i];
+          float height = buffers.vertices[i * 4 + 1].position.y -
+                         buffers.vertices[i * 4 + 0].position.y;
+          SDL_Vertex* vertex =
+              const_cast<SDL_Vertex*>(&buffers.vertices[i * 4 + 0]);
+          vertex->position.y = y + scroll_y;
+
+          vertex = const_cast<SDL_Vertex*>(&buffers.vertices[i * 4 + 1]);
+          vertex->position.y = y + height + scroll_y;
+
+          vertex = const_cast<SDL_Vertex*>(&buffers.vertices[i * 4 + 2]);
+          vertex->position.y = y + height + scroll_y;
+
+          vertex = const_cast<SDL_Vertex*>(&buffers.vertices[i * 4 + 3]);
+          vertex->position.y = y + scroll_y;
+        }
+      }
+
       SDL_Texture* sdl_texture = (SDL_Texture*)font->GetTexture();
       SDL_SetTextureBlendMode(sdl_texture, SDL_BLENDMODE_BLEND);
 
@@ -225,6 +278,10 @@ void TextRenderer::Render() {
                          buffers.indices.size());
     }
   }
+
+  SDL_SetRenderClipRect(sdl_renderer_.get(), &prev_clip_rect);
+
+  prev_scroll_y_ = scroll_y;
 }
 
 }  // namespace Text

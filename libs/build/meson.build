@@ -99,13 +99,16 @@ add_project_arguments('-ggdb', language: ['c', 'cpp'], native: true)
 
 add_project_arguments('-DLOG_FILE="host_log.txt"', language: ['c', 'cpp'], native: true)
 
-if meson.get_compiler('c').get_id() == 'clang'
-    add_project_arguments(
-        '-Wno-gnu-zero-variadic-macro-arguments',
-        language: ['c', 'cpp'],
-        native: true,
-    )
-endif
+add_project_arguments(
+    '-Wno-gnu-zero-variadic-macro-arguments',
+    language: ['c', 'cpp'],
+    native: true,
+)
+add_project_arguments(
+    '-Wno-gnu-zero-variadic-macro-arguments',
+    language: ['c', 'cpp'],
+    native: true,
+)
 
 sdl3_host_dep = dependency('sdl3', required: false, native: true)
 sdl3image_host_dep = dependency('SDL3_image', required: false, native: true)
