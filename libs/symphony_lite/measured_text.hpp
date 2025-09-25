@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vlog/vlog.h>
-
 #include <iostream>
 #include <memory>
 #include <stack>
@@ -10,6 +8,7 @@
 
 #include "font.hpp"
 #include "formatted_text.hpp"
+#include "log.hpp"
 #include "utf8.hpp"
 
 namespace Symphony {
