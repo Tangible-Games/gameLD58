@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <memory>
+#include <stack>
 #include <tuple>
 #include <unordered_map>
 
@@ -64,6 +65,12 @@ std::optional<MeasuredText> MeasureText(
     result.measured_lines.push_back(MeasuredTextLine());
     result.measured_lines.back().paragraph_index = paragraph_index;
 
+    auto paragraph_font_it = fonts.find(paragraph.font);
+    if (paragraph_font_it != fonts.end()) {
+      auto font_measurements = paragraph_font_it->second->GetFontMeasurements();
+      result.measured_lines.back().line_height = font_measurements.line_height;
+    }
+
     if (paragraph.paragraph_parameters.wrapping == Wrapping::kClip ||
         paragraph.paragraph_parameters.wrapping == Wrapping::kNoClip) {
       int line_x_advance = 0;
@@ -122,6 +129,8 @@ std::optional<MeasuredText> MeasureText(
       int word_width = 0;
       std::vector<MeasuredGlyph> current_word_glyphs;
 
+      std::stack<int> current_line_widths;
+
       for (const auto& style_run : paragraph.style_runs) {
         auto font_it = fonts.find(style_run.style.font);
         if (font_it == fonts.end()) {
@@ -153,17 +162,28 @@ std::optional<MeasuredText> MeasureText(
             if (result.measured_lines.back().line_width + word_width >
                     container_width &&
                 !result.measured_lines.back().glyphs.empty()) {
+              // Pop whitespaces in the end:
               while (!result.measured_lines.back().glyphs.empty() &&
                      IsWhitespace(result.measured_lines.back()
                                       .glyphs.back()
                                       .glyph.code_position)) {
                 result.measured_lines.back().glyphs.pop_back();
+                current_line_widths.pop();
+                if (current_line_widths.empty()) {
+                  result.measured_lines.back().line_width = 0;
+                } else {
+                  result.measured_lines.back().line_width =
+                      current_line_widths.top();
+                }
               }
 
               result.measured_lines.push_back(MeasuredTextLine());
               result.measured_lines.back().paragraph_index = paragraph_index;
+
+              current_line_widths = std::stack<int>();
             }
 
+            // Add word to line:
             for (const auto& word_glyph : current_word_glyphs) {
               result.measured_lines.back().glyphs.push_back(word_glyph);
               MeasuredGlyph& measured_glyph =
@@ -178,6 +198,7 @@ std::optional<MeasuredText> MeasureText(
               result.measured_lines.back().line_width =
                   line_x_advance + measured_glyph.glyph.x_offset +
                   measured_glyph.glyph.texture_width;
+              current_line_widths.push(result.measured_lines.back().line_width);
               line_x_advance += measured_glyph.glyph.x_advance;
             }
 
@@ -201,6 +222,7 @@ std::optional<MeasuredText> MeasureText(
             result.measured_lines.back().line_width =
                 line_x_advance + measured_glyph.glyph.x_offset +
                 measured_glyph.glyph.texture_width;
+            current_line_widths.push(result.measured_lines.back().line_width);
             line_x_advance += measured_glyph.glyph.x_advance;
 
             // Clear current word:
@@ -215,7 +237,7 @@ std::optional<MeasuredText> MeasureText(
                 font_it->second->GetGlyph(utf_result.code_position.value());
 
             if (current_word_glyphs.size() == 1) {
-              word_x_advance = measured_glyph.glyph.x_offset;
+              word_x_advance = -measured_glyph.glyph.x_offset;
             }
 
             word_width = word_x_advance + measured_glyph.glyph.x_offset +
