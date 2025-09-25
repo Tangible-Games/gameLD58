@@ -128,6 +128,7 @@ class Device {
 
   void allocateMixBuffer(size_t num_blocks);
   void allocateReadBuffer(size_t num_blocks);
+  void allocateSendBuffer(size_t num_blocks);
 
   static void dataCallback(void* userdata, SDL_AudioStream* stream,
                            int additional_amount, int total_amount);
@@ -346,9 +347,18 @@ void Device::allocateReadBuffer(size_t num_blocks) {
   }
 }
 
+void Device::allocateSendBuffer(size_t num_blocks) {
+  if (send_buffer_.size() < num_blocks) {
+    send_buffer_.resize(num_blocks);
+  }
+}
+
 void Device::dataCallback(void* userdata, SDL_AudioStream* /*stream*/,
                           int additional_amount, int /*total_amount*/) {
-  Device* device = (Device*)userdata;
+  if (additional_amount == 0) {
+    return;
+  }
+  auto* device = (Device*)userdata;
   device->fillMixBuffer(additional_amount);
   device->sendMixedToMainStream(additional_amount);
 }
@@ -439,12 +449,13 @@ void Device::fillMixBuffer(int bytes_amount) {
 
 void Device::sendMixedToMainStream(int bytes_amount) {
   size_t num_requested_blocks = bytes_amount / (sizeof(StereoBlock16));
+  allocateSendBuffer(num_requested_blocks);
   for (size_t i = 0; i < num_requested_blocks; ++i) {
     send_buffer_[i].left = (int16_t)mix_buffer_[i].left;
     send_buffer_[i].right = (int16_t)mix_buffer_[i].right;
   }
 
-  SDL_PutAudioStreamData(sdl_audio_stream_.get(), &send_buffer_[0],
+  SDL_PutAudioStreamData(sdl_audio_stream_.get(), send_buffer_.data(),
                          bytes_amount);
 }
 
