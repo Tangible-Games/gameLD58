@@ -2,7 +2,6 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_audio.h>
-#include <vlog/vlog.h>
 
 #include <algorithm>
 #include <iostream>
@@ -11,6 +10,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "log.hpp"
 #include "wave_loader.hpp"
 
 namespace Symphony {

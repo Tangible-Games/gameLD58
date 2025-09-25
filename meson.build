@@ -23,7 +23,7 @@ subdir('src')
 nlohmann_json = subproject('nlohmann_json')
 nlohmann_json_dep = nlohmann_json.get_variable('nlohmann_json_dep')
 
-common_deps = [symphony_lite_dep, vlog_dep, nlohmann_json_dep]
+common_deps = [symphony_lite_dep, nlohmann_json_dep]
 
 icon = files('icon.png')
 preview = files('icon.png')

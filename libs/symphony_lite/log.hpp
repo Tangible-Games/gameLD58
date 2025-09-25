@@ -13,18 +13,23 @@
 #define VLOG_ENABLED 1
 #endif
 
-namespace vlog {
+namespace Symphony::Log {
 
 class LoggerSink {
  public:
   LoggerSink() = default;
   virtual ~LoggerSink() = default;
 
+  LoggerSink(const LoggerSink&) = delete;
+  LoggerSink& operator=(const LoggerSink&) = delete;
+  LoggerSink(LoggerSink&&) = delete;
+  LoggerSink& operator=(LoggerSink&&) = delete;
+
   virtual LoggerSink& out(std::string_view string, bool flush = false) = 0;
   void endl() { out("\n", true); }
 };
 
-class ConsoleSink : public LoggerSink {
+class ConsoleSink final : public LoggerSink {
  public:
   static std::unique_ptr<LoggerSink> create() {
     auto sink = std::unique_ptr<LoggerSink>(new ConsoleSink);
@@ -43,11 +48,16 @@ class ConsoleSink : public LoggerSink {
     return *this;
   }
 
+  ConsoleSink(const ConsoleSink&) = delete;
+  ConsoleSink& operator=(const ConsoleSink&) = delete;
+  ConsoleSink(ConsoleSink&&) = delete;
+  ConsoleSink& operator=(ConsoleSink&&) = delete;
+
  private:
   ConsoleSink() = default;
 };
 
-class FileSink : public LoggerSink {
+class FileSink final : public LoggerSink {
  public:
   static std::unique_ptr<LoggerSink> create(const std::string& file) {
     auto sink = std::unique_ptr<LoggerSink>(new FileSink(file));
@@ -73,8 +83,13 @@ class FileSink : public LoggerSink {
     return *this;
   }
 
+  FileSink(const FileSink&) = delete;
+  FileSink& operator=(const FileSink&) = delete;
+  FileSink(FileSink&&) = delete;
+  FileSink& operator=(FileSink&&) = delete;
+
  private:
-  FileSink(const std::string& file) : file_(file) {}
+  explicit FileSink(const std::string& file) : file_(file) {}
 
  private:
   std::string file_;
@@ -170,48 +185,50 @@ class Logger {
 
  protected:
   Logger() = default;
-  virtual ~Logger() = default;
+  ~Logger() = default;
 
  private:
   std::list<std::unique_ptr<LoggerSink>> sinks_;
   Configuration configuration_;
 };
 
+}  // namespace Symphony::Log
+
 #if VLOG_ENABLED
 
-#define LOGE(fmt, ...)                                                       \
-  do {                                                                       \
-    vlog::Logger::instance().print(vlog::Logger::Verbosity::ERROR, __FILE__, \
-                                   __func__, __PRETTY_FUNCTION__, __LINE__,  \
-                                   fmt, ##__VA_ARGS__);                      \
+#define LOGE(fmt, ...)                                               \
+  do {                                                               \
+    Symphony::Log::Logger::instance().print(                         \
+        Symphony::Log::Logger::Verbosity::ERROR, __FILE__, __func__, \
+        __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);          \
   } while (0)
 
-#define LOGW(fmt, ...)                                                         \
-  do {                                                                         \
-    vlog::Logger::instance().print(vlog::Logger::Verbosity::WARNING, __FILE__, \
-                                   __func__, __PRETTY_FUNCTION__, __LINE__,    \
-                                   fmt, ##__VA_ARGS__);                        \
+#define LOGW(fmt, ...)                                                 \
+  do {                                                                 \
+    Symphony::Log::Logger::instance().print(                           \
+        Symphony::Log::Logger::Verbosity::WARNING, __FILE__, __func__, \
+        __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);            \
   } while (0)
 
-#define LOGI(fmt, ...)                                                      \
-  do {                                                                      \
-    vlog::Logger::instance().print(vlog::Logger::Verbosity::INFO, __FILE__, \
-                                   __func__, __PRETTY_FUNCTION__, __LINE__, \
-                                   fmt, ##__VA_ARGS__);                     \
+#define LOGI(fmt, ...)                                              \
+  do {                                                              \
+    Symphony::Log::Logger::instance().print(                        \
+        Symphony::Log::Logger::Verbosity::INFO, __FILE__, __func__, \
+        __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);         \
   } while (0)
 
-#define LOGD(fmt, ...)                                                       \
-  do {                                                                       \
-    vlog::Logger::instance().print(vlog::Logger::Verbosity::DEBUG, __FILE__, \
-                                   __func__, __PRETTY_FUNCTION__, __LINE__,  \
-                                   fmt, ##__VA_ARGS__);                      \
+#define LOGD(fmt, ...)                                               \
+  do {                                                               \
+    Symphony::Log::Logger::instance().print(                         \
+        Symphony::Log::Logger::Verbosity::DEBUG, __FILE__, __func__, \
+        __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);          \
   } while (0)
 
-#define LOGT(fmt, ...)                                                       \
-  do {                                                                       \
-    vlog::Logger::instance().print(vlog::Logger::Verbosity::TRACE, __FILE__, \
-                                   __func__, __PRETTY_FUNCTION__, __LINE__,  \
-                                   fmt, ##__VA_ARGS__);                      \
+#define LOGT(fmt, ...)                                               \
+  do {                                                               \
+    Symphony::Log::Logger::instance().print(                         \
+        Symphony::Log::Logger::Verbosity::TRACE, __FILE__, __func__, \
+        __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);          \
   } while (0)
 
 #else
@@ -223,5 +240,3 @@ class Logger {
 #define LOGT(fmt, ...)
 
 #endif
-
-}  // namespace vlog

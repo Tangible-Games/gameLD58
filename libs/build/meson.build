@@ -127,7 +127,6 @@ if muon_exe.found()
         meson.project_source_root() / 'libs' / 'meson.build',
         meson.project_source_root() / 'libs' / 'build' / 'meson.build',
         meson.project_source_root() / 'libs' / 'symphony_lite' / 'meson.build',
-        meson.project_source_root() / 'libs' / 'vlog' / 'meson.build',
         meson.project_source_root() / 'src' / 'meson.build',
     ]
     run_target('format-meson', command: [muon_exe, 'fmt', '-i'] + meson_files)

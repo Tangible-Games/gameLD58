@@ -8,6 +8,7 @@
 #include "font.hpp"
 #include "formatted_text.hpp"
 #include "hash.hpp"
+#include "log.hpp"
 #include "measured_text.hpp"
 #include "point2d.hpp"
 #include "point3d.hpp"
