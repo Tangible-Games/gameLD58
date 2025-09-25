@@ -1,12 +1,12 @@
 #pragma once
 
 #include <SDL3/SDL.h>
-#include <vlog/vlog.h>
 
 #include <fstream>
 #include <unordered_map>
 
 #include "formatted_text.hpp"
+#include "log.hpp"
 #include "measured_text.hpp"
 
 namespace Symphony {

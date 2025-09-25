@@ -1,7 +1,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
-#include <vlog/vlog.h>
 
 #include <chrono>
 #include <ctime>
@@ -116,9 +115,9 @@ int main(int /* argc */, char* /* argv */[]) {
 
   float music_timeout = 0.0f;
 
-  vlog::Logger::init()
-      .set_verbosity(vlog::Logger::Verbosity::DEBUG)
-      .add_sink(vlog::FileSink::create(LOG_FILE));
+  Symphony::Log::Logger::init()
+      .set_verbosity(Symphony::Log::Logger::Verbosity::DEBUG)
+      .add_sink(Symphony::Log::FileSink::create(LOG_FILE));
 
   LOGI("Game starting...");
 

@@ -2,4 +2,3 @@
 subdir('build')
 
 subdir('symphony_lite')
-subdir('vlog')
