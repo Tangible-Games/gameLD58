@@ -51,8 +51,10 @@ class TextRenderer {
   };
 
   struct Line {
+    int line_width{0};
     int min_y{0};
     int max_y{0};
+    int align_offset{0};
     std::unordered_map<Font*, RenderBuffers> font_to_buffers;
   };
 
@@ -76,6 +78,7 @@ class TextRenderer {
   int height_{0};
   int content_height_{0};
   int prev_scroll_y_{0};
+  bool draw_debug_{false};
 };
 
 bool TextRenderer::LoadFromFile(const std::string& file_path) {
@@ -125,13 +128,15 @@ void TextRenderer::ReFormat(
 
   int line_y = 0;
   float line_y_f = 0;
-  for (size_t i = 0; i < lines_.size(); ++i) {
-    Line& line = lines_[i];
-    const MeasuredTextLine& measured_line = measured_text.measured_lines[i];
+  for (auto measured_lines_it = measured_text.measured_lines.begin();
+       auto& line : lines_) {
+    const MeasuredTextLine& measured_line = *measured_lines_it;
+    line.line_width = measured_line.line_width;
+    line.align_offset = measured_line.align_offset;
+
     float align_offset = static_cast<float>(measured_line.align_offset);
 
-    for (const auto& [font, glyph_indices] :
-         measured_line.font_to_glyph_index) {
+    for (const auto& [font, glyph_ptrs] : measured_line.font_to_glyph) {
       auto p =
           line.font_to_buffers.insert(std::make_pair(font, RenderBuffers()));
       auto& render_buffers = p.first->second;
@@ -149,11 +154,11 @@ void TextRenderer::ReFormat(
       (void)texture_width_scale;
       (void)texture_height_scale;
 
-      render_buffers.original_ys.resize(glyph_indices.size());
-      render_buffers.vertices.resize(glyph_indices.size() * 4);
-      render_buffers.indices.resize(glyph_indices.size() * 6);
-      for (size_t num_glyphs_processed = 0; auto glyph_index : glyph_indices) {
-        const auto& measured_glyph = measured_line.glyphs[glyph_index];
+      render_buffers.original_ys.resize(glyph_ptrs.size());
+      render_buffers.vertices.resize(glyph_ptrs.size() * 4);
+      render_buffers.indices.resize(glyph_ptrs.size() * 6);
+      for (size_t num_glyphs_processed = 0; auto glyph_ptr : glyph_ptrs) {
+        const auto& measured_glyph = *glyph_ptr;
         const auto& glyph = measured_glyph.glyph;
 
         SDL_FColor sdl_color = SdlColorFromUInt32(measured_glyph.color);
@@ -216,6 +221,8 @@ void TextRenderer::ReFormat(
     line.max_y = line_y + measured_line.line_height;
     line_y += measured_line.line_height;
     line_y_f += (float)measured_line.line_height;
+
+    ++measured_lines_it;
   }
 
   content_height_ = 0;
@@ -236,8 +243,17 @@ void TextRenderer::Render(int scroll_y) {
   SDL_Rect prev_clip_rect;
   SDL_GetRenderClipRect(sdl_renderer_.get(), &prev_clip_rect);
 
+  if (draw_debug_) {
+    SDL_FRect clip_rect((float)x_, (float)y_, (float)width_, (float)height_);
+    SDL_SetRenderDrawColor(sdl_renderer_.get(), 128, 128, 128, 128);
+    SDL_RenderRect(sdl_renderer_.get(), &clip_rect);
+    SDL_SetRenderDrawColor(sdl_renderer_.get(), 255, 255, 255, 255);
+  }
+
   SDL_Rect clip_rect(x_, y_, width_, height_);
-  SDL_SetRenderClipRect(sdl_renderer_.get(), &clip_rect);
+  if (!draw_debug_) {
+    SDL_SetRenderClipRect(sdl_renderer_.get(), &clip_rect);
+  }
 
   SDL_SetRenderDrawBlendMode(sdl_renderer_.get(), SDL_BLENDMODE_BLEND);
 
@@ -247,6 +263,15 @@ void TextRenderer::Render(int scroll_y) {
     }
     if ((scroll_y + line.min_y) > y_ + height_) {
       break;
+    }
+
+    if (draw_debug_) {
+      SDL_SetRenderDrawColor(sdl_renderer_.get(), 128, 128, 128, 128);
+      SDL_FRect debug_rect{
+          (float)line.align_offset + x_, (float)scroll_y + line.min_y + y_,
+          (float)line.line_width, (float)line.max_y - line.min_y};
+      SDL_RenderFillRect(sdl_renderer_.get(), &debug_rect);
+      SDL_SetRenderDrawColor(sdl_renderer_.get(), 255, 255, 255, 255);
     }
 
     for (auto& [font, buffers] : line.font_to_buffers) {

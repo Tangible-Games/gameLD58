@@ -1,3 +1,5 @@
+<style font="multi_paragraph_25.fnt" align="left">Das Schloss im Himmel</>
+
 <style font="multi_paragraph.fnt" align="left" wrapping="word">Das Schloss im Himmel (japanisch 天空の城ラピュタ, Tenkū no Shiro Rapyuta, englisch Laputa: Castle in the Sky) ist ein Anime von Hayao Miyazaki, der 1986 in Japan uraufgeführt wurde. Er ist der erste Film des Studio Ghibli.
 
 <style font="multi_paragraph_25.fnt" align="right">Handlung</>
