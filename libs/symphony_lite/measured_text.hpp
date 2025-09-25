@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vlog/vlog.h>
+
 #include <iostream>
 #include <memory>
 #include <stack>
@@ -27,23 +29,50 @@ struct MeasuredGlyph {
   int y{0};
   uint32_t color{0xFFFFFFFF};
   int base{0};
+  int line_x_advance_before_this_glyph{0};
+  int line_width_before_this_glyph{0};
   Glyph glyph;
   Font* from_font{nullptr};
 };
 
 // See: https://www.angelcode.com/products/bmfont/doc/render_text.html.
 struct MeasuredTextLine {
-  size_t paragraph_index{0};
+  HorizontalAlignment align{HorizontalAlignment::kLeft};
+  int line_x_advance{0};
   int line_width{0};
   int line_height{0};
   int base{0};
   int align_offset{0};
-  std::vector<MeasuredGlyph> glyphs;
-  std::unordered_map<Font*, std::vector<size_t>> font_to_glyph_index;
+  std::list<MeasuredGlyph> glyphs;
+  std::unordered_map<Font*, std::list<MeasuredGlyph*>> font_to_glyph;
 };
 
+namespace {
+MeasuredGlyph* addGlyph(MeasuredTextLine& measured_line, const Glyph& glyph) {
+  measured_line.glyphs.push_back(MeasuredGlyph());
+  auto* cur_measured_glyph_ptr = &measured_line.glyphs.back();
+
+  if (measured_line.glyphs.size() == 1) {
+    measured_line.line_x_advance = -glyph.x_offset;
+  }
+
+  cur_measured_glyph_ptr->glyph = glyph;
+
+  cur_measured_glyph_ptr->line_x_advance_before_this_glyph =
+      measured_line.line_x_advance;
+  cur_measured_glyph_ptr->line_width_before_this_glyph =
+      measured_line.line_width;
+  measured_line.line_width = measured_line.line_x_advance +
+                             cur_measured_glyph_ptr->glyph.x_offset +
+                             cur_measured_glyph_ptr->glyph.texture_width;
+  measured_line.line_x_advance += cur_measured_glyph_ptr->glyph.x_advance;
+
+  return cur_measured_glyph_ptr;
+}
+}  // namespace
+
 struct MeasuredText {
-  std::vector<MeasuredTextLine> measured_lines;
+  std::list<MeasuredTextLine> measured_lines;
   std::map<std::string, std::shared_ptr<Font>> fonts;
 };
 
@@ -63,7 +92,9 @@ std::optional<MeasuredText> MeasureText(
   for (size_t paragraph_index = 0;
        const auto& paragraph : formatted_text.paragraphs) {
     result.measured_lines.push_back(MeasuredTextLine());
-    result.measured_lines.back().paragraph_index = paragraph_index;
+    auto* cur_measured_line_ptr = &result.measured_lines.back();
+
+    cur_measured_line_ptr->align = paragraph.paragraph_parameters.align;
 
     auto paragraph_font_it = fonts.find(paragraph.font);
     if (paragraph_font_it != fonts.end()) {
@@ -71,178 +102,93 @@ std::optional<MeasuredText> MeasureText(
       result.measured_lines.back().line_height = font_measurements.line_height;
     }
 
-    if (paragraph.paragraph_parameters.wrapping == Wrapping::kClip ||
-        paragraph.paragraph_parameters.wrapping == Wrapping::kNoClip) {
-      int line_x_advance = 0;
+    bool has_prev_not_whitespace = false;
+    auto line_prev_whitespace_it = cur_measured_line_ptr->glyphs.end();
 
-      for (const auto& style_run : paragraph.style_runs) {
-        auto font_it = fonts.find(style_run.style.font);
-        if (font_it == fonts.end()) {
-          std::cerr
-              << "[Symphony::Text::MeasuredText] Unknown font, paragraph: "
-              << paragraph_index << std::endl;
-          return std::nullopt;
-        }
-
-        uint32_t color = style_run.style.color;
-
-        const char* text = style_run.text.data();
-        size_t text_length = style_run.text.size();
-
-        while (text_length) {
-          auto utf_result = ParseUtf8Sequence<false>(text, text_length);
-          if (!utf_result.code_position.has_value()) {
-            std::cerr << "[Symphony::Text::MeasuredText] Not a valid UTF-8 "
-                         "text, paragraph: "
-                      << paragraph_index << std::endl;
-            return std::nullopt;
-          }
-
-          text += utf_result.parsed_sequence_length;
-          text_length -= utf_result.parsed_sequence_length;
-
-          result.measured_lines.back().glyphs.push_back(MeasuredGlyph());
-          MeasuredGlyph& measured_glyph =
-              result.measured_lines.back().glyphs.back();
-          measured_glyph.from_font = font_it->second.get();
-
-          measured_glyph.color = color;
-          measured_glyph.glyph =
-              font_it->second->GetGlyph(utf_result.code_position.value());
-
-          if (result.measured_lines.back().glyphs.size() == 1) {
-            line_x_advance = measured_glyph.glyph.x_offset;
-          }
-
-          measured_glyph.x = line_x_advance + measured_glyph.glyph.x_offset;
-
-          result.measured_lines.back().line_width =
-              line_x_advance + measured_glyph.glyph.x_offset +
-              measured_glyph.glyph.texture_width;
-          line_x_advance += measured_glyph.glyph.x_advance;
-        }
+    for (const auto& style_run : paragraph.style_runs) {
+      auto style_font_it = fonts.find(style_run.style.font);
+      if (style_font_it == fonts.end()) {
+        LOGE("[Symphony::Text::MeasuredText] Unknown font, paragraph: {}",
+             paragraph_index);
+        return std::nullopt;
       }
-    } else {
-      int line_x_advance = 0;
 
-      int word_x_advance = 0;
-      int word_width = 0;
-      std::vector<MeasuredGlyph> current_word_glyphs;
+      uint32_t color = style_run.style.color;
 
-      std::stack<int> current_line_widths;
+      const char* text = style_run.text.data();
+      size_t text_length = style_run.text.size();
 
-      for (const auto& style_run : paragraph.style_runs) {
-        auto font_it = fonts.find(style_run.style.font);
-        if (font_it == fonts.end()) {
-          std::cerr
-              << "[Symphony::Text::MeasuredText] Unknown font, paragraph: "
-              << paragraph_index << std::endl;
+      while (text_length) {
+        auto utf_result = ParseUtf8Sequence<false>(text, text_length);
+        if (!utf_result.code_position.has_value()) {
+          LOGE(
+              "[Symphony::Text::MeasuredText] Not a valid UTF-8 text, "
+              "paragraph: {}",
+              paragraph_index);
           return std::nullopt;
         }
 
-        uint32_t color = style_run.style.color;
+        text += utf_result.parsed_sequence_length;
+        text_length -= utf_result.parsed_sequence_length;
 
-        const char* text = style_run.text.data();
-        size_t text_length = style_run.text.size();
+        auto* cur_measured_glyph_ptr = addGlyph(
+            *cur_measured_line_ptr,
+            style_font_it->second->GetGlyph(utf_result.code_position.value()));
+        cur_measured_glyph_ptr->color = color;
+        cur_measured_glyph_ptr->from_font = style_font_it->second.get();
 
-        while (text_length) {
-          auto utf_result = ParseUtf8Sequence<false>(text, text_length);
-          if (!utf_result.code_position.has_value()) {
-            std::cerr << "[Symphony::Text::MeasuredText] Not a valid UTF-8 "
-                         "text, paragraph: "
-                      << paragraph_index << std::endl;
-            return std::nullopt;
-          }
+        if (paragraph.paragraph_parameters.wrapping == Wrapping::kWordWrap) {
+          if (IsWhitespace(cur_measured_glyph_ptr->glyph.code_position)) {
+            if (has_prev_not_whitespace) {
+              has_prev_not_whitespace = false;
 
-          text += utf_result.parsed_sequence_length;
-          text_length -= utf_result.parsed_sequence_length;
-
-          if (IsWhitespace(utf_result.code_position.value()) ||
-              text_length == 0) {
-            if (result.measured_lines.back().line_width + word_width >
-                    container_width &&
-                !result.measured_lines.back().glyphs.empty()) {
-              // Pop whitespaces in the end:
-              while (!result.measured_lines.back().glyphs.empty() &&
-                     IsWhitespace(result.measured_lines.back()
-                                      .glyphs.back()
-                                      .glyph.code_position)) {
-                result.measured_lines.back().glyphs.pop_back();
-                current_line_widths.pop();
-                if (current_line_widths.empty()) {
-                  result.measured_lines.back().line_width = 0;
-                } else {
-                  result.measured_lines.back().line_width =
-                      current_line_widths.top();
-                }
-              }
-
-              result.measured_lines.push_back(MeasuredTextLine());
-              result.measured_lines.back().paragraph_index = paragraph_index;
-
-              current_line_widths = std::stack<int>();
+              line_prev_whitespace_it = cur_measured_line_ptr->glyphs.end();
+              --line_prev_whitespace_it;
             }
-
-            // Add word to line:
-            for (const auto& word_glyph : current_word_glyphs) {
-              result.measured_lines.back().glyphs.push_back(word_glyph);
-              MeasuredGlyph& measured_glyph =
-                  result.measured_lines.back().glyphs.back();
-
-              if (result.measured_lines.back().glyphs.size() == 1) {
-                line_x_advance = measured_glyph.glyph.x_offset;
-              }
-
-              measured_glyph.x = line_x_advance + measured_glyph.glyph.x_offset;
-
-              result.measured_lines.back().line_width =
-                  line_x_advance + measured_glyph.glyph.x_offset +
-                  measured_glyph.glyph.texture_width;
-              current_line_widths.push(result.measured_lines.back().line_width);
-              line_x_advance += measured_glyph.glyph.x_advance;
-            }
-
-            // Add whitespace to line, not to word:
-
-            result.measured_lines.back().glyphs.push_back(MeasuredGlyph());
-            MeasuredGlyph& measured_glyph =
-                result.measured_lines.back().glyphs.back();
-            measured_glyph.from_font = font_it->second.get();
-
-            measured_glyph.color = color;
-            measured_glyph.glyph =
-                font_it->second->GetGlyph(utf_result.code_position.value());
-
-            if (result.measured_lines.back().glyphs.size() == 1) {
-              line_x_advance = measured_glyph.glyph.x_offset;
-            }
-
-            measured_glyph.x = line_x_advance + measured_glyph.glyph.x_offset;
-
-            result.measured_lines.back().line_width =
-                line_x_advance + measured_glyph.glyph.x_offset +
-                measured_glyph.glyph.texture_width;
-            current_line_widths.push(result.measured_lines.back().line_width);
-            line_x_advance += measured_glyph.glyph.x_advance;
-
-            // Clear current word:
-            current_word_glyphs.clear();
           } else {
-            current_word_glyphs.push_back(MeasuredGlyph());
-            MeasuredGlyph& measured_glyph = current_word_glyphs.back();
-            measured_glyph.from_font = font_it->second.get();
+            has_prev_not_whitespace = true;
+            if (cur_measured_line_ptr->line_width > container_width) {
+              if (line_prev_whitespace_it !=
+                  cur_measured_line_ptr->glyphs.end()) {
+                // Reduce current line width:
+                cur_measured_line_ptr->line_width =
+                    line_prev_whitespace_it->line_width_before_this_glyph;
 
-            measured_glyph.color = color;
-            measured_glyph.glyph =
-                font_it->second->GetGlyph(utf_result.code_position.value());
+                result.measured_lines.push_back(MeasuredTextLine());
 
-            if (current_word_glyphs.size() == 1) {
-              word_x_advance = -measured_glyph.glyph.x_offset;
+                auto* next_measured_line_ptr = &result.measured_lines.back();
+                next_measured_line_ptr->align =
+                    paragraph.paragraph_parameters.align;
+
+                // Find frist not whitespace glyph:
+                auto not_whitespace_it = line_prev_whitespace_it;
+                while (not_whitespace_it !=
+                           cur_measured_line_ptr->glyphs.end() &&
+                       IsWhitespace(not_whitespace_it->glyph.code_position)) {
+                  ++not_whitespace_it;
+                }
+
+                if (not_whitespace_it != cur_measured_line_ptr->glyphs.end()) {
+                  for (auto it = not_whitespace_it;
+                       it != cur_measured_line_ptr->glyphs.end(); ++it) {
+                    auto* next_line_measured_glyph_ptr =
+                        addGlyph(*next_measured_line_ptr, it->glyph);
+                    next_line_measured_glyph_ptr->color = it->color;
+                    next_line_measured_glyph_ptr->from_font = it->from_font;
+                  }
+                }
+
+                cur_measured_line_ptr->glyphs.erase(
+                    line_prev_whitespace_it,
+                    cur_measured_line_ptr->glyphs.end());
+
+                // New line:
+                cur_measured_line_ptr = next_measured_line_ptr;
+
+                has_prev_not_whitespace = false;
+                line_prev_whitespace_it = next_measured_line_ptr->glyphs.end();
+              }
             }
-
-            word_width = word_x_advance + measured_glyph.glyph.x_offset +
-                         measured_glyph.glyph.texture_width;
-            word_x_advance += measured_glyph.glyph.x_advance;
           }
         }
       }
@@ -252,17 +198,12 @@ std::optional<MeasuredText> MeasureText(
   }
 
   for (auto& measured_line : result.measured_lines) {
-    size_t paragraph_index = measured_line.paragraph_index;
-    const auto& paragraph = formatted_text.paragraphs[paragraph_index];
-
-    if (paragraph.paragraph_parameters.align == HorizontalAlignment::kLeft) {
+    if (measured_line.align == HorizontalAlignment::kLeft) {
       measured_line.align_offset = 0;
-    } else if (paragraph.paragraph_parameters.align ==
-               HorizontalAlignment::kCenter) {
+    } else if (measured_line.align == HorizontalAlignment::kCenter) {
       measured_line.align_offset =
           (container_width - measured_line.line_width) / 2;
-    } else if (paragraph.paragraph_parameters.align ==
-               HorizontalAlignment::kRight) {
+    } else if (measured_line.align == HorizontalAlignment::kRight) {
       measured_line.align_offset = container_width - measured_line.line_width;
     }
 
@@ -275,15 +216,16 @@ std::optional<MeasuredText> MeasureText(
     }
 
     int base = measured_line.base;
-    for (size_t measured_glyph_index = 0;
-         auto& measured_glyph : measured_line.glyphs) {
+    for (auto& measured_glyph : measured_line.glyphs) {
+      measured_glyph.x = measured_glyph.line_x_advance_before_this_glyph +
+                         measured_glyph.glyph.x_offset;
+
       int above_base_height =
           measured_glyph.base - measured_glyph.glyph.y_offset;
       measured_glyph.y = base - above_base_height;
 
-      measured_line.font_to_glyph_index[measured_glyph.from_font].push_back(
-          measured_glyph_index);
-      ++measured_glyph_index;
+      measured_line.font_to_glyph[measured_glyph.from_font].push_back(
+          &measured_glyph);
     }
   }
 
