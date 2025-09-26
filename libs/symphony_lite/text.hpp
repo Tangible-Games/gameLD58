@@ -78,7 +78,7 @@ class TextRenderer {
   int height_{0};
   int content_height_{0};
   int prev_scroll_y_{0};
-  bool draw_debug_{false};
+  const bool draw_debug_{false};
 };
 
 bool TextRenderer::LoadFromFile(const std::string& file_path) {
@@ -244,10 +244,13 @@ void TextRenderer::Render(int scroll_y) {
   SDL_GetRenderClipRect(sdl_renderer_.get(), &prev_clip_rect);
 
   if (draw_debug_) {
-    SDL_FRect clip_rect((float)x_, (float)y_, (float)width_, (float)height_);
+    Uint8 r = 0, g = 0, b = 0, a = 0;
+    SDL_GetRenderDrawColor(sdl_renderer_.get(), &r, &g, &b, &a);
+
     SDL_SetRenderDrawColor(sdl_renderer_.get(), 128, 128, 128, 128);
+    SDL_FRect clip_rect((float)x_, (float)y_, (float)width_, (float)height_);
     SDL_RenderRect(sdl_renderer_.get(), &clip_rect);
-    SDL_SetRenderDrawColor(sdl_renderer_.get(), 255, 255, 255, 255);
+    SDL_SetRenderDrawColor(sdl_renderer_.get(), r, g, b, a);
   }
 
   SDL_Rect clip_rect(x_, y_, width_, height_);
@@ -266,12 +269,15 @@ void TextRenderer::Render(int scroll_y) {
     }
 
     if (draw_debug_) {
+      Uint8 r = 0, g = 0, b = 0, a = 0;
+      SDL_GetRenderDrawColor(sdl_renderer_.get(), &r, &g, &b, &a);
+
       SDL_SetRenderDrawColor(sdl_renderer_.get(), 128, 128, 128, 128);
       SDL_FRect debug_rect{
           (float)line.align_offset + x_, (float)scroll_y + line.min_y + y_,
           (float)line.line_width, (float)line.max_y - line.min_y};
       SDL_RenderFillRect(sdl_renderer_.get(), &debug_rect);
-      SDL_SetRenderDrawColor(sdl_renderer_.get(), 255, 255, 255, 255);
+      SDL_SetRenderDrawColor(sdl_renderer_.get(), r, g, b, a);
     }
 
     for (auto& [font, buffers] : line.font_to_buffers) {
