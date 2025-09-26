@@ -257,7 +257,7 @@ void TextRenderer::Render(int scroll_y) {
 
   SDL_SetRenderDrawBlendMode(sdl_renderer_.get(), SDL_BLENDMODE_BLEND);
 
-  for (const auto& line : lines_) {
+  for (auto& line : lines_) {
     if ((scroll_y + line.max_y) < y_) {
       continue;
     }
@@ -280,18 +280,10 @@ void TextRenderer::Render(int scroll_y) {
           float y = buffers.original_ys[i];
           float height = buffers.vertices[i * 4 + 1].position.y -
                          buffers.vertices[i * 4 + 0].position.y;
-          SDL_Vertex* vertex =
-              const_cast<SDL_Vertex*>(&buffers.vertices[i * 4 + 0]);
-          vertex->position.y = y + scroll_y;
-
-          vertex = const_cast<SDL_Vertex*>(&buffers.vertices[i * 4 + 1]);
-          vertex->position.y = y + height + scroll_y;
-
-          vertex = const_cast<SDL_Vertex*>(&buffers.vertices[i * 4 + 2]);
-          vertex->position.y = y + height + scroll_y;
-
-          vertex = const_cast<SDL_Vertex*>(&buffers.vertices[i * 4 + 3]);
-          vertex->position.y = y + scroll_y;
+          buffers.vertices[i * 4 + 0].position.y = y + scroll_y;
+          buffers.vertices[i * 4 + 1].position.y = y + height + scroll_y;
+          buffers.vertices[i * 4 + 2].position.y = y + height + scroll_y;
+          buffers.vertices[i * 4 + 3].position.y = y + scroll_y;
         }
       }
 
