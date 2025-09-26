@@ -1,8 +1,10 @@
 #include "measured_text.hpp"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using namespace Symphony::Text;
+using namespace testing;
 
 class MonoFont : public Font {
  public:
@@ -39,6 +41,17 @@ class MonoFont : public Font {
   int width_{0};
 };
 
+std::string ToStringWhenAscii(const std::list<MeasuredGlyph*>& glyphs) {
+  std::string result;
+  result.reserve(glyphs.size());
+
+  for (const auto* glyph : glyphs) {
+    result.push_back(static_cast<char>(glyph->glyph.code_position));
+  }
+
+  return result;
+}
+
 TEST(MeasuredText, NoWrappingProducesSingleLine) {
   auto formatted_text = FormatText(
       "<style font=\"mono_24\">One two three four five <style "
@@ -50,28 +63,25 @@ TEST(MeasuredText, NoWrappingProducesSingleLine) {
       /*new_line_height*/ 46, /*new_base*/ 40, /*width*/ 24);
   std::shared_ptr<Font> mono_32 = std::make_shared<MonoFont>(
       /*new_line_height*/ 52, /*new_base*/ 44, /*width*/ 32);
-  auto result = MeasureText(/*container_width*/ 240, formatted_text.value(),
+  auto result = MeasureText(/*container_width*/ 20, formatted_text.value(),
                             /*variables*/ {},
                             {{"mono_24", mono_24}, {"mono_32", mono_32}});
 
   ASSERT_TRUE(result.has_value());
-  ASSERT_EQ((int)result->measured_lines.size(), 1);
-  ASSERT_EQ((int)result->measured_lines[0].glyphs.size(), 44);
-  ASSERT_EQ(result->measured_lines[0].align_offset, 0);
+
+  EXPECT_THAT(result->measured_lines,
+              ElementsAreArray({Field(&MeasuredTextLine::glyphs, SizeIs(44))}));
 
   const auto& mono_24_glyphs =
-      result->measured_lines[0].font_to_glyph_index[mono_24.get()];
-  ASSERT_EQ((int)mono_24_glyphs.size(), 24);
-  ASSERT_EQ((int)mono_24_glyphs[0], 0);
-  ASSERT_EQ((int)mono_24_glyphs[23], 23);
+      result->measured_lines.front().font_to_glyph[mono_24.get()];
+  ASSERT_EQ(ToStringWhenAscii(mono_24_glyphs), "One two three four five ");
+
   const auto& mono_32_glyphs =
-      result->measured_lines[0].font_to_glyph_index[mono_32.get()];
-  ASSERT_EQ((int)mono_32_glyphs.size(), 20);
-  ASSERT_EQ((int)mono_32_glyphs[0], 24);
-  ASSERT_EQ((int)mono_32_glyphs[19], 43);
+      result->measured_lines.front().font_to_glyph[mono_32.get()];
+  ASSERT_EQ(ToStringWhenAscii(mono_32_glyphs), "six seven eight nine");
 }
 
-TEST(MeasuredText, DISABLED_SingleParagraphManyLines) {
+TEST(MeasuredText, SingleParagraphManyLines) {
   auto formatted_text = FormatText(
       "One two three four five six seven eight nine",
       Style("mono_24", 0xFFFF0000),
@@ -88,5 +98,12 @@ TEST(MeasuredText, DISABLED_SingleParagraphManyLines) {
                             /*variables*/ {}, {{"mono_24", mono_24}});
 
   ASSERT_TRUE(result.has_value());
-  ASSERT_EQ((int)result->measured_lines.size(), 5);
+  EXPECT_THAT(result->measured_lines,
+              ElementsAreArray({
+                  Field(&MeasuredTextLine::glyphs, SizeIs(7)),
+                  Field(&MeasuredTextLine::glyphs, SizeIs(10)),
+                  Field(&MeasuredTextLine::glyphs, SizeIs(8)),
+                  Field(&MeasuredTextLine::glyphs, SizeIs(5)),
+                  Field(&MeasuredTextLine::glyphs, SizeIs(10)),
+              }));
 }

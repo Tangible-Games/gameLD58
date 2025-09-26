@@ -159,7 +159,7 @@ std::optional<MeasuredText> MeasureText(
                 next_measured_line_ptr->align =
                     paragraph.paragraph_parameters.align;
 
-                // Find frist not whitespace glyph:
+                // Find first not whitespace glyph:
                 auto not_whitespace_it = line_prev_whitespace_it;
                 while (not_whitespace_it !=
                            cur_measured_line_ptr->glyphs.end() &&
@@ -232,5 +232,3 @@ std::optional<MeasuredText> MeasureText(
 }
 }  // namespace Text
 }  // namespace Symphony
-
-// Lorem ips|um dolor sit amet
