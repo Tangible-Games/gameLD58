@@ -315,7 +315,6 @@ int main(int /* argc */, char* /* argv */[]) {
       Vector2d new_pos;
       if (characterTouchesFloor(character_pos, character_half_sizes, 272.0f,
                                 new_pos)) {
-        audio_device->StopImmediately(jump_stream);
         jump_stream = audio_device->Play(jump, Symphony::Audio::PlayTimes(1));
         character_cur_velocity.y = -kCharacter_jump_velocity;
 
