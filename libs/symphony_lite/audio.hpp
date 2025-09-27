@@ -271,32 +271,74 @@ int32_t Device::updateGainStateInCallback(
     PlayingStreamInternal* playing_stream_internal) {
   int32_t gain = kMaxGain;
 
-  if (playing_stream_internal->gain_state != GainState::kRelease &&
-      playing_stream_internal->stop_control_in_callback.has_value()) {
-    // Time to stop:
-    playing_stream_internal->gain_state = GainState::kRelease;
-    playing_stream_internal->gain_at_release =
-        playing_stream_internal->cur_gain;
-
+  // Time to stop, stop_control_in_callback works like one-off signal:
+  if (playing_stream_internal->stop_control_in_callback.has_value()) {
     const StopControl& stop_control =
         playing_stream_internal->stop_control_in_callback.value();
 
-    size_t blocks_to_stop = 0;
+    playing_stream_internal->fade_control.fade_out_time_sec =
+        stop_control.fade_out_time_sec.value_or(
+            playing_stream_internal->fade_control.fade_out_time_sec);
+
+    size_t num_blocks_left = 0;
     if (stop_control.stop_at_end) {
-      blocks_to_stop = playing_stream_internal->wave_file->GetNumBlocks() -
-                       playing_stream_internal->looped_blocks_streamed;
-    } else {
-      float time_to_stop = stop_control.fade_out_time_sec.value_or(
+      num_blocks_left = playing_stream_internal->wave_file->GetNumBlocks() -
+                        playing_stream_internal->looped_blocks_streamed;
+      if (playing_stream_internal->total_blocks_to_play) {
+        size_t num_blocks_left_to_play =
+            playing_stream_internal->total_blocks_to_play -
+            playing_stream_internal->total_blocks_streamed;
+        if (num_blocks_left_to_play < num_blocks_left) {
+          num_blocks_left = num_blocks_left_to_play;
+        }
+      }
+    }
+
+    if (num_blocks_left == 0) {
+      num_blocks_left = static_cast<size_t>(
+          playing_stream_internal->wave_file->GetSampleRate() *
           playing_stream_internal->fade_control.fade_out_time_sec);
-      blocks_to_stop = (size_t)(
-          playing_stream_internal->wave_file->GetSampleRate() * time_to_stop);
+    }
+
+    size_t num_blocks_to_fade_out = static_cast<size_t>(
+        playing_stream_internal->wave_file->GetSampleRate() *
+        playing_stream_internal->fade_control.fade_out_time_sec);
+    if (num_blocks_left < num_blocks_to_fade_out) {
+      playing_stream_internal->fade_control.fade_out_time_sec =
+          static_cast<float>(num_blocks_left) /
+          static_cast<float>(
+              playing_stream_internal->wave_file->GetSampleRate());
+      if (playing_stream_internal->fade_control.fade_out_time_sec < 0.01f) {
+        std::cout << "!!!!!!!!!" << std::endl;
+      }
     }
 
     playing_stream_internal->total_blocks_to_play =
-        playing_stream_internal->total_blocks_streamed + blocks_to_stop;
+        playing_stream_internal->total_blocks_streamed + num_blocks_left;
+
+    playing_stream_internal->stop_control_in_callback = std::nullopt;
   }
 
   if (playing_stream_internal->gain_state == GainState::kAttack) {
+    // It should be possible to switch to GainState::kRelease in
+    // GainState::kAttack too.
+    if (playing_stream_internal->total_blocks_streamed) {
+      size_t num_blocks_to_fade_out = static_cast<size_t>(
+          playing_stream_internal->wave_file->GetSampleRate() *
+          playing_stream_internal->fade_control.fade_out_time_sec);
+
+      if (playing_stream_internal->total_blocks_streamed +
+              num_blocks_to_fade_out >
+          playing_stream_internal->total_blocks_to_play) {
+        playing_stream_internal->gain_at_release =
+            playing_stream_internal->cur_gain;
+        playing_stream_internal->gain_state = GainState::kRelease;
+      }
+    }
+  }
+
+  if (playing_stream_internal->gain_state == GainState::kAttack) {
+    // We didn't switch previously, checks end of GainState::kAttack state:
     size_t num_blocks_to_fade_in =
         (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
                  playing_stream_internal->fade_control.fade_in_time_sec);
@@ -316,7 +358,7 @@ int32_t Device::updateGainStateInCallback(
 
   if (playing_stream_internal->gain_state == GainState::kSustain) {
     if (playing_stream_internal->fade_control.fade_out_time_sec > 0.0f) {
-      if (!playing_stream_internal->play_count.loop_infinite) {
+      if (playing_stream_internal->total_blocks_streamed) {
         size_t num_blocks_to_fade_out =
             (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
                      playing_stream_internal->fade_control.fade_out_time_sec);
@@ -338,18 +380,9 @@ int32_t Device::updateGainStateInCallback(
       playing_stream_internal->cur_gain = 0.0f;
       gain = 0;
     } else {
-      float fade_out_time_sec =
-          playing_stream_internal->fade_control.fade_out_time_sec;
-      if (playing_stream_internal->stop_control_in_callback.has_value()) {
-        const StopControl& stop_control =
-            playing_stream_internal->stop_control_in_callback.value();
-        fade_out_time_sec =
-            stop_control.fade_out_time_sec.value_or(fade_out_time_sec);
-      }
-
       size_t num_blocks_to_fade_out =
           (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
-                   fade_out_time_sec);
+                   playing_stream_internal->fade_control.fade_out_time_sec);
 
       if (playing_stream_internal->total_blocks_streamed +
               num_blocks_to_fade_out >=
@@ -474,11 +507,9 @@ void Device::fillMixBuffer(int bytes_amount) {
           static_cast<PlayingStreamInternal*>(playing_streams_saved[i].get());
 
       if (playing_stream_internal->stop_control.has_value()) {
-        if (playing_stream_internal->gain_state != GainState::kRelease) {
-          // Let's not stop in GainState::kRelease:
-          playing_stream_internal->stop_control_in_callback =
-              playing_stream_internal->stop_control;
-        }
+        playing_stream_internal->stop_control_in_callback =
+            playing_stream_internal->stop_control;
+        playing_stream_internal->stop_control = std::nullopt;
       }
 
       // We apply gain to the whole buffer while it is very small.
