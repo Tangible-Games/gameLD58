@@ -403,15 +403,23 @@ void Device::fillMixBuffer(int bytes_amount) {
         playing_stream_internal->num_plays += 1;
       }
 
-      playing_stream_internal->wave_file->ReadBlocks(
-          playing_stream_internal->looped_blocks_streamed, num_blocks_to_read,
-          &read_buffer_[0]);
+      const int16_t* read_buffer = 0;
+      if (playing_stream_internal->wave_file->IsInMemory()) {
+        read_buffer = playing_stream_internal->wave_file->GetBufferWhenInMemory(
+            playing_stream_internal->looped_blocks_streamed);
+      } else {
+        playing_stream_internal->wave_file->ReadBlocks(
+            playing_stream_internal->looped_blocks_streamed, num_blocks_to_read,
+            &read_buffer_[0]);
+        read_buffer = &read_buffer_[0];
+      }
+
       playing_stream_internal->looped_blocks_streamed += num_blocks_to_read;
       playing_stream_internal->total_blocks_streamed += num_blocks_to_read;
 
       accumulateSamples(&mix_buffer_[num_blocks_sent], gain,
                         playing_stream_internal->wave_file->GetNumChannels(),
-                        read_buffer_.data(), num_blocks_to_read);
+                        read_buffer, num_blocks_to_read);
       num_blocks_sent += num_blocks_to_read;
 
       if (reset_looped_blocks_streamed) {
@@ -449,7 +457,9 @@ void Device::fillMixBuffer(int bytes_amount) {
 
 void Device::sendMixedToMainStream(int bytes_amount) {
   size_t num_requested_blocks = bytes_amount / (sizeof(StereoBlock16));
+
   allocateSendBuffer(num_requested_blocks);
+
   for (size_t i = 0; i < num_requested_blocks; ++i) {
     send_buffer_[i].left = (int16_t)mix_buffer_[i].left;
     send_buffer_[i].right = (int16_t)mix_buffer_[i].right;
