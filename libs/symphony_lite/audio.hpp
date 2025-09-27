@@ -308,13 +308,15 @@ int32_t Device::updateGainStateInCallback(
           static_cast<float>(num_blocks_left) /
           static_cast<float>(
               playing_stream_internal->wave_file->GetSampleRate());
-      if (playing_stream_internal->fade_control.fade_out_time_sec < 0.01f) {
-        std::cout << "!!!!!!!!!" << std::endl;
-      }
     }
 
     playing_stream_internal->total_blocks_to_play =
         playing_stream_internal->total_blocks_streamed + num_blocks_left;
+
+    if (playing_stream_internal->gain_state == GainState::kRelease) {
+      playing_stream_internal->gain_at_release =
+          playing_stream_internal->cur_gain;
+    }
 
     playing_stream_internal->stop_control_in_callback = std::nullopt;
   }
