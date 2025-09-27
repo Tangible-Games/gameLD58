@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <thread>
 #include <unordered_set>
 #include <vector>
@@ -38,6 +39,25 @@ FadeControl FadeInOut(float fade_in_time_sec, float fade_out_time_sec) {
                      .fade_out_time_sec = fade_out_time_sec};
 }
 
+struct StopControl {
+  bool stop_at_end{false};
+  std::optional<float> fade_out_time_sec;
+};
+
+StopControl StopFade(float fade_out_time_sec) {
+  return StopControl{.stop_at_end = false,
+                     .fade_out_time_sec = fade_out_time_sec};
+}
+
+StopControl StopAtEndFade(float fade_out_time_sec) {
+  return StopControl{.stop_at_end = true,
+                     .fade_out_time_sec = fade_out_time_sec};
+}
+
+StopControl StopAtEnd() {
+  return StopControl{.stop_at_end = true, .fade_out_time_sec = 0.0f};
+}
+
 class Device;
 
 class PlayingStream {
@@ -57,8 +77,10 @@ class Device {
       const FadeControl& fade_control = kNoFade);
 
   bool IsPlaying(std::shared_ptr<PlayingStream> playing_stream);
-
   size_t GetNumPlaying();
+  void Stop(std::shared_ptr<PlayingStream> playing_stream,
+            const StopControl& stop_control);
+  void StopImmediately(std::shared_ptr<PlayingStream> playing_stream);
 
  private:
   static inline constexpr int32_t kMaxGain = 128;
@@ -85,10 +107,14 @@ class Device {
     PlayCount play_count;
     int num_plays{0};
     FadeControl fade_control;
-    bool is_playing{false};
     size_t looped_blocks_streamed{0};
     size_t total_blocks_streamed{0};
+    size_t total_blocks_to_play{0};
     GainState gain_state{GainState::kAttack};
+    float cur_gain{1.0f};
+    float gain_at_release{0.0f};
+    std::optional<StopControl> stop_control;
+    std::optional<StopControl> stop_control_in_callback;
   };
 
 #pragma pack(push, 1)
@@ -107,7 +133,7 @@ class Device {
       PlayingStreamInternal* playing_stream_internal);
 
   // Returns: gain.
-  static int32_t updateGainState(
+  static int32_t updateGainStateInCallback(
       PlayingStreamInternal* playing_stream_internal);
 
   static void accumulateStereoSamples(StereoBlock32* accumulate_buffer,
@@ -134,12 +160,6 @@ class Device {
                            int additional_amount, int total_amount);
   void fillMixBuffer(int bytes_amount);
   void sendMixedToMainStream(int bytes_amount);
-
-  struct NoCopySendBuffer {
-    bool is_free{true};
-    size_t self_index{0};
-    std::vector<StereoBlock16> buffer;
-  };
 
   std::shared_ptr<SDL_AudioStream> sdl_audio_stream_;
   std::mutex mutex_;
@@ -175,6 +195,12 @@ void Device::Init() {
 std::shared_ptr<PlayingStream> Device::Play(std::shared_ptr<WaveFile> wave_file,
                                             const PlayCount& play_count,
                                             const FadeControl& fade_control) {
+  if (!wave_file->GetNumBlocks()) {
+    LOGE("[Symphony::Audio::Device] Not playing empty wave file: {}",
+         wave_file->GetFilePath());
+    return nullptr;
+  }
+
   std::shared_ptr<PlayingStream> playing_stream(
       new PlayingStreamInternal(wave_file, play_count, fade_control));
   PlayingStreamInternal* playing_stream_internal =
@@ -195,11 +221,8 @@ bool Device::IsPlaying(std::shared_ptr<PlayingStream> playing_stream) {
     return false;
   }
 
-  PlayingStreamInternal* playing_stream_internal =
-      (PlayingStreamInternal*)playing_stream.get();
-
   std::lock_guard<std::mutex> lock(mutex_);
-  return playing_stream_internal->is_playing;
+  return playing_streams_.find(playing_stream) != playing_streams_.end();
 }
 
 size_t Device::GetNumPlaying() {
@@ -207,20 +230,71 @@ size_t Device::GetNumPlaying() {
   return playing_streams_.size();
 }
 
+void Device::Stop(std::shared_ptr<PlayingStream> playing_stream,
+                  const StopControl& stop_control) {
+  if (!playing_stream) {
+    return;
+  }
+
+  PlayingStreamInternal* playing_stream_internal =
+      static_cast<PlayingStreamInternal*>(playing_stream.get());
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  playing_stream_internal->stop_control = stop_control;
+}
+
+void Device::StopImmediately(std::shared_ptr<PlayingStream> playing_stream) {
+  if (!playing_stream) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  playing_streams_.erase(playing_stream);
+}
+
 void Device::startPlayingStream(
     PlayingStreamInternal* playing_stream_internal) {
-  playing_stream_internal->is_playing = true;
-
   if (playing_stream_internal->fade_control.fade_in_time_sec > 0.0f) {
     playing_stream_internal->gain_state = GainState::kAttack;
   } else {
     playing_stream_internal->gain_state = GainState::kSustain;
   }
+
+  if (!playing_stream_internal->play_count.loop_infinite) {
+    playing_stream_internal->total_blocks_to_play =
+        playing_stream_internal->wave_file->GetNumBlocks() *
+        playing_stream_internal->play_count.num_repeats;
+  }
 }
 
-int32_t Device::updateGainState(
+int32_t Device::updateGainStateInCallback(
     PlayingStreamInternal* playing_stream_internal) {
   int32_t gain = kMaxGain;
+
+  if (playing_stream_internal->gain_state != GainState::kRelease &&
+      playing_stream_internal->stop_control_in_callback.has_value()) {
+    // Time to stop:
+    playing_stream_internal->gain_state = GainState::kRelease;
+    playing_stream_internal->gain_at_release =
+        playing_stream_internal->cur_gain;
+
+    const StopControl& stop_control =
+        playing_stream_internal->stop_control_in_callback.value();
+
+    size_t blocks_to_stop = 0;
+    if (stop_control.stop_at_end) {
+      blocks_to_stop = playing_stream_internal->wave_file->GetNumBlocks() -
+                       playing_stream_internal->looped_blocks_streamed;
+    } else {
+      float time_to_stop = stop_control.fade_out_time_sec.value_or(
+          playing_stream_internal->fade_control.fade_out_time_sec);
+      blocks_to_stop = (size_t)(
+          playing_stream_internal->wave_file->GetSampleRate() * time_to_stop);
+    }
+
+    playing_stream_internal->total_blocks_to_play =
+        playing_stream_internal->total_blocks_streamed + blocks_to_stop;
+  }
 
   if (playing_stream_internal->gain_state == GainState::kAttack) {
     size_t num_blocks_to_fade_in =
@@ -228,29 +302,30 @@ int32_t Device::updateGainState(
                  playing_stream_internal->fade_control.fade_in_time_sec);
     if (playing_stream_internal->total_blocks_streamed >
         num_blocks_to_fade_in) {
+      playing_stream_internal->cur_gain = 1.0f;
       gain = kMaxGain;
 
       playing_stream_internal->gain_state = GainState::kSustain;
     } else {
-      float gain_f = (float)playing_stream_internal->total_blocks_streamed /
-                     (float)num_blocks_to_fade_in;
-      gain = ToIntGain(gain_f);
+      playing_stream_internal->cur_gain =
+          (float)playing_stream_internal->total_blocks_streamed /
+          (float)num_blocks_to_fade_in;
+      gain = ToIntGain(playing_stream_internal->cur_gain);
     }
   }
 
   if (playing_stream_internal->gain_state == GainState::kSustain) {
     if (playing_stream_internal->fade_control.fade_out_time_sec > 0.0f) {
       if (!playing_stream_internal->play_count.loop_infinite) {
-        size_t total_blocks_to_play =
-            playing_stream_internal->wave_file->GetNumBlocks() *
-            playing_stream_internal->play_count.num_repeats;
         size_t num_blocks_to_fade_out =
             (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
                      playing_stream_internal->fade_control.fade_out_time_sec);
 
         if (playing_stream_internal->total_blocks_streamed +
                 num_blocks_to_fade_out >
-            total_blocks_to_play) {
+            playing_stream_internal->total_blocks_to_play) {
+          playing_stream_internal->gain_at_release =
+              playing_stream_internal->cur_gain;
           playing_stream_internal->gain_state = GainState::kRelease;
         }
       }
@@ -258,20 +333,36 @@ int32_t Device::updateGainState(
   }
 
   if (playing_stream_internal->gain_state == GainState::kRelease) {
-    size_t total_blocks_to_play =
-        playing_stream_internal->wave_file->GetNumBlocks() *
-        playing_stream_internal->play_count.num_repeats;
-    size_t num_blocks_to_fade_out =
-        (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
-                 playing_stream_internal->fade_control.fade_out_time_sec);
-    if (playing_stream_internal->total_blocks_streamed > total_blocks_to_play) {
+    if (playing_stream_internal->total_blocks_streamed >=
+        playing_stream_internal->total_blocks_to_play) {
+      playing_stream_internal->cur_gain = 0.0f;
       gain = 0;
     } else {
-      size_t num_blocks_left_to_play =
-          total_blocks_to_play - playing_stream_internal->total_blocks_streamed;
-      float gain_f =
-          (float)num_blocks_left_to_play / (float)num_blocks_to_fade_out;
-      gain = ToIntGain(gain_f);
+      float fade_out_time_sec =
+          playing_stream_internal->fade_control.fade_out_time_sec;
+      if (playing_stream_internal->stop_control_in_callback.has_value()) {
+        const StopControl& stop_control =
+            playing_stream_internal->stop_control_in_callback.value();
+        fade_out_time_sec =
+            stop_control.fade_out_time_sec.value_or(fade_out_time_sec);
+      }
+
+      size_t num_blocks_to_fade_out =
+          (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
+                   fade_out_time_sec);
+
+      if (playing_stream_internal->total_blocks_streamed +
+              num_blocks_to_fade_out >=
+          playing_stream_internal->total_blocks_to_play) {
+        size_t num_blocks_left_to_play =
+            playing_stream_internal->total_blocks_to_play -
+            playing_stream_internal->total_blocks_streamed;
+        playing_stream_internal->cur_gain =
+            ((float)num_blocks_left_to_play / (float)num_blocks_to_fade_out) *
+            playing_stream_internal->gain_at_release;
+      }
+
+      gain = ToIntGain(playing_stream_internal->cur_gain);
     }
   }
 
@@ -364,11 +455,38 @@ void Device::dataCallback(void* userdata, SDL_AudioStream* /*stream*/,
 }
 
 void Device::fillMixBuffer(int bytes_amount) {
-  std::unordered_set<std::shared_ptr<PlayingStream>> playing_streams_saved;
+  std::vector<std::shared_ptr<PlayingStream>> playing_streams_saved;
+  std::vector<int32_t> gains;
+
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    playing_streams_saved = playing_streams_;
+
+    playing_streams_saved.resize(playing_streams_.size());
+
+    for (size_t i = 0; auto playing_stream : playing_streams_) {
+      playing_streams_saved[i] = playing_stream;
+      ++i;
+    }
+
+    gains.resize(playing_streams_saved.size());
+    for (size_t i = 0; i < playing_streams_saved.size(); ++i) {
+      PlayingStreamInternal* playing_stream_internal =
+          static_cast<PlayingStreamInternal*>(playing_streams_saved[i].get());
+
+      if (playing_stream_internal->stop_control.has_value()) {
+        if (playing_stream_internal->gain_state != GainState::kRelease) {
+          // Let's not stop in GainState::kRelease:
+          playing_stream_internal->stop_control_in_callback =
+              playing_stream_internal->stop_control;
+        }
+      }
+
+      // We apply gain to the whole buffer while it is very small.
+      gains[i] = updateGainStateInCallback(playing_stream_internal);
+    }
   }
+
+  std::unordered_set<std::shared_ptr<PlayingStream>> to_delete;
 
   size_t num_requested_blocks = bytes_amount / (sizeof(StereoBlock16));
 
@@ -380,12 +498,12 @@ void Device::fillMixBuffer(int bytes_amount) {
     mix_buffer_[i].right = 0;
   }
 
-  for (auto playing_stream : playing_streams_saved) {
+  for (size_t playing_stream_index = 0;
+       playing_stream_index < playing_streams_saved.size();
+       ++playing_stream_index) {
     PlayingStreamInternal* playing_stream_internal =
-        (PlayingStreamInternal*)playing_stream.get();
-
-    // We apply gain to the whole buffer while it is very small.
-    int32_t gain = updateGainState(playing_stream_internal);
+        static_cast<PlayingStreamInternal*>(
+            playing_streams_saved[playing_stream_index].get());
 
     size_t num_blocks_sent = 0;
     while (num_blocks_sent < num_requested_blocks) {
@@ -417,20 +535,22 @@ void Device::fillMixBuffer(int bytes_amount) {
       playing_stream_internal->looped_blocks_streamed += num_blocks_to_read;
       playing_stream_internal->total_blocks_streamed += num_blocks_to_read;
 
-      accumulateSamples(&mix_buffer_[num_blocks_sent], gain,
+      accumulateSamples(&mix_buffer_[num_blocks_sent],
+                        gains[playing_stream_index],
                         playing_stream_internal->wave_file->GetNumChannels(),
                         read_buffer, num_blocks_to_read);
       num_blocks_sent += num_blocks_to_read;
 
       if (reset_looped_blocks_streamed) {
         playing_stream_internal->looped_blocks_streamed = 0;
+      }
 
-        if (!playing_stream_internal->play_count.loop_infinite) {
-          if (playing_stream_internal->num_plays >=
-              playing_stream_internal->play_count.num_repeats) {
-            playing_stream_internal->is_playing = false;
-            break;
-          }
+      // Has total_blocks_to_play specified, can stop playing when reached:
+      if (playing_stream_internal->total_blocks_to_play) {
+        if (playing_stream_internal->total_blocks_streamed >=
+            playing_stream_internal->total_blocks_to_play) {
+          to_delete.insert(playing_streams_saved[playing_stream_index]);
+          break;
         }
       }
     }
@@ -445,12 +565,8 @@ void Device::fillMixBuffer(int bytes_amount) {
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    for (auto playing_stream : playing_streams_saved) {
-      PlayingStreamInternal* playing_stream_internal =
-          (PlayingStreamInternal*)playing_stream.get();
-      if (!playing_stream_internal->is_playing) {
-        playing_streams_.erase(playing_stream);
-      }
+    for (auto playing_stream_to_delete : to_delete) {
+      playing_streams_.erase(playing_stream_to_delete);
     }
   }
 }

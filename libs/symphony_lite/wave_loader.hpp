@@ -90,6 +90,8 @@ class WaveFile {
 
   bool Load(const std::string& file_path, Mode mode);
 
+  const std::string& GetFilePath() const { return file_path_; }
+
   const WaveFormatCommonFields& GetFormatCommonFileds() const {
     return format_common_;
   }
@@ -115,6 +117,7 @@ class WaveFile {
   void convertToFloat(const std::vector<char>& samples_in,
                       float* samples_out) const;
 
+  std::string file_path_;
   std::ifstream file_;
   WaveFormatCommonFields format_common_;
   WaveFormatPCMFields format_pcm_;
@@ -124,6 +127,8 @@ class WaveFile {
 };
 
 bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
+  file_path_ = file_path;
+
   std::ifstream file;
 
   file.open(file_path, std::ios::binary);

@@ -245,6 +245,7 @@ int main(int /* argc */, char* /* argv */[]) {
   float multi_paragraph_demo_scroll_y = 0.0f;
   float multi_paragraph_demo_no_scroll_timeout = 3.0f;
 
+  std::shared_ptr<Symphony::Audio::PlayingStream> jump_stream;
   while (running) {
     auto frame_start_time{std::chrono::steady_clock::now()};
     std::chrono::duration<float> dt_period_seconds{frame_start_time -
@@ -314,8 +315,14 @@ int main(int /* argc */, char* /* argv */[]) {
       Vector2d new_pos;
       if (characterTouchesFloor(character_pos, character_half_sizes, 272.0f,
                                 new_pos)) {
-        audio_device->Play(jump, Symphony::Audio::PlayTimes(1));
+        audio_device->StopImmediately(jump_stream);
+        jump_stream = audio_device->Play(jump, Symphony::Audio::PlayTimes(1));
         character_cur_velocity.y = -kCharacter_jump_velocity;
+
+        bool is_music_playing = audio_device->IsPlaying(music_stream);
+        if (is_music_playing) {
+          audio_device->Stop(music_stream, Symphony::Audio::StopFade(1.0f));
+        }
       }
     }
 
