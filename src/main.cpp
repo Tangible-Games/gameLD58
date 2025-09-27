@@ -14,7 +14,7 @@ using namespace Symphony::Collision;
 
 namespace {
 
-constexpr bool kShowSystemCounters = false;
+constexpr bool kShowSystemCounters = true;
 
 constexpr float kGravity = -980.0f;
 constexpr float kCharacter_velocity = 150.0f;

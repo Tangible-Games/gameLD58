@@ -198,6 +198,7 @@ StyleWithParagraphParametersFromStyleAndParagraphParameters(
 
 struct StyleRun {
   Style style;
+  // TODO(truvorskameikin): Switch to string_view here.
   std::string text;
 };
 
@@ -216,10 +217,12 @@ struct Paragraph {
 
   std::string font;
   ParagraphParameters paragraph_parameters;
+  // TODO(truvorskameikin): Switch to using lists.
   std::vector<StyleRun> style_runs;
 };
 
 struct FormattedText {
+  // TODO(truvorskameikin): Switch to using lists.
   std::vector<Paragraph> paragraphs;
 };
 

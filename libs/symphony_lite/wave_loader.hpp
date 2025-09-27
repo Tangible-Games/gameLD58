@@ -107,7 +107,9 @@ class WaveFile {
     return (float)GetNumBlocks() / (float)format_common_.GetSampleRate();
   }
 
+  bool IsInMemory() const;
   void ReadBlocks(size_t first_block, size_t num_blocks, int16_t* blocks_out);
+  const int16_t* GetBufferWhenInMemory(size_t first_block) const;
 
  private:
   void convertToFloat(const std::vector<char>& samples_in,
@@ -246,15 +248,22 @@ bool WaveFile::Load(const std::string& file_path, WaveFile::Mode mode) {
   return true;
 }
 
+bool WaveFile::IsInMemory() const { return !wave_data_.empty(); }
+
 void WaveFile::ReadBlocks(size_t first_block, size_t num_blocks,
                           int16_t* blocks_out) {
   size_t block_size = GetBlockSize();
   if (!wave_data_.empty()) {
-    memcpy(blocks_out, &wave_data_[first_block * 2], num_blocks * block_size);
+    memcpy(blocks_out, &wave_data_[first_block * GetNumChannels()],
+           num_blocks * block_size);
   } else {
     file_.seekg(wave_data_offset_ + first_block * block_size, std::ios::beg);
     file_.read((char*)blocks_out, num_blocks * block_size);
   }
+}
+
+const int16_t* WaveFile::GetBufferWhenInMemory(size_t first_block) const {
+  return &wave_data_[first_block * GetNumChannels()];
 }
 
 std::shared_ptr<WaveFile> LoadWave(const std::string& file_path,
