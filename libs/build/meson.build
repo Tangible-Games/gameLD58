@@ -119,6 +119,13 @@ gtest_host_dep = [gtest_dep, gtest_main_dep]
 
 python_exe = find_program('python3')
 
+vscode_exe = find_program(
+    'codium',
+    'code',
+    '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
+    required: false,
+)
+
 # Meson format
 muon_exe = find_program('muon', required: false)
 if muon_exe.found()

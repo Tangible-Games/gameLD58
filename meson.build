@@ -118,6 +118,28 @@ if sdl3_host_dep.found()
     )
 
     run_target('host_run', command: [host_elf], depends: [host_elf, assets_link])
+
+    # update launch.json on configure
+    meson.add_postconf_script(
+        python_exe,
+        meson.project_source_root() / 'libs' / 'build' / 'update_launchjson.py',
+        meson.project_name() + '_host_exe',
+        host_elf.full_path(),
+    )
+
+    # Run debugger in vscode (CodeLLDB plugin required)
+    if vscode_exe.found()
+        run_target(
+            'host_dbg',
+            command: [
+                vscode_exe,
+                '--open-url', 'vscode://vadimcn.vscode-lldb/launch?name='
+                + meson.project_name()
+                + '_host_exe',
+            ],
+            depends: [host_elf, assets_link],
+        )
+    endif
 endif
 
 # Tests
