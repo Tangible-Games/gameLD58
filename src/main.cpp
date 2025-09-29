@@ -172,7 +172,7 @@ int main(int /* argc */, char* /* argv */[]) {
 
   auto audio_device = std::make_unique<Symphony::Audio::Device>();
   auto music = Symphony::Audio::LoadWave(
-      "assets/bioorange_22k.wav",
+      "assets/chrispy_mint_22k.wav",
       Symphony::Audio::WaveFile::kModeStreamingFromFile);
   auto jump = Symphony::Audio::LoadWave(
       "assets/dummy_22k.wav", Symphony::Audio::WaveFile::kModeLoadInMemory);
