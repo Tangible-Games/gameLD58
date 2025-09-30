@@ -191,8 +191,6 @@ int main(int /* argc */, char* /* argv */[]) {
   drawable.animationState->addAnimation(0, "run", true, 0);
   drawable.update(0, spine::Physics_Update);
 
-  SDL_Event event;
-
   bool running = true;
 
   LOGI("Starting main loop...");
