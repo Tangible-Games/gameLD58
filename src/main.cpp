@@ -9,6 +9,8 @@
 #include <thread>
 #include <vector>
 
+#include "keyboard.hpp"
+
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
 
