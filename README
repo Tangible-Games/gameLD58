@@ -1,5 +1,10 @@
 # Prepare
 
+After git clone update submodules:
+```
+git submodule update --init --recursive
+```
+
 Download PSPDEV: https://pspdev.github.io/downloads.html
 Extract to $HOME, e.g.:
 ```

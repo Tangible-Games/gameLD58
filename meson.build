@@ -48,7 +48,7 @@ if meson.is_cross_build()
         meson.project_name(),
         srcs,
         include_directories: include_dirs,
-        dependencies: pspdev_deps + common_deps,
+        dependencies: pspdev_deps + common_deps + [spine_cross_dep],
     )
 
     elf_fixed = custom_target(
@@ -113,11 +113,33 @@ if sdl3_host_dep.found()
         meson.project_name() + '_host_exe',
         srcs,
         include_directories: include_dirs,
-        dependencies: [sdl3_host_dep, sdl3image_host_dep] + common_deps,
+        dependencies: [sdl3_host_dep, sdl3image_host_dep, spine_host_dep] + common_deps,
         native: true,
     )
 
     run_target('host_run', command: [host_elf], depends: [host_elf, assets_link])
+
+    # update launch.json on configure
+    meson.add_postconf_script(
+        python_exe,
+        meson.project_source_root() / 'libs' / 'build' / 'update_launchjson.py',
+        meson.project_name() + '_host_exe',
+        host_elf.full_path(),
+    )
+
+    # Run debugger in vscode (CodeLLDB plugin required)
+    if vscode_exe.found()
+        run_target(
+            'host_dbg',
+            command: [
+                vscode_exe,
+                '--open-url', 'vscode://vadimcn.vscode-lldb/launch?name='
+                + meson.project_name()
+                + '_host_exe',
+            ],
+            depends: [host_elf, assets_link],
+        )
+    endif
 endif
 
 # Tests

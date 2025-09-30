@@ -5,3 +5,4 @@
 *.PBP
 subprojects/*/
 subprojects/wrapdb.json
+.vscode/

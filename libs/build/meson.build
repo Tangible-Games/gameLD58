@@ -119,6 +119,13 @@ gtest_host_dep = [gtest_dep, gtest_main_dep]
 
 python_exe = find_program('python3')
 
+vscode_exe = find_program(
+    'codium',
+    'code',
+    '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
+    required: false,
+)
+
 # Meson format
 muon_exe = find_program('muon', required: false)
 if muon_exe.found()
@@ -127,6 +134,7 @@ if muon_exe.found()
         meson.project_source_root() / 'libs' / 'meson.build',
         meson.project_source_root() / 'libs' / 'build' / 'meson.build',
         meson.project_source_root() / 'libs' / 'symphony_lite' / 'meson.build',
+        meson.project_source_root() / 'libs' / 'third-party' / 'meson.build',
         meson.project_source_root() / 'src' / 'meson.build',
     ]
     run_target('format-meson', command: [muon_exe, 'fmt', '-i'] + meson_files)
