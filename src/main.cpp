@@ -1,7 +1,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
-#include <spine/Json.h>
+#include <spine/spine.h>
 
 #include <chrono>
 #include <ctime>
@@ -10,8 +10,12 @@
 #include <thread>
 #include <vector>
 
+#include "spine_sdl3.h"
+
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
+
+extern spine::SkeletonRenderer* skeletonRenderer;
 
 namespace {
 
@@ -124,10 +128,6 @@ int main(int /* argc */, char* /* argv */[]) {
 
   LOGI("Game starting...");
 
-  spine::Json json("{ \"test\": \"OK\" }");
-  const std::string test = spine::Json::getString(&json, "test", "FAILED");
-  LOGI("Test spine runtime: {}", test);
-
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD);
 
   LOGI("SDL initialized.");
@@ -235,6 +235,23 @@ int main(int /* argc */, char* /* argv */[]) {
     all_sprites.emplace_back(sprite);
   }
 
+  // Spine example from spine sdl to test port on PSP
+  spine::SDLTextureLoader textureLoader(renderer.get());
+  spine::Atlas atlas("assets/spineboy-pma.atlas", &textureLoader);
+  spine::AtlasAttachmentLoader attachmentLoader(&atlas);
+  spine::SkeletonJson json(&attachmentLoader);
+  json.setScale(0.2f);
+  spine::SkeletonData* skeletonData =
+      json.readSkeletonDataFile("assets/spineboy-pro.json");
+  spine::SkeletonDrawable drawable(skeletonData);
+  drawable.usePremultipliedAlpha = true;
+  drawable.animationState->getData()->setDefaultMix(0.2f);
+  drawable.skeleton->setPosition(200, 200);
+  drawable.skeleton->setToSetupPose();
+  drawable.animationState->setAnimation(0, "portal", true);
+  drawable.animationState->addAnimation(0, "run", true, 0);
+  drawable.update(0, spine::Physics_Update);
+
   SDL_Event event;
 
   bool running = true;
@@ -251,6 +268,7 @@ int main(int /* argc */, char* /* argv */[]) {
   float multi_paragraph_demo_no_scroll_timeout = 3.0f;
 
   std::shared_ptr<Symphony::Audio::PlayingStream> jump_stream;
+  uint64_t lastFrameTime = SDL_GetPerformanceCounter();
   while (running) {
     auto frame_start_time{std::chrono::steady_clock::now()};
     std::chrono::duration<float> dt_period_seconds{frame_start_time -
@@ -378,7 +396,6 @@ int main(int /* argc */, char* /* argv */[]) {
           "system_20.fnt", known_fonts);
       system_info_renderer.Render(0);
     }
-
     multi_paragraph_demo_renderer.Render((int)multi_paragraph_demo_scroll_y);
     if (multi_paragraph_demo_no_scroll_timeout == 0.0f) {
       multi_paragraph_demo_scroll_y -= dt * 10.0f;
@@ -393,9 +410,21 @@ int main(int /* argc */, char* /* argv */[]) {
         multi_paragraph_demo_no_scroll_timeout = 0.0f;
       }
     }
+    // Test spine
+    SDL_SetRenderDrawColor(renderer.get(), 94, 93, 96, 255);
+    uint64_t now = SDL_GetPerformanceCounter();
+    double deltaTime =
+        (now - lastFrameTime) / (double)SDL_GetPerformanceFrequency();
+    lastFrameTime = now;
+
+    drawable.update(deltaTime, spine::Physics_Update);
+    drawable.draw(renderer.get());
 
     SDL_RenderPresent(renderer.get());
   }
+
+  delete skeletonData;
+  delete skeletonRenderer;
 
   SDL_DestroyWindow(window);
   SDL_Quit();
