@@ -1,0 +1,101 @@
+spine_srcs = [
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Animation.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/AnimationState.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/AnimationStateData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Atlas.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/AtlasAttachmentLoader.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Attachment.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/AttachmentLoader.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/AttachmentTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Bone.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/BoneData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/BoundingBoxAttachment.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/ClippingAttachment.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/ColorTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/ConstraintData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/CurveTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/DeformTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/DrawOrderTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Event.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/EventData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/EventTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Extension.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/IkConstraint.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/IkConstraintData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/IkConstraintTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/InheritTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Json.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/LinkedMesh.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Log.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/MathUtil.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/MeshAttachment.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PathAttachment.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PathConstraint.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PathConstraintData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PathConstraintMixTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PathConstraintPositionTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PathConstraintSpacingTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PhysicsConstraint.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PhysicsConstraintData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PhysicsConstraintTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/PointAttachment.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/RTTI.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/RegionAttachment.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/RotateTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/ScaleTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Sequence.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/SequenceTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/ShearTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Skeleton.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/SkeletonBinary.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/SkeletonBounds.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/SkeletonClipping.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/SkeletonData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/SkeletonJson.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/SkeletonRenderer.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Skin.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Slot.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/SlotData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/SpineObject.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/TextureLoader.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Timeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/TransformConstraint.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/TransformConstraintData.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/TransformConstraintTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/TranslateTimeline.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Triangulator.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/Updatable.cpp',
+    'spine-runtime/spine-cpp/spine-cpp/src/spine/VertexAttachment.cpp',
+]
+
+spine_incs = include_directories('spine-runtime/spine-cpp/spine-cpp/include')
+
+spine_args = [
+    '-Wno-type-limits',
+    '-Wno-implicit-fallthrough',
+    '-Wno-parentheses',
+    '-Wno-unused-parameter',
+]
+
+if meson.is_cross_build()
+    spine_cross = static_library(
+        'spine',
+        spine_srcs,
+        include_directories: spine_incs,
+        pic: false,
+        cpp_args: spine_args,
+    )
+
+    spine_cross_dep = declare_dependency(include_directories: spine_incs, link_with: spine_cross)
+endif
+
+spine_host = static_library(
+    'spine_host',
+    spine_srcs,
+    include_directories: spine_incs,
+    pic: false,
+    cpp_args: spine_args,
+    native: true,
+)
+
+spine_host_dep = declare_dependency(include_directories: spine_incs, link_with: spine_host)

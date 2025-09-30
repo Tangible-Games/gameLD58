@@ -48,7 +48,7 @@ if meson.is_cross_build()
         meson.project_name(),
         srcs,
         include_directories: include_dirs,
-        dependencies: pspdev_deps + common_deps,
+        dependencies: pspdev_deps + common_deps + [spine_cross_dep],
     )
 
     elf_fixed = custom_target(
@@ -113,7 +113,7 @@ if sdl3_host_dep.found()
         meson.project_name() + '_host_exe',
         srcs,
         include_directories: include_dirs,
-        dependencies: [sdl3_host_dep, sdl3image_host_dep] + common_deps,
+        dependencies: [sdl3_host_dep, sdl3image_host_dep, spine_host_dep] + common_deps,
         native: true,
     )
 

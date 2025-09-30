@@ -1,6 +1,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
+#include <spine/Json.h>
 
 #include <chrono>
 #include <ctime>
@@ -122,6 +123,10 @@ int main(int /* argc */, char* /* argv */[]) {
       .add_sink(Symphony::Log::FileSink::create(LOG_FILE));
 
   LOGI("Game starting...");
+
+  spine::Json json("{ \"test\": \"OK\" }");
+  const std::string test = spine::Json::getString(&json, "test", "FAILED");
+  LOGI("Test spine runtime: {}", test);
 
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD);
 
