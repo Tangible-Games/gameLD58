@@ -68,7 +68,7 @@ spine_srcs = [
     'spine-runtime/spine-cpp/spine-cpp/src/spine/VertexAttachment.cpp',
 ]
 
-spine_incs = include_directories('spine-runtime/spine-cpp/spine-cpp/include')
+spine_incs = include_directories('spine-runtime/spine-cpp/spine-cpp/include', 'spine-runtime/spine-sdl/src')
 
 spine_args = [
     '-Wno-type-limits',
