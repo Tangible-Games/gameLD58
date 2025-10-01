@@ -33,12 +33,10 @@
 #include "spine_sdl3.h"
 
 #include <SDL3/SDL_error.h>
+#include <SDL3_image/SDL_image.h>
 #include <spine/Debug.h>
 
 #include <symphony_lite/log.hpp>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 using namespace spine;
 
@@ -70,10 +68,10 @@ void SkeletonDrawable::update(float delta, Physics physics) {
 }
 
 inline void toSDLColor(uint32_t color, SDL_FColor *sdlColor) {
-  sdlColor->a = 1.0 * ((color >> 24) & 0xFF);
-  sdlColor->r = 1.0 * ((color >> 16) & 0xFF);
-  sdlColor->g = 1.0 * ((color >> 8) & 0xFF);
-  sdlColor->b = 1.0 * (color & 0xFF);
+  sdlColor->a = (1.0 * ((color >> 24) & 0xFF)) / 255.0;
+  sdlColor->r = (1.0 * ((color >> 16) & 0xFF)) / 255.0;
+  sdlColor->g = (1.0 * ((color >> 8) & 0xFF)) / 255.0;
+  sdlColor->b = (1.0 * (color & 0xFF)) / 255.0;
 }
 
 void SkeletonDrawable::draw(SDL_Renderer *renderer) {
@@ -153,28 +151,11 @@ void SkeletonDrawable::draw(SDL_Renderer *renderer) {
 }
 
 SDL_Texture *loadTexture(SDL_Renderer *renderer, const String &path) {
-  int width, height, components;
-  stbi_uc *imageData =
-      stbi_load(path.buffer(), &width, &height, &components, 4);
-  if (!imageData) {
-    LOGE("{}:{} no image data", __func__, __LINE__);
-    return nullptr;
-  }
-  SDL_Texture *texture =
-      SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888,
-                        SDL_TEXTUREACCESS_STATIC, width, height);
+  SDL_Texture *texture = IMG_LoadTexture(renderer, path.buffer());
   if (!texture) {
-    LOGE("{}:{} SDL_CreateTexture: {}", __func__, __LINE__, SDL_GetError());
-    stbi_image_free(imageData);
+    LOGE("{}:{} IMG_LoadTexture: {}", __func__, __LINE__, SDL_GetError());
     return nullptr;
   }
-  if (!SDL_UpdateTexture(texture, nullptr, imageData, width * 4)) {
-    LOGE("{}:{} SDL_UpdateTexture: {}", __func__, __LINE__, SDL_GetError());
-    stbi_image_free(imageData);
-    return nullptr;
-  }
-  stbi_image_free(imageData);
-  LOGI("{}:{} loaded", __func__, __LINE__);
   return texture;
 }
 
