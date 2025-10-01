@@ -10,10 +10,12 @@
 #include <thread>
 #include <vector>
 
+#include "keyboard.hpp"
 #include "spine_sdl3.h"
 
 using namespace Symphony::Math;
 using namespace Symphony::Collision;
+using namespace gameLD58;
 
 extern spine::SkeletonRenderer* skeletonRenderer;
 
@@ -46,69 +48,6 @@ bool characterTouchesFloor(const Vector2d& next_pos, const Vector2d& half_sizes,
   }
 
   return false;
-}
-
-void handleControllerButtonDownEvent(SDL_Event& event, bool& running,
-                                     bool& is_left, bool& is_right,
-                                     bool& is_up) {
-  LOGD("event.button.button: {}", (int)event.gbutton.button);
-  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_START) {
-    running = false;
-  }
-  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT) {
-    is_left = true;
-  }
-  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
-    is_right = true;
-  }
-  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
-      event.gbutton.button == 0) {
-    is_up = true;
-  }
-}
-
-void handleControllerButtonUpEvent(SDL_Event& event,
-                                   [[maybe_unused]] bool& running,
-                                   bool& is_left, bool& is_right, bool& is_up) {
-  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT) {
-    is_left = false;
-  }
-  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT) {
-    is_right = false;
-  }
-  if (event.gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
-      event.gbutton.button == 0) {
-    is_up = false;
-  }
-}
-
-void handleKeyDownEvent(SDL_Event& event, bool& running, bool& is_left,
-                        bool& is_right, bool& is_up) {
-  if (event.key.key == SDLK_ESCAPE) {
-    running = false;
-  }
-  if (event.key.key == SDLK_LEFT) {
-    is_left = true;
-  }
-  if (event.key.key == SDLK_RIGHT) {
-    is_right = true;
-  }
-  if (event.key.key == SDLK_UP) {
-    is_up = true;
-  }
-}
-
-void handleKeyUpEvent(SDL_Event& event, [[maybe_unused]] bool& running,
-                      bool& is_left, bool& is_right, bool& is_up) {
-  if (event.key.key == SDLK_LEFT) {
-    is_left = false;
-  }
-  if (event.key.key == SDLK_RIGHT) {
-    is_right = false;
-  }
-  if (event.key.key == SDLK_UP) {
-    is_up = false;
-  }
 }
 
 }  // namespace
@@ -252,12 +191,7 @@ int main(int /* argc */, char* /* argv */[]) {
   drawable.animationState->addAnimation(0, "run", true, 0);
   drawable.update(0, spine::Physics_Update);
 
-  SDL_Event event;
-
   bool running = true;
-  bool is_left = false;
-  bool is_right = false;
-  bool is_up = false;
 
   LOGI("Starting main loop...");
 
@@ -288,38 +222,18 @@ int main(int /* argc */, char* /* argv */[]) {
       }
     }
 
-    if (SDL_PollEvent(&event) != 0) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
       switch (event.type) {
         case SDL_EVENT_QUIT:
           running = false;
           break;
-
-        case SDL_EVENT_GAMEPAD_ADDED:
-          SDL_OpenGamepad(event.cdevice.which);
-          break;
-
-        case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-          handleControllerButtonDownEvent(event, running, is_left, is_right,
-                                          is_up);
-          break;
-
-        case SDL_EVENT_GAMEPAD_BUTTON_UP:
-          handleControllerButtonUpEvent(event, running, is_left, is_right,
-                                        is_up);
-          break;
-
-        case SDL_EVENT_KEY_DOWN:
-          handleKeyDownEvent(event, running, is_left, is_right, is_up);
-          break;
-
-        case SDL_EVENT_KEY_UP:
-          handleKeyUpEvent(event, running, is_left, is_right, is_up);
-          break;
-
-        default:
-          break;
       }
+
+      Keyboard::Instance().OnEvent(&event);
     }
+
+    Keyboard::Instance().Update(dt);
 
     Vector2d character_new_pos;
     bool character_touches_floor = characterTouchesFloor(
@@ -327,14 +241,19 @@ int main(int /* argc */, char* /* argv */[]) {
 
     if (character_touches_floor) {
       character_cur_velocity.x = 0.0f;
-      if (is_left) {
+      if (Keyboard::Instance()
+              .IsKeyDown(Keyboard::Key::kDpadLeft)
+              .has_value()) {
         character_cur_velocity.x = -kCharacter_velocity;
       }
-      if (is_right) {
+      if (Keyboard::Instance()
+              .IsKeyDown(Keyboard::Key::kDpadRight)
+              .has_value()) {
         character_cur_velocity.x = kCharacter_velocity;
       }
     }
-    if (is_up) {
+    if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadUp).has_value() ||
+        Keyboard::Instance().IsKeyDown(Keyboard::Key::kX).has_value()) {
       Vector2d new_pos;
       if (characterTouchesFloor(character_pos, character_half_sizes, 272.0f,
                                 new_pos)) {
@@ -391,8 +310,8 @@ int main(int /* argc */, char* /* argv */[]) {
       size_t num_playing_audio_streams = audio_device->GetNumPlaying();
       system_info_renderer.ReFormat(
           {{"fps_count", std::format("{:.1f}", fps)},
-           {"audio_streams_playing",
-            std::to_string(num_playing_audio_streams)}},
+           {"audio_streams_playing", std::to_string(num_playing_audio_streams)},
+           {"down_keys", Keyboard::Instance().GetDownKeysListString()}},
           "system_20.fnt", known_fonts);
       system_info_renderer.Render(0);
     }
