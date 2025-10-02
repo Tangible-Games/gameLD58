@@ -42,10 +42,10 @@
 
 using namespace spine;
 
-SkeletonRenderer *skeletonRenderer = nullptr;
+SkeletonRenderer* skeletonRenderer = nullptr;
 
-SkeletonDrawable::SkeletonDrawable(SkeletonData *skeletonData,
-                                   AnimationStateData *animationStateData) {
+SkeletonDrawable::SkeletonDrawable(SkeletonData* skeletonData,
+                                   AnimationStateData* animationStateData) {
   Bone::setYDown(true);
   skeleton = new (__FILE__, __LINE__) Skeleton(skeletonData);
 
@@ -69,21 +69,21 @@ void SkeletonDrawable::update(float delta, Physics physics) {
   skeleton->updateWorldTransform(physics);
 }
 
-inline void toSDLColor(uint32_t color, SDL_FColor *sdlColor) {
+inline void toSDLColor(uint32_t color, SDL_FColor* sdlColor) {
   sdlColor->a = 1.0 * ((color >> 24) & 0xFF);
   sdlColor->r = 1.0 * ((color >> 16) & 0xFF);
   sdlColor->g = 1.0 * ((color >> 8) & 0xFF);
   sdlColor->b = 1.0 * (color & 0xFF);
 }
 
-void SkeletonDrawable::draw(SDL_Renderer *renderer) {
+void SkeletonDrawable::draw(SDL_Renderer* renderer) {
   if (!skeletonRenderer)
     skeletonRenderer = new (__FILE__, __LINE__) SkeletonRenderer();
-  RenderCommand *command = skeletonRenderer->render(*skeleton);
+  RenderCommand* command = skeletonRenderer->render(*skeleton);
   while (command) {
-    float *positions = command->positions;
-    float *uvs = command->uvs;
-    uint32_t *colors = command->colors;
+    float* positions = command->positions;
+    float* uvs = command->uvs;
+    uint32_t* colors = command->colors;
     sdlVertices.clear();
     for (int ii = 0; ii < command->numVertices << 1; ii += 2) {
       SDL_Vertex sdlVertex;
@@ -95,12 +95,12 @@ void SkeletonDrawable::draw(SDL_Renderer *renderer) {
       sdlVertices.add(sdlVertex);
     }
     sdlIndices.clear();
-    uint16_t *indices = command->indices;
+    uint16_t* indices = command->indices;
     for (int ii = 0; ii < command->numIndices; ii++)
       sdlIndices.add(indices[ii]);
 
     BlendMode blendMode = command->blendMode;
-    SDL_Texture *texture = (SDL_Texture *)command->texture;
+    SDL_Texture* texture = (SDL_Texture*)command->texture;
     if (!usePremultipliedAlpha) {
       switch (blendMode) {
         case BlendMode_Normal:
@@ -152,15 +152,15 @@ void SkeletonDrawable::draw(SDL_Renderer *renderer) {
   }
 }
 
-SDL_Texture *loadTexture(SDL_Renderer *renderer, const String &path) {
+SDL_Texture* loadTexture(SDL_Renderer* renderer, const String& path) {
   int width, height, components;
-  stbi_uc *imageData =
+  stbi_uc* imageData =
       stbi_load(path.buffer(), &width, &height, &components, 4);
   if (!imageData) {
     LOGE("{}:{} no image data", __func__, __LINE__);
     return nullptr;
   }
-  SDL_Texture *texture =
+  SDL_Texture* texture =
       SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888,
                         SDL_TEXTUREACCESS_STATIC, width, height);
   if (!texture) {
@@ -178,9 +178,9 @@ SDL_Texture *loadTexture(SDL_Renderer *renderer, const String &path) {
   return texture;
 }
 
-void SDLTextureLoader::load(AtlasPage &page, const String &path) {
+void SDLTextureLoader::load(AtlasPage& page, const String& path) {
   LOGD("{}:{} path: {}", __func__, __LINE__, path.buffer());
-  SDL_Texture *texture = loadTexture(renderer, path);
+  SDL_Texture* texture = loadTexture(renderer, path);
   if (!texture) {
     LOGE("{}:{} texture not loaded", __func__, __LINE__);
     return;
@@ -206,10 +206,10 @@ void SDLTextureLoader::load(AtlasPage &page, const String &path) {
   LOGI("{}:{} loaded", __func__, __LINE__);
 }
 
-void SDLTextureLoader::unload(void *texture) {
-  SDL_DestroyTexture((SDL_Texture *)texture);
+void SDLTextureLoader::unload(void* texture) {
+  SDL_DestroyTexture((SDL_Texture*)texture);
 }
 
-SpineExtension *spine::getDefaultExtension() {
+SpineExtension* spine::getDefaultExtension() {
   return new DefaultSpineExtension();
 }

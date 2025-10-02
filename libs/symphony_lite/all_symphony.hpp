@@ -2,6 +2,7 @@
 
 #include "aa_rect2d.hpp"
 #include "angle.hpp"
+#include "animated_sprite.hpp"
 #include "audio.hpp"
 #include "bm_font_loader.hpp"
 #include "circle.hpp"
@@ -16,6 +17,7 @@
 #include "ray_casting_projection.hpp"
 #include "segment2d.hpp"
 #include "spatial_bins.hpp"
+#include "sprite_sheet.hpp"
 #include "text.hpp"
 #include "transformation_matrix3d.hpp"
 #include "vector2d.hpp"

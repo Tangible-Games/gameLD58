@@ -39,17 +39,17 @@
 namespace spine {
 class SkeletonDrawable {
  public:
-  SkeletonDrawable(SkeletonData *skeletonData,
-                   AnimationStateData *animationStateData = nullptr);
+  SkeletonDrawable(SkeletonData* skeletonData,
+                   AnimationStateData* animationStateData = nullptr);
 
   ~SkeletonDrawable();
 
   void update(float delta, Physics physics);
 
-  void draw(SDL_Renderer *renderer);
+  void draw(SDL_Renderer* renderer);
 
-  Skeleton *skeleton;
-  AnimationState *animationState;
+  Skeleton* skeleton;
+  AnimationState* animationState;
   bool usePremultipliedAlpha;
 
  private:
@@ -59,14 +59,14 @@ class SkeletonDrawable {
 };
 
 class SDLTextureLoader : public spine::TextureLoader {
-  SDL_Renderer *renderer;
+  SDL_Renderer* renderer;
 
  public:
-  SDLTextureLoader(SDL_Renderer *renderer) : renderer(renderer) {}
+  SDLTextureLoader(SDL_Renderer* renderer) : renderer(renderer) {}
 
-  void load(AtlasPage &page, const String &path);
+  void load(AtlasPage& page, const String& path);
 
-  void unload(void *texture);
+  void unload(void* texture);
 };
 }  // namespace spine
 
