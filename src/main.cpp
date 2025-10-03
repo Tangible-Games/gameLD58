@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_rect.h>
 #include <SDL3_image/SDL_image.h>
 #include <spine/spine.h>
 
@@ -78,6 +79,15 @@ int main(int /* argc */, char* /* argv */[]) {
     LOGI("Creating renderer failed, error: {}", SDL_GetError());
   }
   LOGI("Window is created.");
+
+  // Fix rendering on linux
+  SDL_Rect clip = {
+      .x = 0,
+      .y = 0,
+      .w = 480,
+      .h = 272,
+  };
+  SDL_SetRenderClipRect(renderer.get(), &clip);
 
   srand(time(nullptr));
 
@@ -323,6 +333,7 @@ int main(int /* argc */, char* /* argv */[]) {
           "system_20.fnt", known_fonts);
       system_info_renderer.Render(0);
     }
+
     multi_paragraph_demo_renderer.Render((int)multi_paragraph_demo_scroll_y);
     if (multi_paragraph_demo_no_scroll_timeout == 0.0f) {
       multi_paragraph_demo_scroll_y -= dt * 10.0f;
@@ -337,8 +348,8 @@ int main(int /* argc */, char* /* argv */[]) {
         multi_paragraph_demo_no_scroll_timeout = 0.0f;
       }
     }
+
     // Test spine
-    SDL_SetRenderDrawColor(renderer.get(), 94, 93, 96, 255);
     uint64_t now = SDL_GetPerformanceCounter();
     double deltaTime =
         (now - lastFrameTime) / (double)SDL_GetPerformanceFrequency();

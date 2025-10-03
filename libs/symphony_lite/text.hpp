@@ -302,7 +302,9 @@ void TextRenderer::Render(int scroll_y) {
     }
   }
 
-  SDL_SetRenderClipRect(sdl_renderer_.get(), &prev_clip_rect);
+  if (!draw_debug_) {
+    SDL_SetRenderClipRect(sdl_renderer_.get(), &prev_clip_rect);
+  }
 
   prev_scroll_y_ = scroll_y;
 }
