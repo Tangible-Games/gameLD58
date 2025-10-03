@@ -21,6 +21,7 @@ class Keyboard {
     kSquare,
     kCircle,
     kStart,
+    kSelect,
     kShiftLeft,
     kShiftRight,
     kUnknown,
@@ -54,6 +55,9 @@ class Keyboard {
         break;
       case Key::kStart:
         return "Start";
+        break;
+      case Key::kSelect:
+        return "Select";
         break;
       case Key::kShiftLeft:
         return "ShiftLeft";
@@ -149,6 +153,11 @@ void Keyboard::OnEvent(SDL_Event* sdl_event) {
           key = Key::kTriangle;
           break;
 
+        case 4:
+          // Enter
+          key = Key::kSelect;
+          break;
+
         case 6:
           // Space
           key = Key::kStart;
@@ -207,6 +216,10 @@ void Keyboard::OnEvent(SDL_Event* sdl_event) {
 
         case SDLK_SPACE:
           key = Key::kStart;
+          break;
+
+        case SDLK_KP_ENTER:
+          key = Key::kSelect;
           break;
 
         case SDLK_Q:
