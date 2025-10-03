@@ -3,7 +3,6 @@
 #include <SDL3/SDL.h>
 
 #include <fstream>
-#include <optional>
 #include <unordered_map>
 
 #include "formatted_text.hpp"
