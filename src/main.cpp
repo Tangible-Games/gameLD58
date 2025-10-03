@@ -170,6 +170,14 @@ int main(int /* argc */, char* /* argv */[]) {
 
   music_timeout = (float)(rand() % 3) + 3;
   std::shared_ptr<Symphony::Audio::PlayingStream> music_stream;
+  auto sprite_sheet = std::make_shared<Symphony::Sprite::SpriteSheet>(
+      renderer.get(), "assets", "man.json");
+  auto digits1 = Symphony::Sprite::AnimatedSprite(sprite_sheet);
+  digits1.Play("digits", true, 1.0f);
+  auto digits2 = Symphony::Sprite::AnimatedSprite(sprite_sheet);
+  digits2.Play("digits", false, 1.0f);
+  auto man = Symphony::Sprite::AnimatedSprite(sprite_sheet);
+  man.Play("right", true, 30.0f);
 
   for (int i = 0; i < 100; ++i) {
     Sprite sprite;
@@ -349,6 +357,13 @@ int main(int /* argc */, char* /* argv */[]) {
 
     drawable.update(deltaTime, spine::Physics_Update);
     drawable.draw(renderer.get());
+
+    digits1.Update(dt);
+    digits1.Draw(renderer, {20, 200, 50, 50});
+    digits2.Update(dt);
+    digits2.Draw(renderer, {100, 200, 50, 50});
+    man.Update(dt);
+    man.Draw(renderer, {400, 200, 50, 50});
 
     SDL_RenderPresent(renderer.get());
   }

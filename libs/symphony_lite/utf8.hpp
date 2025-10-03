@@ -13,7 +13,7 @@ struct UnicodeSequenceParseResult {
 
 // See: https://en.wikipedia.org/wiki/UTF-8.
 template <bool check_is_sequence_ill_formed>
-UnicodeSequenceParseResult ParseUtf8Sequence(const char *sequence,
+UnicodeSequenceParseResult ParseUtf8Sequence(const char* sequence,
                                              size_t sequence_length) {
   UnicodeSequenceParseResult result;
 
@@ -21,7 +21,7 @@ UnicodeSequenceParseResult ParseUtf8Sequence(const char *sequence,
     return result;
   }
 
-  uint32_t first_byte = *(uint8_t *)sequence;
+  uint32_t first_byte = *(uint8_t*)sequence;
   std::bitset<8> first_byte_bits(first_byte);
 
   if (first_byte_bits[7] == 0) {
@@ -37,7 +37,7 @@ UnicodeSequenceParseResult ParseUtf8Sequence(const char *sequence,
   // Two bytes sequencies.
   if (first_byte_bits[7] == 1 && first_byte_bits[6] == 1 &&
       first_byte_bits[5] == 0) {
-    uint32_t second_byte = *(uint8_t *)(sequence + 1);
+    uint32_t second_byte = *(uint8_t*)(sequence + 1);
 
     if (check_is_sequence_ill_formed) {
       std::bitset<8> second_byte_bits(second_byte);
@@ -58,8 +58,8 @@ UnicodeSequenceParseResult ParseUtf8Sequence(const char *sequence,
   // Three bytes sequencies.
   if (first_byte_bits[7] == 1 && first_byte_bits[6] == 1 &&
       first_byte_bits[5] == 1 && first_byte_bits[4] == 0) {
-    uint32_t second_byte = *(uint8_t *)(sequence + 1);
-    uint32_t third_byte = *(uint8_t *)(sequence + 2);
+    uint32_t second_byte = *(uint8_t*)(sequence + 1);
+    uint32_t third_byte = *(uint8_t*)(sequence + 2);
 
     if (check_is_sequence_ill_formed) {
       std::bitset<8> second_byte_bits(second_byte);
@@ -85,9 +85,9 @@ UnicodeSequenceParseResult ParseUtf8Sequence(const char *sequence,
   if (first_byte_bits[7] == 1 && first_byte_bits[6] == 1 &&
       first_byte_bits[5] == 1 && first_byte_bits[4] == 1 &&
       first_byte_bits[3] == 0) {
-    uint32_t second_byte = *(uint8_t *)(sequence + 1);
-    uint32_t third_byte = *(uint8_t *)(sequence + 2);
-    uint32_t fourth_byte = *(uint8_t *)(sequence + 3);
+    uint32_t second_byte = *(uint8_t*)(sequence + 1);
+    uint32_t third_byte = *(uint8_t*)(sequence + 2);
+    uint32_t fourth_byte = *(uint8_t*)(sequence + 3);
 
     if (check_is_sequence_ill_formed) {
       std::bitset<8> second_byte_bits(second_byte);
