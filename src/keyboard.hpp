@@ -179,7 +179,6 @@ void Keyboard::OnEvent(SDL_Event* sdl_event) {
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP: {
       is_down = sdl_event->type == SDL_EVENT_KEY_DOWN;
-
       switch (sdl_event->key.key) {
         case SDLK_UP:
           key = Key::kDpadUp;
@@ -218,7 +217,7 @@ void Keyboard::OnEvent(SDL_Event* sdl_event) {
           key = Key::kStart;
           break;
 
-        case SDLK_KP_ENTER:
+        case SDLK_RETURN:
           key = Key::kSelect;
           break;
 
