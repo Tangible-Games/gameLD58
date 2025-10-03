@@ -158,7 +158,7 @@ int main(int /* argc */, char* /* argv */[]) {
   if (kShowSystemCounters) {
     system_info_renderer.LoadFromFile("assets/system_counters.txt");
     system_info_renderer.SetPosition(5, 5);
-    system_info_renderer.SetSizes(480 - 10, 272);
+    system_info_renderer.SetSizes(10, 272);
   }
 
   Symphony::Text::TextRenderer multi_paragraph_demo_renderer(renderer);
