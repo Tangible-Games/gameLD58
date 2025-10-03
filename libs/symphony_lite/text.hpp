@@ -55,6 +55,7 @@ class TextRenderer {
     int min_y{0};
     int max_y{0};
     int align_offset{0};
+    Wrapping wrapping{Wrapping::kClip};
     std::unordered_map<Font*, RenderBuffers> font_to_buffers;
   };
 
@@ -67,6 +68,9 @@ class TextRenderer {
     return sdl_color;
   }
 
+  void updateVisibility(int scroll_y);
+  void updateVisibleLinesPositions(int scroll_y);
+
   std::shared_ptr<SDL_Renderer> sdl_renderer_;
   std::string raw_text_;
   std::optional<FormattedText> formatted_text_;
@@ -78,6 +82,8 @@ class TextRenderer {
   int height_{0};
   int content_height_{0};
   int prev_scroll_y_{0};
+  int first_visible_line_index_{-1};
+  int last_visible_line_index_{-2};
   const bool draw_debug_{false};
 };
 
@@ -133,6 +139,7 @@ void TextRenderer::ReFormat(
     const MeasuredTextLine& measured_line = *measured_lines_it;
     line.line_width = measured_line.line_width;
     line.align_offset = measured_line.align_offset;
+    line.wrapping = measured_line.wrapping;
 
     float align_offset = static_cast<float>(measured_line.align_offset);
 
@@ -240,6 +247,12 @@ void TextRenderer::Render(int scroll_y) {
     return;
   }
 
+  updateVisibility(scroll_y);
+  if (prev_scroll_y_ != scroll_y) {
+    updateVisibleLinesPositions(scroll_y);
+  }
+  prev_scroll_y_ = scroll_y;
+
   SDL_Rect prev_clip_rect;
   SDL_GetRenderClipRect(sdl_renderer_.get(), &prev_clip_rect);
 
@@ -250,22 +263,24 @@ void TextRenderer::Render(int scroll_y) {
     SDL_SetRenderDrawColor(sdl_renderer_.get(), 128, 128, 128, 128);
     SDL_FRect clip_rect((float)x_, (float)y_, (float)width_, (float)height_);
     SDL_RenderRect(sdl_renderer_.get(), &clip_rect);
+
     SDL_SetRenderDrawColor(sdl_renderer_.get(), r, g, b, a);
   }
 
   SDL_Rect clip_rect(x_, y_, width_, height_);
-  if (!draw_debug_) {
-    SDL_SetRenderClipRect(sdl_renderer_.get(), &clip_rect);
-  }
 
   SDL_SetRenderDrawBlendMode(sdl_renderer_.get(), SDL_BLENDMODE_BLEND);
 
-  for (auto& line : lines_) {
-    if ((scroll_y + line.max_y) < y_) {
-      continue;
-    }
-    if ((scroll_y + line.min_y) > y_ + height_) {
-      break;
+  for (int line_index = first_visible_line_index_;
+       line_index <= last_visible_line_index_; ++line_index) {
+    auto& line = lines_[line_index];
+
+    bool reset_clipping = false;
+    if (!draw_debug_) {
+      if (line.wrapping != Wrapping::kNoClip) {
+        SDL_SetRenderClipRect(sdl_renderer_.get(), &clip_rect);
+        reset_clipping = true;
+      }
     }
 
     if (draw_debug_) {
@@ -277,22 +292,11 @@ void TextRenderer::Render(int scroll_y) {
           (float)line.align_offset + x_, (float)scroll_y + line.min_y + y_,
           (float)line.line_width, (float)line.max_y - line.min_y};
       SDL_RenderFillRect(sdl_renderer_.get(), &debug_rect);
+
       SDL_SetRenderDrawColor(sdl_renderer_.get(), r, g, b, a);
     }
 
     for (auto& [font, buffers] : line.font_to_buffers) {
-      if (prev_scroll_y_ != scroll_y) {
-        for (size_t i = 0; i < buffers.vertices.size() / 4; ++i) {
-          float y = buffers.original_ys[i];
-          float height = buffers.vertices[i * 4 + 1].position.y -
-                         buffers.vertices[i * 4 + 0].position.y;
-          buffers.vertices[i * 4 + 0].position.y = y + scroll_y;
-          buffers.vertices[i * 4 + 1].position.y = y + height + scroll_y;
-          buffers.vertices[i * 4 + 2].position.y = y + height + scroll_y;
-          buffers.vertices[i * 4 + 3].position.y = y + scroll_y;
-        }
-      }
-
       SDL_Texture* sdl_texture = (SDL_Texture*)font->GetTexture();
       SDL_SetTextureBlendMode(sdl_texture, SDL_BLENDMODE_BLEND);
 
@@ -300,13 +304,53 @@ void TextRenderer::Render(int scroll_y) {
                          buffers.vertices.size(), &buffers.indices[0],
                          buffers.indices.size());
     }
-  }
 
-  if (!draw_debug_) {
-    SDL_SetRenderClipRect(sdl_renderer_.get(), &prev_clip_rect);
+    if (reset_clipping) {
+      SDL_SetRenderClipRect(sdl_renderer_.get(), &prev_clip_rect);
+    }
   }
+}
 
-  prev_scroll_y_ = scroll_y;
+void TextRenderer::updateVisibility(int scroll_y) {
+  first_visible_line_index_ = -1;
+  last_visible_line_index_ = -2;
+
+  for (int line_index = 0; auto& line : lines_) {
+    if ((scroll_y + line.max_y) < y_) {
+      ++line_index;
+      continue;
+    }
+    if ((scroll_y + line.min_y) > y_ + height_) {
+      break;
+    }
+
+    if (first_visible_line_index_ == -1) {
+      first_visible_line_index_ = line_index;
+    }
+
+    last_visible_line_index_ = line_index;
+
+    ++line_index;
+  }
+}
+
+void TextRenderer::updateVisibleLinesPositions(int scroll_y) {
+  for (int line_index = first_visible_line_index_;
+       line_index <= last_visible_line_index_; ++line_index) {
+    auto& line = lines_[line_index];
+
+    for (auto& [font, buffers] : line.font_to_buffers) {
+      for (size_t i = 0; i < buffers.vertices.size() / 4; ++i) {
+        float y = buffers.original_ys[i];
+        float height = buffers.vertices[i * 4 + 1].position.y -
+                       buffers.vertices[i * 4 + 0].position.y;
+        buffers.vertices[i * 4 + 0].position.y = y + scroll_y;
+        buffers.vertices[i * 4 + 1].position.y = y + height + scroll_y;
+        buffers.vertices[i * 4 + 2].position.y = y + height + scroll_y;
+        buffers.vertices[i * 4 + 3].position.y = y + scroll_y;
+      }
+    }
+  }
 }
 
 }  // namespace Text

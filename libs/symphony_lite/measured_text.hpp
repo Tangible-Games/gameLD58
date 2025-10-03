@@ -37,6 +37,7 @@ struct MeasuredGlyph {
 // See: https://www.angelcode.com/products/bmfont/doc/render_text.html.
 struct MeasuredTextLine {
   HorizontalAlignment align{HorizontalAlignment::kLeft};
+  Wrapping wrapping{Wrapping::kClip};
   int line_x_advance{0};
   int line_width{0};
   int line_height{0};
@@ -94,6 +95,7 @@ std::optional<MeasuredText> MeasureText(
     auto* cur_measured_line_ptr = &result.measured_lines.back();
 
     cur_measured_line_ptr->align = paragraph.paragraph_parameters.align;
+    cur_measured_line_ptr->wrapping = paragraph.paragraph_parameters.wrapping;
 
     auto paragraph_font_it = fonts.find(paragraph.font);
     if (paragraph_font_it != fonts.end()) {
