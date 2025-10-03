@@ -74,9 +74,26 @@ int main(int /* argc */, char* /* argv */[]) {
   auto audio = std::make_shared<Symphony::Audio::Device>();
   LOGI("Audio is created.");
 
+  Symphony::Text::TextRenderer system_info_renderer(renderer);
+
+  std::map<std::string, std::shared_ptr<Symphony::Text::Font>>
+      system_info_renderer_fonts;
+  if (kDrawSystemCounters) {
+    auto system_font_20 = Symphony::Text::LoadBmFont("assets/system_20.fnt");
+    system_font_20->LoadTexture(renderer);
+
+    system_info_renderer_fonts.insert(
+        std::make_pair("system_20.fnt", system_font_20));
+
+    system_info_renderer.LoadFromFile("assets/system_counters.txt");
+    system_info_renderer.SetPosition(5, 5);
+    system_info_renderer.SetSizes(10, 272);
+  }
+
   Game game(renderer, audio);
 
   auto prev_frame_start_time{std::chrono::steady_clock::now()};
+  float fps = 0.0f;
   while (game.IsRunning()) {
     auto frame_start_time{std::chrono::steady_clock::now()};
     std::chrono::duration<float> dt_period_seconds{frame_start_time -
@@ -102,6 +119,16 @@ int main(int /* argc */, char* /* argv */[]) {
     SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
     SDL_RenderClear(renderer.get());
     game.Draw();
+    if (kDrawSystemCounters) {
+      fps = (1.0f / dt) * 0.1f + fps * 0.9f;
+      size_t num_playing_audio_streams = audio->GetNumPlaying();
+      system_info_renderer.ReFormat(
+          {{"fps_count", std::format("{:.1f}", fps)},
+           {"audio_streams_playing", std::to_string(num_playing_audio_streams)},
+           {"down_keys", Keyboard::Instance().GetDownKeysListString()}},
+          "system_20.fnt", system_info_renderer_fonts);
+      system_info_renderer.Render(0);
+    }
     SDL_RenderPresent(renderer.get());
 
     if (game.ReadyForLoading()) {

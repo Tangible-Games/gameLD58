@@ -88,5 +88,22 @@ void Game::Load() {
   }
 }
 
-void Game::Draw() { loading_.Draw(); }
+void Game::Draw() {
+  switch (state_) {
+    case State::kJustStarted:
+      loading_.Draw();
+      break;
+    case State::kFirstLoading:
+      loading_.Draw();
+      break;
+    case State::kFadeToDemo:
+      demo_.Draw();
+      loading_.Draw();
+      break;
+    case State::kDemo:
+      demo_.Draw();
+      break;
+  }
+  loading_.Draw();
+}
 }  // namespace gameLD58
