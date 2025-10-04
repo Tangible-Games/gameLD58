@@ -4,9 +4,9 @@
 
 #include <symphony_lite/all_symphony.hpp>
 
-#include "demo.hpp"
 #include "fade_image.hpp"
 #include "keyboard.hpp"
+#include "ufo.hpp"
 
 namespace gameLD58 {
 class Game : public Keyboard::Callback {
@@ -16,7 +16,7 @@ class Game : public Keyboard::Callback {
       : renderer_(renderer),
         audio_(audio),
         loading_(renderer, audio, "assets/loading.png"),
-        demo_(renderer, audio),
+        ufo_(renderer, audio),
         quit_dialog_(renderer, audio, "assets/quit_dialog.png") {
     LOGD("Game is in state 'State::kJustStarted'.");
   }
@@ -48,7 +48,7 @@ class Game : public Keyboard::Callback {
   bool is_running_{true};
   bool ready_for_loading_{false};
   FadeImage loading_;
-  Demo demo_;  // Delete in real game.
+  Ufo ufo_;
   FadeImage quit_dialog_;
   bool show_quit_dialog_{false};
   State state_{State::kJustStarted};
@@ -80,6 +80,7 @@ void Game::Update(float dt) {
       break;
 
     case State::kDemo:
+      ufo_.Update(dt);
       break;
 
     case State::kQuitDialog:
@@ -98,9 +99,9 @@ void Game::Update(float dt) {
 
 void Game::Load() {
   if (state_ == State::kFirstLoading) {
-    demo_.Load();
+    ufo_.Load();
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    // std::this_thread::sleep_for(std::chrono::seconds(5));
 
     ready_for_loading_ = false;
 
@@ -119,13 +120,13 @@ void Game::Draw() {
       loading_.Draw();
       break;
     case State::kFadeToDemo:
-      demo_.Draw();
+      ufo_.Draw();
       loading_.Draw();
       break;
     case State::kDemo:
     case State::kQuitDialog:
     case State::kQuitDialogFadeOut:
-      demo_.Draw();
+      ufo_.Draw();
       if (show_quit_dialog_) {
         quit_dialog_.Draw();
       }
