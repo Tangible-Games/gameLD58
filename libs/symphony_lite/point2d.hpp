@@ -55,3 +55,14 @@ inline bool AreOnLine(const Point2d& p1, const Point2d& p2, const Point2d& p3,
 }
 }  // namespace Math
 }  // namespace Symphony
+
+namespace std {
+template <>
+struct formatter<::Symphony::Math::Point2d> {
+  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+
+  auto format(const ::Symphony::Math::Point2d& p, format_context& ctx) const {
+    return format_to(ctx.out(), "Point2d(x:{}, y:{})", p.x, p.y);
+  }
+};
+}  // namespace std

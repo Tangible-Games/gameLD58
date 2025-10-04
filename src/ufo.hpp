@@ -47,7 +47,7 @@ class Ufo {
   Symphony::Math::Vector2d velocity_{0, 0};
   Symphony::Math::Vector2d acceleration_{0, 0};
 
-  float prevDt_{0};
+  float prevTime_{0};
 };
 
 void Ufo::Load() {
@@ -94,6 +94,24 @@ void Ufo::Load() {
   texture_ = std::shared_ptr<SDL_Texture>(
       IMG_LoadTexture(renderer_.get(), texturePath.c_str()),
       &SDL_DestroyTexture);
+
+  LOGD(
+      "Config:"
+      "\n\t"
+      "rect: {},"
+      "\n\t"
+      "moveAcceleration: {},"
+      "\n\t"
+      "maxVelocity: {},"
+      "\n\t"
+      "dragForce: {}"
+      "\n\t"
+      "driftAcceleration: {}"
+      "\n\t"
+      "driftThreshold: {}",
+      configuration_.rect, configuration_.moveAcceleration,
+      configuration_.maxVelocity, configuration_.dragForce,
+      configuration_.driftAcceleration, configuration_.driftThreshold);
 }
 
 void Ufo::Update(float dt) {
@@ -113,10 +131,11 @@ void Ufo::Update(float dt) {
   velocity_.x = acceleration_.x * dt;
   velocity_.y = acceleration_.y * dt;
 
-  if (std::floor(prevDt_ + dt) > std::floor(prevDt_)) {
-    LOGD("acc: x: {}, y: {}", acceleration_.x, acceleration_.y);
+  auto newTime = prevTime_ + dt;
+  if (std::floor(newTime) > std::floor(prevTime_)) {
+    LOGD("acc: {}", acceleration_);
   }
-  prevDt_ += dt;
+  prevTime_ = newTime;
 
   velocity_.x = std::clamp<float>(velocity_.x, -configuration_.maxVelocity.x,
                                   configuration_.maxVelocity.x);
@@ -137,6 +156,7 @@ void Ufo::Update(float dt) {
   accYAbs = std::max(accYAbs, 0.0f);
   acceleration_.y = std::copysign(accYAbs, acceleration_.y);
 
+  // Add drift, on small acceleration add random
   if (std::abs(acceleration_.x) < configuration_.driftThreshold.x &&
       std::abs(acceleration_.y) < configuration_.driftThreshold.y) {
     // Add random drift when UFO is stopped
@@ -144,6 +164,8 @@ void Ufo::Update(float dt) {
     float ry = ((float)std::rand() - RAND_MAX / 2.0) / ((float)RAND_MAX / 2.0);
     acceleration_.x += configuration_.driftAcceleration.x * rx;
     acceleration_.y += configuration_.driftAcceleration.y * ry;
+    LOGD("drifft acc: x: {}, y: {}", configuration_.driftAcceleration.x * rx,
+         configuration_.driftAcceleration.y * ry);
   }
 }
 

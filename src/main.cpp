@@ -62,6 +62,14 @@ int main(int /* argc */, char* /* argv */[]) {
   }
   LOGI("Window is created.");
 
+  // Enable VSync on host
+#if !defined __PSP__
+  if (!SDL_SetRenderVSync(renderer.get(), 1)) {
+    LOGE("Could not enable VSync! SDL error: {}", SDL_GetError());
+    return 1;
+  }
+#endif
+
   // Fix rendering on linux.
   SDL_Rect clip = {
       .x = 0,
