@@ -16,13 +16,16 @@
         "y": 0.3
     },
     "drift" : {
-        "acceleration": {
-            "x": 50000,
-            "y": 50000
+        "rotate_max": {
+            "deg": 90
         },
-        "threshold": {
-            "x": 4000,
-            "y": 4000
+        "acceleration_multiplier": {
+            "x": 2,
+            "y": 2
+        },
+        "acceleration_threshold": {
+            "x": 2000,
+            "y": 2000
         }
     },
     "texture": "assets/ufo.png"
