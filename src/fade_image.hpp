@@ -20,6 +20,7 @@ class FadeImage {
                &SDL_DestroyTexture) {}
 
   void StartFadeOut(float timeout);
+  void MakeSolid();
   bool IsIdle() const { return state_ == State::kIdle; }
 
   void Update(float dt);
@@ -40,6 +41,12 @@ class FadeImage {
 void FadeImage::StartFadeOut(float timeout) {
   state_ = State::kFadeOut;
   timeout_ = timeout;
+}
+
+void FadeImage::MakeSolid() {
+  state_ = State::kIdle;
+  timeout_ = 0.0f;
+  cur_alpha_ = 1.0f;
 }
 
 void FadeImage::Update(float dt) {
