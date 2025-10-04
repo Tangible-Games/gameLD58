@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <nlohmann/json.hpp>
+#include <numbers>
 #include <symphony_lite/all_symphony.hpp>
 
 #include "consts.hpp"
@@ -39,8 +40,9 @@ class Ufo {
     Symphony::Math::Vector2d maxVelocity{0, 0};
     Symphony::Math::Vector2d moveAcceleration{0, 0};
     Symphony::Math::Vector2d dragCoef{0, 0};
-    Symphony::Math::Vector2d driftAcceleration{0, 0};
+    Symphony::Math::Vector2d driftAccelerationMult{0, 0};
     Symphony::Math::Vector2d driftThreshold{0, 0};
+    float driftRotateMax{0};
   } configuration_;
 
   Symphony::Math::AARect2d rect_{};
@@ -82,13 +84,16 @@ void Ufo::Load() {
       Symphony::Math::Vector2d{config["drag_sec"]["x"].get<float>(),
                                config["drag_sec"]["y"].get<float>()};
 
-  configuration_.driftAcceleration = Symphony::Math::Vector2d{
-      config["drift"]["acceleration"]["x"].get<float>(),
-      config["drift"]["acceleration"]["y"].get<float>()};
+  configuration_.driftRotateMax =
+      Symphony::Math::DegToRad(config["drift"]["rotate_max"]["deg"]);
 
-  configuration_.driftThreshold =
-      Symphony::Math::Vector2d{config["drift"]["threshold"]["x"].get<float>(),
-                               config["drift"]["threshold"]["y"].get<float>()};
+  configuration_.driftAccelerationMult = Symphony::Math::Vector2d{
+      config["drift"]["acceleration_multiplier"]["x"].get<float>(),
+      config["drift"]["acceleration_multiplier"]["y"].get<float>()};
+
+  configuration_.driftThreshold = Symphony::Math::Vector2d{
+      config["drift"]["acceleration_threshold"]["x"].get<float>(),
+      config["drift"]["acceleration_threshold"]["y"].get<float>()};
 
   const std::string texturePath = config["texture"].get<std::string>();
   texture_ = std::shared_ptr<SDL_Texture>(
@@ -106,12 +111,18 @@ void Ufo::Load() {
       "\n\t"
       "dragCoef: {}"
       "\n\t"
+      "driftRotateMax: {}",
+      "\n\t"
       "driftAcceleration: {}"
       "\n\t"
       "driftThreshold: {}",
       rect_, configuration_.moveAcceleration, configuration_.maxVelocity,
-      configuration_.dragCoef, configuration_.driftAcceleration,
-      configuration_.driftThreshold);
+      configuration_.dragCoef, configuration_.driftRotateMax,
+      configuration_.driftAccelerationMult, configuration_.driftThreshold);
+}
+
+inline float randMinusOneToOne() {
+  return 1.0 - (2.0 * ((float)std::rand() / RAND_MAX));
 }
 
 void Ufo::Update(float dt) {
@@ -151,12 +162,10 @@ void Ufo::Update(float dt) {
   if (std::abs(acceleration_.x) < configuration_.driftThreshold.x &&
       std::abs(acceleration_.y) < configuration_.driftThreshold.y) {
     // Add random drift when UFO is stopped
-    float rx = ((float)std::rand() - RAND_MAX / 2.0) / ((float)RAND_MAX / 2.0);
-    float ry = ((float)std::rand() - RAND_MAX / 2.0) / ((float)RAND_MAX / 2.0);
-    acceleration_.x += configuration_.driftAcceleration.x * rx;
-    acceleration_.y += configuration_.driftAcceleration.y * ry;
-    LOGD("drifft acc: x: {}, y: {}", configuration_.driftAcceleration.x * rx,
-         configuration_.driftAcceleration.y * ry);
+    float rotate = randMinusOneToOne() * configuration_.driftRotateMax;
+    acceleration_.Rotate(rotate);
+    acceleration_.x *= configuration_.driftAccelerationMult.x;
+    acceleration_.y *= configuration_.driftAccelerationMult.y;
   }
 
   // Dump acceleration once a second for debug
