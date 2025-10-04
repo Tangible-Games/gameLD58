@@ -8,12 +8,11 @@
 #include <cmath>
 #include <cstdlib>
 #include <nlohmann/json.hpp>
-#include <numbers>
 #include <symphony_lite/all_symphony.hpp>
 
 #include "consts.hpp"
 #include "keyboard.hpp"
-#include "symphony_lite/vector2d.hpp"
+#include "utils.hpp"
 
 namespace gameLD58 {
 class Ufo {
@@ -121,10 +120,6 @@ void Ufo::Load() {
       configuration_.driftAccelerationMult, configuration_.driftThreshold);
 }
 
-inline float randMinusOneToOne() {
-  return 1.0 - (2.0 * ((float)std::rand() / RAND_MAX));
-}
-
 void Ufo::Update(float dt) {
   // Handle keys
   if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadLeft).has_value()) {
@@ -174,15 +169,6 @@ void Ufo::Update(float dt) {
     LOGD("acc: {}, velocity: {}, pos: {}", acceleration_, velocity_, rect_);
   }
   prevTime_ = newTime;
-}
-
-inline SDL_FRect AARectToSdlFRect(Symphony::Math::AARect2d inp) {
-  SDL_FRect out;
-  out.x = inp.center.x - inp.half_size.x;
-  out.y = inp.center.y - inp.half_size.y;
-  out.w = inp.half_size.x * 2;
-  out.h = inp.half_size.y * 2;
-  return out;
 }
 
 void Ufo::Draw() {
