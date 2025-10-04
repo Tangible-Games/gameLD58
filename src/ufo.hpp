@@ -47,7 +47,7 @@ class Ufo {
   Symphony::Math::Vector2d velocity_{0, 0};
   Symphony::Math::Vector2d acceleration_{0, 0};
 
-  float prevDt_{0};
+  float prevTime_{0};
 };
 
 void Ufo::Load() {
@@ -131,10 +131,11 @@ void Ufo::Update(float dt) {
   velocity_.x = acceleration_.x * dt;
   velocity_.y = acceleration_.y * dt;
 
-  if (std::floor(prevDt_ + dt) > std::floor(prevDt_)) {
+  auto newTime = prevTime_ + dt;
+  if (std::floor(newTime) > std::floor(prevTime_)) {
     LOGD("acc: {}", acceleration_);
   }
-  prevDt_ += dt;
+  prevTime_ = newTime;
 
   velocity_.x = std::clamp<float>(velocity_.x, -configuration_.maxVelocity.x,
                                   configuration_.maxVelocity.x);
