@@ -138,6 +138,8 @@ int main(int /* argc */, char* /* argv */[]) {
     }
   }
 
+  LOGI("Exiting main loop.");
+
   renderer.reset();
 
   SDL_DestroyWindow(window);
