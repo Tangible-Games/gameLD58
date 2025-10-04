@@ -4,21 +4,21 @@
         "height": 50
     },
     "acceleration": {
-        "x": 30,
-        "y": 30
+        "x": 300,
+        "y": 300
     },
     "max_velocity": {
         "x": 60,
         "y": 40
     },
-    "drag_force": {
-        "x": 1,
-        "y": 1
+    "drag_sec": {
+        "x": 0.3,
+        "y": 0.3
     },
     "drift" : {
         "acceleration": {
-            "x": 500000,
-            "y": 500000
+            "x": 50000,
+            "y": 50000
         },
         "threshold": {
             "x": 4000,

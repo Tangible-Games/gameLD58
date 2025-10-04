@@ -36,14 +36,14 @@ class Ufo {
   std::shared_ptr<SDL_Texture> texture_{};
 
   struct Configuration {
-    Symphony::Math::AARect2d rect{};
     Symphony::Math::Vector2d maxVelocity{0, 0};
     Symphony::Math::Vector2d moveAcceleration{0, 0};
-    Symphony::Math::Vector2d dragForce{0, 0};
+    Symphony::Math::Vector2d dragCoef{0, 0};
     Symphony::Math::Vector2d driftAcceleration{0, 0};
     Symphony::Math::Vector2d driftThreshold{0, 0};
   } configuration_;
 
+  Symphony::Math::AARect2d rect_{};
   Symphony::Math::Vector2d velocity_{0, 0};
   Symphony::Math::Vector2d acceleration_{0, 0};
 
@@ -65,7 +65,7 @@ void Ufo::Load() {
   file.close();
 
   // Parse configuration
-  configuration_.rect = Symphony::Math::AARect2d{
+  rect_ = Symphony::Math::AARect2d{
       Symphony::Math::Point2d{kScreenWidth / 2.0, kScreenHeight / 2.0},
       Symphony::Math::Vector2d{config["size"]["width"].get<float>() / 2.0f,
                                config["size"]["height"].get<float>() / 2.0f}};
@@ -78,9 +78,9 @@ void Ufo::Load() {
       Symphony::Math::Vector2d{config["max_velocity"]["x"].get<float>(),
                                config["max_velocity"]["y"].get<float>()};
 
-  configuration_.dragForce =
-      Symphony::Math::Vector2d{config["drag_force"]["x"].get<float>(),
-                               config["drag_force"]["y"].get<float>()};
+  configuration_.dragCoef =
+      Symphony::Math::Vector2d{config["drag_sec"]["x"].get<float>(),
+                               config["drag_sec"]["y"].get<float>()};
 
   configuration_.driftAcceleration = Symphony::Math::Vector2d{
       config["drift"]["acceleration"]["x"].get<float>(),
@@ -104,17 +104,18 @@ void Ufo::Load() {
       "\n\t"
       "maxVelocity: {},"
       "\n\t"
-      "dragForce: {}"
+      "dragCoef: {}"
       "\n\t"
       "driftAcceleration: {}"
       "\n\t"
       "driftThreshold: {}",
-      configuration_.rect, configuration_.moveAcceleration,
-      configuration_.maxVelocity, configuration_.dragForce,
-      configuration_.driftAcceleration, configuration_.driftThreshold);
+      rect_, configuration_.moveAcceleration, configuration_.maxVelocity,
+      configuration_.dragCoef, configuration_.driftAcceleration,
+      configuration_.driftThreshold);
 }
 
 void Ufo::Update(float dt) {
+  // Handle keys
   if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadLeft).has_value()) {
     acceleration_.x -= configuration_.moveAcceleration.x;
   }
@@ -128,33 +129,23 @@ void Ufo::Update(float dt) {
     acceleration_.y += configuration_.moveAcceleration.y;
   }
 
+  // Calculate velocity
   velocity_.x = acceleration_.x * dt;
   velocity_.y = acceleration_.y * dt;
 
-  auto newTime = prevTime_ + dt;
-  if (std::floor(newTime) > std::floor(prevTime_)) {
-    LOGD("acc: {}", acceleration_);
-  }
-  prevTime_ = newTime;
-
+  // Limit max speed
   velocity_.x = std::clamp<float>(velocity_.x, -configuration_.maxVelocity.x,
                                   configuration_.maxVelocity.x);
   velocity_.y = std::clamp<float>(velocity_.y, -configuration_.maxVelocity.y,
                                   configuration_.maxVelocity.y);
 
-  configuration_.rect.center.x += velocity_.x * dt;
-  configuration_.rect.center.y += velocity_.y * dt;
+  // Move UFO
+  rect_.center.x += velocity_.x * dt;
+  rect_.center.y += velocity_.y * dt;
 
   // Add some drag, acceleration is decreasing
-  float accXAbs = std::abs(acceleration_.x);
-  accXAbs -= configuration_.dragForce.x * std::abs(velocity_.x);
-  accXAbs = std::max(accXAbs, 0.0f);
-  acceleration_.x = std::copysign(accXAbs, acceleration_.x);
-
-  float accYAbs = std::abs(acceleration_.y);
-  accYAbs -= configuration_.dragForce.y * std::abs(velocity_.y);
-  accYAbs = std::max(accYAbs, 0.0f);
-  acceleration_.y = std::copysign(accYAbs, acceleration_.y);
+  acceleration_.x *= std::pow(configuration_.dragCoef.x, dt);
+  acceleration_.y *= std::pow(configuration_.dragCoef.y, dt);
 
   // Add drift, on small acceleration add random
   if (std::abs(acceleration_.x) < configuration_.driftThreshold.x &&
@@ -167,6 +158,13 @@ void Ufo::Update(float dt) {
     LOGD("drifft acc: x: {}, y: {}", configuration_.driftAcceleration.x * rx,
          configuration_.driftAcceleration.y * ry);
   }
+
+  // Dump acceleration once a second for debug
+  auto newTime = prevTime_ + dt;
+  if (std::floor(newTime) > std::floor(prevTime_)) {
+    LOGD("acc: {}, velocity: {}, pos: {}", acceleration_, velocity_, rect_);
+  }
+  prevTime_ = newTime;
 }
 
 inline SDL_FRect AARectToSdlFRect(Symphony::Math::AARect2d inp) {
@@ -179,7 +177,7 @@ inline SDL_FRect AARectToSdlFRect(Symphony::Math::AARect2d inp) {
 }
 
 void Ufo::Draw() {
-  SDL_FRect rect = AARectToSdlFRect(configuration_.rect);
+  SDL_FRect rect = AARectToSdlFRect(rect_);
   SDL_RenderTexture(renderer_.get(), texture_.get(), NULL, &rect);
 }
 
