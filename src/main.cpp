@@ -116,7 +116,7 @@ int main(int /* argc */, char* /* argv */[]) {
 
     game.Update(dt);
 
-    SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
+    SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 255);
     SDL_RenderClear(renderer.get());
     game.Draw();
     if (kDrawSystemCounters) {
