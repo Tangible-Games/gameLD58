@@ -6,3 +6,5 @@
 subprojects/*/
 subprojects/wrapdb.json
 .vscode/
+.clangd
+.cache/
