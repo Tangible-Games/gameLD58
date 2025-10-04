@@ -14,12 +14,17 @@ class FadeImage {
   FadeImage(std::shared_ptr<SDL_Renderer> renderer,
             std::shared_ptr<Symphony::Audio::Device> audio,
             const std::string& static_image_path)
-      : renderer_(renderer),
-        audio_(audio),
-        image_(IMG_LoadTexture(renderer.get(), static_image_path.c_str()),
-               &SDL_DestroyTexture) {}
+      : renderer_(renderer), audio_(audio) {
+    if (!static_image_path.empty()) {
+      image_.reset(IMG_LoadTexture(renderer.get(), static_image_path.c_str()),
+                   &SDL_DestroyTexture);
+    }
+  }
+
+  void Load(const std::string& static_image_path);
 
   void StartFadeOut(float timeout);
+  void StartFadeIn(float timeout);
   void MakeSolid();
   bool IsIdle() const { return state_ == State::kIdle; }
 
@@ -27,7 +32,7 @@ class FadeImage {
   void Draw();
 
  private:
-  enum class State { kIdle, kFadeOut };
+  enum class State { kIdle, kFadeOut, kFadeIn };
 
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
@@ -38,8 +43,19 @@ class FadeImage {
   float cur_alpha_{1.0f};
 };
 
+void FadeImage::Load(const std::string& static_image_path) {
+  image_.reset(IMG_LoadTexture(renderer_.get(), static_image_path.c_str()),
+               &SDL_DestroyTexture);
+}
+
 void FadeImage::StartFadeOut(float timeout) {
   state_ = State::kFadeOut;
+  timeout_ = timeout;
+  running_time_ = 0.0f;
+}
+
+void FadeImage::StartFadeIn(float timeout) {
+  state_ = State::kFadeIn;
   timeout_ = timeout;
   running_time_ = 0.0f;
 }
@@ -63,6 +79,15 @@ void FadeImage::Update(float dt) {
         state_ = State::kIdle;
       }
       cur_alpha_ = (timeout_ - running_time_) / timeout_;
+      break;
+
+    case State::kFadeIn:
+      running_time_ += dt;
+      if (running_time_ > timeout_) {
+        running_time_ = timeout_;
+        state_ = State::kIdle;
+      }
+      cur_alpha_ = running_time_ / timeout_;
       break;
   }
 }

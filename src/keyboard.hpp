@@ -97,10 +97,10 @@ class Keyboard {
   std::list<Key> GetDownKeys() const;
   std::string GetDownKeysListString() const;
 
-  void RegisterCallback(Callback* callback);
+  Callback* RegisterCallback(Callback* callback);
 
  private:
-  std::unordered_set<Callback*> callbacks_;
+  Callback* callback_{nullptr};
   std::unordered_map<Key, KeyDown> keys_;
 };
 
@@ -235,14 +235,14 @@ void Keyboard::OnEvent(SDL_Event* sdl_event) {
 
   if (key != Key::kUnknown) {
     if (is_down) {
-      for (auto* callback : callbacks_) {
-        callback->OnKeyDown(key);
+      if (callback_) {
+        callback_->OnKeyDown(key);
       }
 
       keys_.insert(std::make_pair(key, KeyDown()));
     } else {
-      for (auto* callback : callbacks_) {
-        callback->OnKeyUp(key);
+      if (callback_) {
+        callback_->OnKeyUp(key);
       }
 
       keys_.erase(key);
@@ -290,7 +290,9 @@ std::string Keyboard::GetDownKeysListString() const {
   return result;
 }
 
-void Keyboard::RegisterCallback(Callback* callback) {
-  callbacks_.insert(callback);
+Keyboard::Callback* Keyboard::RegisterCallback(Callback* callback) {
+  Callback* prev_callback = callback_;
+  callback_ = callback;
+  return prev_callback;
 }
 }  // namespace gameLD58

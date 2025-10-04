@@ -6,18 +6,22 @@
 
 #include "fade_image.hpp"
 #include "keyboard.hpp"
+#include "quit_dialog.hpp"
+#include "title_screen.hpp"
 #include "ufo.hpp"
 
 namespace gameLD58 {
-class Game : public Keyboard::Callback {
+class Game : public TitleScreen::Callback, public QuitDialog::Callback {
  public:
   Game(std::shared_ptr<SDL_Renderer> renderer,
        std::shared_ptr<Symphony::Audio::Device> audio)
       : renderer_(renderer),
         audio_(audio),
         loading_(renderer, audio, "assets/loading.png"),
+        title_screen_(renderer, audio),
+        fade_in_out_(renderer, audio, ""),
         ufo_(renderer, audio),
-        quit_dialog_(renderer, audio, "assets/quit_dialog.png") {
+        quit_dialog_(renderer, audio) {
     LOGD("Game is in state 'State::kJustStarted'.");
   }
 
@@ -30,17 +34,21 @@ class Game : public Keyboard::Callback {
   void Load();
   void Draw();
 
-  void OnKeyDown(Keyboard::Key key) override;
-  void OnKeyUp(Keyboard::Key key) override;
+  void ToGame() override;
+  void TryExitFromTitleScreen() override;
+
+  void BackToGame() override;
+  void QuitGame() override;
 
  private:
   enum class State {
     kJustStarted,
     kFirstLoading,
-    kFadeToDemo,
-    kDemo,
-    kQuitDialog,
-    kQuitDialogFadeOut,
+    kFadeToTitleScreen,
+    kTitleScreen,
+    kToGameFadeIn,
+    kToGameFadeOut,
+    kGame,
   };
 
   std::shared_ptr<SDL_Renderer> renderer_;
@@ -48,9 +56,12 @@ class Game : public Keyboard::Callback {
   bool is_running_{true};
   bool ready_for_loading_{false};
   FadeImage loading_;
+  TitleScreen title_screen_;
+  FadeImage fade_in_out_;
   Ufo ufo_;
-  FadeImage quit_dialog_;
+  QuitDialog quit_dialog_;
   bool show_quit_dialog_{false};
+  Keyboard::Callback* prev_keyboard_callback_{nullptr};
   State state_{State::kJustStarted};
   int just_started_updates_{30};
 };
@@ -71,44 +82,59 @@ void Game::Update(float dt) {
     case State::kFirstLoading:
       break;
 
-    case State::kFadeToDemo:
+    case State::kFadeToTitleScreen:
       if (loading_.IsIdle()) {
-        state_ = State::kDemo;
-        Keyboard::Instance().RegisterCallback(this);
-        LOGD("Game switches to state 'State::kDemo'.");
+        state_ = State::kTitleScreen;
+        title_screen_.RegisterCallback(this);
+        Keyboard::Instance().RegisterCallback(&title_screen_);
+        LOGD("Game switches to state 'State::kTitleScreen'.");
       }
       break;
 
-    case State::kDemo:
+    case State::kTitleScreen:
+      break;
+
+    case State::kToGameFadeIn:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        fade_in_out_.StartFadeOut(0.5f);
+        state_ = State::kToGameFadeOut;
+        LOGD("Game switches to state 'State::kToGameFadeOut'.");
+      }
+      break;
+
+    case State::kToGameFadeOut:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        state_ = State::kGame;
+        LOGD("Game switches to state 'State::kGame'.");
+      }
+      break;
+
+    case State::kGame:
       ufo_.Update(dt);
       break;
+  }
 
-    case State::kQuitDialog:
-      quit_dialog_.Update(dt);
-      break;
-
-    case State::kQuitDialogFadeOut:
-      quit_dialog_.Update(dt);
-      if (quit_dialog_.IsIdle()) {
-        show_quit_dialog_ = false;
-        state_ = State::kDemo;
-        LOGD("Game switches to state 'State::kDemo'.");
-      }
-      break;
+  if (show_quit_dialog_) {
+    quit_dialog_.Update(dt);
   }
 }
 
 void Game::Load() {
   if (state_ == State::kFirstLoading) {
     ufo_.Load();
+    title_screen_.Load();
+    fade_in_out_.Load("assets/fade_in_out.png");
+    quit_dialog_.Load();
 
     // std::this_thread::sleep_for(std::chrono::seconds(5));
 
     ready_for_loading_ = false;
 
     loading_.StartFadeOut(1.0f);
-    state_ = State::kFadeToDemo;
-    LOGD("Game switches to state 'State::kFadeToDemo'.");
+    state_ = State::kFadeToTitleScreen;
+    LOGD("Game switches to state 'State::kFadeToTitleScreen'.");
   }
 }
 
@@ -120,41 +146,55 @@ void Game::Draw() {
     case State::kFirstLoading:
       loading_.Draw();
       break;
-    case State::kFadeToDemo:
-      ufo_.Draw();
+    case State::kFadeToTitleScreen:
+      title_screen_.Draw();
       loading_.Draw();
       break;
-    case State::kDemo:
-    case State::kQuitDialog:
-    case State::kQuitDialogFadeOut:
-      ufo_.Draw();
-      if (show_quit_dialog_) {
-        quit_dialog_.Draw();
-      }
+    case State::kTitleScreen:
+      title_screen_.Draw();
       break;
+    case State::kToGameFadeIn:
+      title_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kToGameFadeOut:
+      ufo_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kGame:
+      ufo_.Draw();
+      break;
+  }
+
+  if (show_quit_dialog_) {
+    quit_dialog_.Draw();
   }
 }
 
-void Game::OnKeyDown(Keyboard::Key /*key*/) {}
+void Game::ToGame() {
+  fade_in_out_.StartFadeIn(0.5f);
+  state_ = State::kToGameFadeIn;
+  LOGD("Game switches to state 'State::kToGameFadeIn'.");
+}
 
-void Game::OnKeyUp(Keyboard::Key key) {
-  if (state_ == State::kDemo) {
-    if (key == Keyboard::Key::kSelect) {
-      show_quit_dialog_ = true;
-      quit_dialog_.MakeSolid();
+void Game::TryExitFromTitleScreen() {
+  show_quit_dialog_ = true;
+  quit_dialog_.Show();
+  quit_dialog_.RegisterCallback(this);
+  prev_keyboard_callback_ =
+      Keyboard::Instance().RegisterCallback(&quit_dialog_);
 
-      state_ = State::kQuitDialog;
-      LOGD("Game switches to state 'State::kQuitDialog'.");
-    }
-  } else if (state_ == State::kQuitDialog) {
-    if (key == Keyboard::Key::kX) {
-      is_running_ = false;
-      LOGD("Game quits.");
-    } else if (key == Keyboard::Key::kCircle || key == Keyboard::Key::kSelect) {
-      quit_dialog_.StartFadeOut(0.25f);
-      state_ = State::kQuitDialogFadeOut;
-      LOGD("Game switches to state 'State::kQuitDialogFadeOut'.");
-    }
-  }
+  LOGD("Game shows Quit dialog from Title screen.");
+}
+
+void Game::BackToGame() {
+  show_quit_dialog_ = false;
+  Keyboard::Instance().RegisterCallback(prev_keyboard_callback_);
+  LOGD("Quit dialog requests going back to game.");
+}
+
+void Game::QuitGame() {
+  is_running_ = false;
+  LOGD("Quit dialog requests quitting.");
 }
 }  // namespace gameLD58
