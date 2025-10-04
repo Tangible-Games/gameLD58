@@ -52,7 +52,7 @@ class Game : public Keyboard::Callback {
   FadeImage quit_dialog_;
   bool show_quit_dialog_{false};
   State state_{State::kJustStarted};
-  int just_started_updates_{60};
+  int just_started_updates_{30};
 };
 
 void Game::Update(float dt) {
@@ -89,6 +89,7 @@ void Game::Update(float dt) {
     case State::kQuitDialogFadeOut:
       quit_dialog_.Update(dt);
       if (quit_dialog_.IsIdle()) {
+        show_quit_dialog_ = false;
         state_ = State::kDemo;
         LOGD("Game switches to state 'State::kDemo'.");
       }
@@ -145,11 +146,11 @@ void Game::OnKeyUp(Keyboard::Key key) {
       LOGD("Game switches to state 'State::kQuitDialog'.");
     }
   } else if (state_ == State::kQuitDialog) {
-    if (key == Keyboard::Key::kSelect) {
+    if (key == Keyboard::Key::kX) {
       is_running_ = false;
       LOGD("Game quits.");
-    } else if (key == Keyboard::Key::kCircle) {
-      quit_dialog_.StartFadeOut(0.5f);
+    } else if (key == Keyboard::Key::kCircle || key == Keyboard::Key::kSelect) {
+      quit_dialog_.StartFadeOut(0.25f);
       state_ = State::kQuitDialogFadeOut;
       LOGD("Game switches to state 'State::kQuitDialogFadeOut'.");
     }

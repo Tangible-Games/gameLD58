@@ -41,11 +41,13 @@ class FadeImage {
 void FadeImage::StartFadeOut(float timeout) {
   state_ = State::kFadeOut;
   timeout_ = timeout;
+  running_time_ = 0.0f;
 }
 
 void FadeImage::MakeSolid() {
   state_ = State::kIdle;
   timeout_ = 0.0f;
+  running_time_ = 0.0f;
   cur_alpha_ = 1.0f;
 }
 
