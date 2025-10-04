@@ -198,3 +198,15 @@ inline bool AARect2d::Intersect(const AARect2d& rect) {
 
 }  // namespace Math
 }  // namespace Symphony
+
+namespace std {
+template <>
+struct formatter<::Symphony::Math::AARect2d> {
+  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+
+  auto format(const ::Symphony::Math::AARect2d& r, format_context& ctx) const {
+    return format_to(ctx.out(), "AARect2d(center:{}, half_size:{})", r.center,
+                     r.half_size);
+  }
+};
+}  // namespace std

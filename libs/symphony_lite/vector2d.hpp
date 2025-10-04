@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+#include <format>
 #include <iostream>
 
 namespace Symphony {
@@ -88,5 +89,17 @@ class Vector2d {
   float x;
   float y;
 };
+
 }  // namespace Math
 }  // namespace Symphony
+
+namespace std {
+template <>
+struct formatter<::Symphony::Math::Vector2d> {
+  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+
+  auto format(const ::Symphony::Math::Vector2d& v, format_context& ctx) const {
+    return format_to(ctx.out(), "Vector2d(x:{}, y:{})", v.x, v.y);
+  }
+};
+}  // namespace std
