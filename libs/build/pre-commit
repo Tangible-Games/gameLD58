@@ -1,14 +1,29 @@
 #!/bin/sh
 #
 
-src="$(git rev-parse --show-toplevel)"
-builddir=$(mktemp -d -p "$src")
+set -euo pipefail          # bail on errors, unset vars, pipe failures
 
-if ! command -v clang-format >/dev/null 2>&1
-then
+if ! command -v clang-format >/dev/null 2>&1; then
     exit 0
 fi
 
-(cd "$src"; meson setup "$builddir" && ninja -C "$builddir" clang-format && git add $(git ls-files -m)) > /dev/null 2>&1
 
-rm -rf "$builddir"
+# Collect all staged files that are C/C++ sources or headers
+readarray -t staged_files < <(
+    git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '\.(c|cpp|cxx|cc|h|hpp|cu)$'
+)
+
+# Nothing to format – exit cleanly
+if [ ${#staged_files[@]} -eq 0 ]; then
+    exit 0
+fi
+
+# Run clang-format on those files
+echo "Running clang-format on ${#staged_files[@]} staged file(s)..."
+clang-format -i -style=file "${staged_files[@]}"
+
+# Re‑add the formatted files to the index
+git add "${staged_files[@]}"
+
+exit 0
