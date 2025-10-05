@@ -64,6 +64,12 @@ class Level {
     oss << ifs.rdbuf();
     return oss.str();
   }
+
+  static inline float shortest_delta(float a, float b, float L) {
+    float d = a - b;
+    d -= L * std::floor((d + L * 0.5f) / L);
+    return d;
+  }
 };
 
 void Level::Load() {
@@ -161,7 +167,17 @@ void Level::Draw() {
     }
   }
 
-  ufo_.Draw();
+  auto ub = ufo_.GetBounds();
+  auto dx = shortest_delta(ub.center.x, cam_x_, l);
+
+  float x = kScreenWidth * 0.5f + dx - ub.half_size.x;
+  float y = kScreenHeight * 0.5f + (ub.center.y - cam_y_) - ub.half_size.y;
+  SDL_FRect dst{x, y, 2.f * ub.half_size.x, 2.f * ub.half_size.y};
+
+  if (!(dst.x + dst.w <= 0.f || dst.x >= kScreenWidth || dst.y + dst.h <= 0.f ||
+        dst.y >= kScreenHeight)) {
+    ufo_.DrawTo(dst);
+  }
 }
 
 void Level::Update(float dt) {
@@ -171,10 +187,43 @@ void Level::Update(float dt) {
 
   ufo_.Update(dt);
   // Add collisions here:
-  ufo_.SetPosition(ufo_.GetBounds().center + ufo_.GetVelocity() * dt);
+  auto ufo_center = ufo_.GetBounds().center + ufo_.GetVelocity() * dt;
+  if (ufo_center.x > level_config_.length) {
+    ufo_center.x -=
+        level_config_.length * std::floor(ufo_center.x / level_config_.length);
+  }
+  if (ufo_center.y < 0.f) {
+    ufo_center.y = 0.f;
+  } else if (ufo_center.y > level_config_.height) {
+    ufo_center.y = level_config_.height;
+  }
+  ufo_.SetPosition(ufo_center);
 
-  cam_x_ = ufo_.GetBounds().center.x;
-  cam_y_ = ufo_.GetBounds().center.y;
+  float dead_left = 100.f;
+  float dead_right = 100.f;
+
+  float dx = ufo_.GetBounds().center.x - cam_x_;
+  dx -= level_config_.length *
+        std::floor((dx + level_config_.length * 0.5f) / level_config_.length);
+
+  float ufo_screen_x = kScreenWidth * 0.5f + dx;
+
+  if (ufo_screen_x > kScreenWidth - dead_right) {
+    cam_x_ += ufo_screen_x - (kScreenWidth - dead_right);
+  } else if (ufo_screen_x < dead_left) {
+    cam_x_ -= (dead_left - ufo_screen_x);
+  }
+
+  cam_x_ -= level_config_.length * std::floor(cam_x_ / level_config_.length);
+
+  float min_center = 0.5f * kScreenHeight;
+  float max_center =
+      std::max(min_center, level_config_.height - 0.5f * kScreenHeight);
+  if (level_config_.height <= kScreenHeight) {
+    cam_y_ = min_center;
+  } else {
+    cam_y_ = std::clamp(ufo_.GetBounds().center.y, min_center, max_center);
+  }
 }
 
 void Level::Start(bool is_paused) {
