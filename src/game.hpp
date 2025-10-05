@@ -9,7 +9,6 @@
 #include "level.hpp"
 #include "quit_dialog.hpp"
 #include "title_screen.hpp"
-#include "ufo.hpp"
 
 namespace gameLD58 {
 class Game : public TitleScreen::Callback, public QuitDialog::Callback {
@@ -21,8 +20,7 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
         loading_(renderer, audio, "assets/loading.png"),
         title_screen_(renderer, audio),
         fade_in_out_(renderer, audio, ""),
-        ufo_(renderer, audio),
-        level_(renderer, "assets/level.json"),
+        level_(renderer, audio, "assets/level.json"),
         quit_dialog_(renderer, audio) {
     LOGD("Game is in state 'State::kJustStarted'.");
   }
@@ -60,7 +58,6 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
   FadeImage loading_;
   TitleScreen title_screen_;
   FadeImage fade_in_out_;
-  Ufo ufo_;
   Level level_;
   QuitDialog quit_dialog_;
   bool show_quit_dialog_{false};
@@ -116,7 +113,6 @@ void Game::Update(float dt) {
 
     case State::kGame:
       level_.Update(dt);
-      ufo_.Update(dt);
       break;
   }
 
@@ -128,7 +124,6 @@ void Game::Update(float dt) {
 void Game::Load() {
   if (state_ == State::kFirstLoading) {
     level_.Load();
-    ufo_.Load();
     title_screen_.Load();
     fade_in_out_.Load("assets/fade_in_out.png");
     quit_dialog_.Load();
@@ -164,12 +159,10 @@ void Game::Draw() {
       break;
     case State::kToGameFadeOut:
       level_.Draw();
-      ufo_.Draw();
       fade_in_out_.Draw();
       break;
     case State::kGame:
       level_.Draw();
-      ufo_.Draw();
       break;
   }
 

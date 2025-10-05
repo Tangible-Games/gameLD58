@@ -6,11 +6,12 @@
 #include <cmath>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <symphony_lite/aa_rect2d.hpp>
+#include <symphony_lite/log.hpp>
 #include <vector>
 
-#include "./libs/symphony_lite/log.hpp"
 #include "consts.hpp"
-#include "libs/symphony_lite/aa_rect2d.hpp"
+#include "ufo.hpp"
 
 namespace gameLD58 {
 
@@ -28,8 +29,12 @@ struct Config {
 
 class Level {
  public:
-  Level(std::shared_ptr<SDL_Renderer> renderer, std::string path)
-      : renderer_(renderer), level_path_(std::move(path)) {}
+  Level(std::shared_ptr<SDL_Renderer> renderer,
+        std::shared_ptr<Symphony::Audio::Device> audio, std::string path)
+      : renderer_(renderer),
+        audio_(audio),
+        level_path_(std::move(path)),
+        ufo_(renderer, audio) {}
 
   void Load();
   void Draw();
@@ -37,9 +42,11 @@ class Level {
 
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
+  std::shared_ptr<Symphony::Audio::Device> audio_;
   std::string level_path_;
   Config level_config_;
   std::vector<Object> objects_;
+  Ufo ufo_;
   float cam_x_;
   float cam_y_;
   const float scroll_speed_ = 70.f;
@@ -105,6 +112,8 @@ void Level::Load() {
        config.spawn_x, config.spawn_y, objects_.size());
 
   level_config_ = std::move(config);
+
+  ufo_.Load();
 }
 
 void Level::Draw() {
@@ -140,6 +149,8 @@ void Level::Draw() {
     if (need_wrap && crosses_left) draw_one(cx - l);
     if (need_wrap && crosses_right) draw_one(cx + l);
   }
+
+  ufo_.Draw();
 }
 
 void Level::Update(float dt) {
@@ -180,6 +191,8 @@ void Level::Update(float dt) {
       y = max_center;
     cam_y_ = y;
   }
+
+  ufo_.Update(dt);
 }
 
 }  // namespace gameLD58
