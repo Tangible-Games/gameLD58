@@ -27,8 +27,13 @@ struct Config {
   Symphony::Math::Point2d ufo_spawn;
 };
 
-class Level {
+class Level : public Keyboard::Callback {
  public:
+  class Callback {
+   public:
+    virtual void TryExitFromLevel() = 0;
+  };
+
   Level(std::shared_ptr<SDL_Renderer> renderer,
         std::shared_ptr<Symphony::Audio::Device> audio, std::string path)
       : renderer_(renderer),
@@ -44,12 +49,18 @@ class Level {
 
   void SetIsPaused(bool is_paused);
 
+  void OnKeyDown(Keyboard::Key key) override;
+  void OnKeyUp(Keyboard::Key key) override;
+
+  void RegisterCallback(Callback* callback_);
+
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
   std::string level_path_;
   Config level_config_;
   bool is_paused_{false};
+  Callback* callback_{nullptr};
   std::vector<Object> objects_;
   std::vector<Human> humans_;
   Ufo ufo_;
@@ -268,5 +279,17 @@ void Level::SetIsPaused(bool is_paused) {
   is_paused_ = is_paused;
   ufo_.SetIsPaused(is_paused);
 }
+
+void Level::OnKeyDown(Keyboard::Key /*key*/) {}
+
+void Level::OnKeyUp(Keyboard::Key key) {
+  if (key == Keyboard::Key::kSelect) {
+    if (callback_) {
+      callback_->TryExitFromLevel();
+    }
+  }
+}
+
+void Level::RegisterCallback(Callback* callback) { callback_ = callback; }
 
 }  // namespace gameLD58
