@@ -1,0 +1,9 @@
+{
+    "accelerationY": {
+        "capturing": 2000,
+        "falling": 5000
+    },
+    "velocityY": {
+        "deadly": 30
+    }
+}

@@ -278,8 +278,13 @@ void Level::Update(float dt) {
     }
   }
 
-  for (auto& h : humans_) {
-    h.Update(dt);
+  for (auto h = humans_.begin(); h != humans_.end();) {
+    if (!h->Update(dt)) {
+      LOGD("Dead");
+      h = humans_.erase(h);
+    } else {
+      h++;
+    }
   }
 }
 
