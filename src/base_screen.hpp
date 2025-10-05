@@ -13,6 +13,7 @@ class BaseScreen : public Keyboard::Callback {
  public:
   class Callback {
    public:
+    virtual void ToMarketFromBaseScreen() = 0;
     virtual void ContinueFromBaseScreen() = 0;
     virtual void TryExitFromBaseScreen() = 0;
   };
@@ -172,7 +173,9 @@ void BaseScreen::OnKeyUp(Keyboard::Key key) {
   } else if (key == Keyboard::Key::kSquare) {
     // Repair shop:
   } else if (key == Keyboard::Key::kTriangle) {
-    // Info:
+    if (callback_) {
+      callback_->ToMarketFromBaseScreen();
+    }
   } else if (key == Keyboard::Key::kSelect) {
     if (callback_) {
       callback_->TryExitFromBaseScreen();

@@ -50,7 +50,7 @@ void MarketScreen::Load(
   known_fonts_ = known_fonts;
   default_font_ = default_font;
 
-  image_.reset(IMG_LoadTexture(renderer_.get(), "assets/base.png"),
+  image_.reset(IMG_LoadTexture(renderer_.get(), "assets/market.png"),
                &SDL_DestroyTexture);
 }
 
@@ -58,7 +58,17 @@ void MarketScreen::Show() {}
 
 void MarketScreen::Update(float /*dt*/) {}
 
-void MarketScreen::Draw() {}
+void MarketScreen::Draw() {
+  SDL_FRect screen_rect = {0, 0, kScreenWidth, kScreenHeight};
+  SDL_FColor color;
+  color.a = 1.0f;
+  color.r = 1.0f;
+  color.g = 1.0f;
+  color.b = 1.0f;
+  SDL_SetRenderDrawBlendMode(renderer_.get(), SDL_BLENDMODE_BLEND);
+  SDL_SetTextureBlendMode(image_.get(), SDL_BLENDMODE_BLEND);
+  RenderTexture(renderer_, image_, &screen_rect, &screen_rect, &color);
+}
 
 void MarketScreen::OnKeyDown(Keyboard::Key /*key*/) {}
 
