@@ -89,7 +89,7 @@ int main(int /* argc */, char* /* argv */[]) {
     system_font_20->LoadTexture(renderer);
 
     system_info_renderer_fonts.insert(
-        std::make_pair("system_20.fnt", system_font_20));
+        std::make_pair("system_20", system_font_20));
 
     system_info_renderer.LoadFromFile("assets/system_counters.txt");
     system_info_renderer.SetPosition(5, 5);

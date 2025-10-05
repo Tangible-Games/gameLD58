@@ -19,6 +19,10 @@ class TextRenderer {
   explicit TextRenderer(std::shared_ptr<SDL_Renderer> sdl_renderer)
       : sdl_renderer_(sdl_renderer) {}
 
+  void InitRenderer(std::shared_ptr<SDL_Renderer> sdl_renderer) {
+    sdl_renderer_ = sdl_renderer;
+  }
+
   void SetPosition(int x, int y) {
     x_ = x;
     y_ = y;

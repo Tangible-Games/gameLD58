@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <nlohmann/json.hpp>
 #include <symphony_lite/all_symphony.hpp>
 
 #include "fade_image.hpp"
@@ -36,7 +37,7 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
   void Load();
   void Draw();
 
-  void ToGame() override;
+  void ContinueFromTitleScreen() override;
   void TryExitFromTitleScreen() override;
 
   void BackToGame() override;
@@ -52,6 +53,8 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
     kToGameFadeOut,
     kGame,
   };
+
+  void loadFonts();
 
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
@@ -69,6 +72,8 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
   int just_started_updates_{30};
   std::shared_ptr<Symphony::Audio::WaveFile> menu_audio_;
   std::shared_ptr<Symphony::Audio::PlayingStream> menu_audio_stream_;
+  std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
+  std::string default_font_;
 };
 
 void Game::Update(float dt) {
@@ -137,12 +142,14 @@ void Game::Load() {
   if (state_ == State::kFirstLoading) {
     level_.Load();
     title_screen_.Load();
-    story_screen_.Load();
+    story_screen_.Load(known_fonts_, default_font_);
     fade_in_out_.Load("assets/fade_in_out.png");
     quit_dialog_.Load();
 
     menu_audio_ = Symphony::Audio::LoadWave(
         "assets/05_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
+
+    loadFonts();
 
     ready_for_loading_ = false;
 
@@ -185,7 +192,7 @@ void Game::Draw() {
   }
 }
 
-void Game::ToGame() {
+void Game::ContinueFromTitleScreen() {
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToGameFadeIn;
   level_.Start(/*is_paused*/ true);
@@ -218,5 +225,31 @@ void Game::QuitGame() {
   audio_->StopImmediately(menu_audio_stream_);
 
   LOGD("Quit dialog requests quitting.");
+}
+
+void Game::loadFonts() {
+  std::ifstream file;
+
+  file.open("assets/known_fonts.json");
+  if (!file.is_open()) {
+    LOGE("Failed to load {}", "assets/known_fonts.json");
+    return;
+  }
+
+  nlohmann::json known_fonts_json = nlohmann::json::parse(file);
+  file.close();
+
+  for (const auto& font_json : known_fonts_json["known_fonts"]) {
+    auto font = Symphony::Text::LoadBmFont(font_json["file_path"]);
+    if (!font) {
+      LOGE("Failed to load font {}", font_json["file_path"].get<std::string>());
+      continue;
+    }
+    font->LoadTexture(renderer_);
+
+    known_fonts_.insert(std::make_pair(font_json["style_name"], font));
+  }
+
+  default_font_ = known_fonts_json["default_font"];
 }
 }  // namespace gameLD58

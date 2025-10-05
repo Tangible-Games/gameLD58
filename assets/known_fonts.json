@@ -1,0 +1,17 @@
+{
+  "known_fonts": [
+    {
+      "file_path": "assets/atarian_22.fnt",
+      "style_name": "atarian_22"
+    },
+    {
+      "file_path": "assets/atarian_26.fnt",
+      "style_name": "atarian_26"
+    },
+    {
+      "file_path": "assets/atarian_30.fnt",
+      "style_name": "atarian_30"
+    }
+  ],
+  "default_font": "atarian_22"
+}

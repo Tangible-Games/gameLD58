@@ -12,7 +12,7 @@ class TitleScreen : public Keyboard::Callback {
  public:
   class Callback {
    public:
-    virtual void ToGame() = 0;
+    virtual void ContinueFromTitleScreen() = 0;
     virtual void TryExitFromTitleScreen() = 0;
   };
 
@@ -61,7 +61,7 @@ void TitleScreen::OnKeyDown(Keyboard::Key /*key*/) {}
 void TitleScreen::OnKeyUp(Keyboard::Key key) {
   if (key == Keyboard::Key::kX) {
     if (callback_) {
-      callback_->ToGame();
+      callback_->ContinueFromTitleScreen();
     }
   } else if (key == Keyboard::Key::kSelect) {
     if (callback_) {

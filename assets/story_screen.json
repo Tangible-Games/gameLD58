@@ -1,0 +1,11 @@
+{
+  "stories": [
+    {
+      "file_path": "assets/story_screen_1.txt"
+      "x": 100,
+      "y": 10,
+      "width": 370,
+      "width": 200
+    }
+  ]
+}
