@@ -178,6 +178,8 @@ void Game::ToGame() {
 }
 
 void Game::TryExitFromTitleScreen() {
+  level_.SetIsPaused(true);
+
   show_quit_dialog_ = true;
   quit_dialog_.Show();
   quit_dialog_.RegisterCallback(this);
@@ -188,6 +190,8 @@ void Game::TryExitFromTitleScreen() {
 }
 
 void Game::BackToGame() {
+  level_.SetIsPaused(false);
+
   show_quit_dialog_ = false;
   Keyboard::Instance().RegisterCallback(prev_keyboard_callback_);
   LOGD("Quit dialog requests going back to game.");

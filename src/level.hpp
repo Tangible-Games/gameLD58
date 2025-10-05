@@ -40,11 +40,14 @@ class Level {
   void Draw();
   void Update(float dt);
 
+  void SetIsPaused(bool is_paused);
+
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
   std::string level_path_;
   Config level_config_;
+  bool is_paused_{false};
   std::vector<Object> objects_;
   Ufo ufo_;
   float cam_x_;
@@ -154,6 +157,10 @@ void Level::Draw() {
 }
 
 void Level::Update(float dt) {
+  if (is_paused_) {
+    return;
+  }
+
   bool left =
       Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadLeft).has_value();
   bool right =
@@ -195,6 +202,11 @@ void Level::Update(float dt) {
   ufo_.Update(dt);
   // Add collisions here:
   ufo_.SetPosition(ufo_.GetBounds().center + ufo_.GetVelocity() * dt);
+}
+
+void Level::SetIsPaused(bool is_paused) {
+  is_paused_ = is_paused;
+  ufo_.SetIsPaused(is_paused);
 }
 
 }  // namespace gameLD58

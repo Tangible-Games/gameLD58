@@ -29,6 +29,8 @@ class Ufo {
 
   void Update(float dt);
 
+  void SetIsPaused(bool is_paused);
+
   const Symphony::Math::Vector2d& GetVelocity() const { return velocity_; }
 
   const Symphony::Math::AARect2d& GetBounds() const { return rect_; }
@@ -51,6 +53,7 @@ class Ufo {
     Symphony::Math::Vector2d driftThreshold{0, 0};
   } configuration_;
 
+  bool is_paused_{false};
   Symphony::Math::AARect2d rect_{};
   Symphony::Math::Vector2d velocity_{0, 0};
   Symphony::Math::Vector2d acceleration_{0, 0};
@@ -167,6 +170,8 @@ void Ufo::Update(float dt) {
   }
   prevTime_ = newTime;
 }
+
+void Ufo::SetIsPaused(bool is_paused) { is_paused_ = is_paused; }
 
 void Ufo::Draw() {
   SDL_FRect rect = AARectToSdlFRect(rect_);
