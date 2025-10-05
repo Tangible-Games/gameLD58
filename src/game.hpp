@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <symphony_lite/all_symphony.hpp>
 
+#include "base_screen.hpp"
 #include "fade_image.hpp"
 #include "keyboard.hpp"
 #include "level.hpp"
@@ -15,6 +16,7 @@
 namespace gameLD58 {
 class Game : public TitleScreen::Callback,
              public StoryScreen::Callback,
+             public BaseScreen::Callback,
              public Level::Callback,
              public QuitDialog::Callback {
  public:
@@ -25,6 +27,7 @@ class Game : public TitleScreen::Callback,
         loading_(renderer, audio, "assets/loading.png"),
         title_screen_(renderer, audio),
         story_screen_(renderer, audio),
+        base_screen_(renderer, audio),
         fade_in_out_(renderer, audio, ""),
         level_(renderer, audio, "assets/level.json"),
         quit_dialog_(renderer, audio) {
@@ -46,6 +49,9 @@ class Game : public TitleScreen::Callback,
   void ContinueFromStoryScreen() override;
   void TryExitFromStoryScreen() override;
 
+  void ContinueFromBaseScreen() override;
+  void TryExitFromBaseScreen() override;
+
   void TryExitFromLevel() override;
 
   void BackToGame() override;
@@ -60,6 +66,9 @@ class Game : public TitleScreen::Callback,
     kToStoryScreenFadeIn,
     kToStoryScreenFadeOut,
     kStoryScreen,
+    kToBaseScreenFadeIn,
+    kToBaseScreenFadeOut,
+    kBaseScreen,
     kToGameFadeIn,
     kToGameFadeOut,
     kGame,
@@ -74,6 +83,7 @@ class Game : public TitleScreen::Callback,
   FadeImage loading_;
   TitleScreen title_screen_;
   StoryScreen story_screen_;
+  BaseScreen base_screen_;
   FadeImage fade_in_out_;
   Level level_;
   QuitDialog quit_dialog_;
@@ -107,7 +117,7 @@ void Game::Update(float dt) {
       if (loading_.IsIdle()) {
         menu_audio_stream_ =
             audio_->Play(menu_audio_, Symphony::Audio::kPlayLooped,
-                         Symphony::Audio::FadeInOut(5.0f, 1.0f));
+                         Symphony::Audio::FadeInOut(2.0f, 1.0f));
 
         state_ = State::kTitleScreen;
         title_screen_.RegisterCallback(this);
@@ -139,6 +149,28 @@ void Game::Update(float dt) {
       break;
 
     case State::kStoryScreen:
+      break;
+
+    case State::kToBaseScreenFadeIn:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        fade_in_out_.StartFadeOut(0.5f);
+        state_ = State::kToBaseScreenFadeOut;
+        LOGD("Game switches to state 'State::kToBaseScreenFadeOut'.");
+      }
+      break;
+
+    case State::kToBaseScreenFadeOut:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        state_ = State::kBaseScreen;
+        base_screen_.RegisterCallback(this);
+        Keyboard::Instance().RegisterCallback(&base_screen_);
+        LOGD("Game switches to state 'State::kBaseScreen'.");
+      }
+      break;
+
+    case State::kBaseScreen:
       break;
 
     case State::kToGameFadeIn:
@@ -182,6 +214,7 @@ void Game::Load() {
     level_.Load();
     title_screen_.Load();
     story_screen_.Load(known_fonts_, default_font_);
+    base_screen_.Load();
     fade_in_out_.Load("assets/fade_in_out.png");
     quit_dialog_.Load();
 
@@ -222,8 +255,19 @@ void Game::Draw() {
     case State::kStoryScreen:
       story_screen_.Draw();
       break;
-    case State::kToGameFadeIn:
+    case State::kToBaseScreenFadeIn:
       story_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kToBaseScreenFadeOut:
+      base_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kBaseScreen:
+      base_screen_.Draw();
+      break;
+    case State::kToGameFadeIn:
+      base_screen_.Draw();
       fade_in_out_.Draw();
       break;
     case State::kToGameFadeOut:
@@ -241,6 +285,10 @@ void Game::Draw() {
 }
 
 void Game::ContinueFromTitleScreen() {
+  if (state_ != State::kTitleScreen) {
+    return;
+  }
+
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToStoryScreenFadeIn;
   level_.Start(/*is_paused*/ true);
@@ -262,10 +310,14 @@ void Game::TryExitFromTitleScreen() {
 }
 
 void Game::ContinueFromStoryScreen() {
+  if (state_ != State::kStoryScreen) {
+    return;
+  }
+
   fade_in_out_.StartFadeIn(0.5f);
-  state_ = State::kToGameFadeIn;
+  state_ = State::kToBaseScreenFadeIn;
   level_.Start(/*is_paused*/ true);
-  LOGD("Game switches to state 'State::kToGameFadeIn'.");
+  LOGD("Game switches to state 'State::kToBaseScreenFadeIn'.");
 }
 
 void Game::TryExitFromStoryScreen() {
@@ -280,6 +332,31 @@ void Game::TryExitFromStoryScreen() {
       Keyboard::Instance().RegisterCallback(&quit_dialog_);
 
   LOGD("Game shows Quit dialog from Story screen.");
+}
+
+void Game::ContinueFromBaseScreen() {
+  if (state_ != State::kBaseScreen) {
+    return;
+  }
+
+  fade_in_out_.StartFadeIn(0.5f);
+  state_ = State::kToGameFadeIn;
+  level_.Start(/*is_paused*/ true);
+  LOGD("Game switches to state 'State::kToGameFadeIn'.");
+}
+
+void Game::TryExitFromBaseScreen() {
+  if (state_ != State::kBaseScreen) {
+    return;
+  }
+
+  show_quit_dialog_ = true;
+  quit_dialog_.Show();
+  quit_dialog_.RegisterCallback(this);
+  prev_keyboard_callback_ =
+      Keyboard::Instance().RegisterCallback(&quit_dialog_);
+
+  LOGD("Game shows Quit dialog from Base screen.");
 }
 
 void Game::TryExitFromLevel() {
