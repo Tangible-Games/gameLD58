@@ -193,6 +193,7 @@ void Level::Update(float dt) {
   }
 
   ufo_.Update(dt);
+  // Add collisions here:
   ufo_.SetPosition(ufo_.GetBounds().center + ufo_.GetVelocity() * dt);
 }
 
