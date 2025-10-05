@@ -175,8 +175,7 @@ void Game::Draw() {
 void Game::ToGame() {
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToGameFadeIn;
-  level_.Start();
-  level_.SetIsPaused(true);
+  level_.Start(/*is_paused*/ true);
   LOGD("Game switches to state 'State::kToGameFadeIn'.");
 }
 

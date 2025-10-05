@@ -39,7 +39,7 @@ class Level {
   void Draw();
   void Update(float dt);
 
-  void Start();
+  void Start(bool is_paused);
 
   void SetIsPaused(bool is_paused);
 
@@ -177,8 +177,8 @@ void Level::Update(float dt) {
   cam_y_ = ufo_.GetBounds().center.y;
 }
 
-void Level::Start() {
-  is_paused_ = false;
+void Level::Start(bool is_paused) {
+  is_paused_ = is_paused;
 
   ufo_.SetPosition(level_config_.ufo_spawn);
 }
