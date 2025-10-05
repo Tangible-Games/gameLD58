@@ -4,8 +4,8 @@
         "height": 50
     },
     "acceleration": {
-        "x": 300,
-        "y": 300
+        "x": 10000,
+        "y": 10000
     },
     "max_velocity": {
         "x": 60,
@@ -16,12 +16,9 @@
         "y": 0.3
     },
     "drift" : {
-        "rotate_max": {
-            "deg": 90
-        },
-        "acceleration_multiplier": {
-            "x": 2,
-            "y": 2
+        "acceleration": {
+            "x": 8000,
+            "y": 8000
         },
         "acceleration_threshold": {
             "x": 2000,

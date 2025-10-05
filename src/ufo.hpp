@@ -39,9 +39,8 @@ class Ufo {
     Symphony::Math::Vector2d maxVelocity{0, 0};
     Symphony::Math::Vector2d moveAcceleration{0, 0};
     Symphony::Math::Vector2d dragCoef{0, 0};
-    Symphony::Math::Vector2d driftAccelerationMult{0, 0};
+    Symphony::Math::Vector2d driftAcceleration{0, 0};
     Symphony::Math::Vector2d driftThreshold{0, 0};
-    float driftRotateMax{0};
   } configuration_;
 
   Symphony::Math::AARect2d rect_{};
@@ -83,12 +82,9 @@ void Ufo::Load() {
       Symphony::Math::Vector2d{config["drag_sec"]["x"].get<float>(),
                                config["drag_sec"]["y"].get<float>()};
 
-  configuration_.driftRotateMax =
-      Symphony::Math::DegToRad(config["drift"]["rotate_max"]["deg"]);
-
-  configuration_.driftAccelerationMult = Symphony::Math::Vector2d{
-      config["drift"]["acceleration_multiplier"]["x"].get<float>(),
-      config["drift"]["acceleration_multiplier"]["y"].get<float>()};
+  configuration_.driftAcceleration = Symphony::Math::Vector2d{
+      config["drift"]["acceleration"]["x"].get<float>(),
+      config["drift"]["acceleration"]["y"].get<float>()};
 
   configuration_.driftThreshold = Symphony::Math::Vector2d{
       config["drift"]["acceleration_threshold"]["x"].get<float>(),
@@ -110,34 +106,31 @@ void Ufo::Load() {
       "\n\t"
       "dragCoef: {}"
       "\n\t"
-      "driftRotateMax: {}",
-      "\n\t"
       "driftAcceleration: {}"
       "\n\t"
       "driftThreshold: {}",
       rect_, configuration_.moveAcceleration, configuration_.maxVelocity,
-      configuration_.dragCoef, configuration_.driftRotateMax,
-      configuration_.driftAccelerationMult, configuration_.driftThreshold);
+      configuration_.dragCoef, configuration_.driftAcceleration,
+      configuration_.driftThreshold);
 }
 
 void Ufo::Update(float dt) {
   // Handle keys
   if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadLeft).has_value()) {
-    acceleration_.x -= configuration_.moveAcceleration.x;
+    acceleration_.x -= configuration_.moveAcceleration.x * dt;
   }
   if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadRight).has_value()) {
-    acceleration_.x += configuration_.moveAcceleration.x;
+    acceleration_.x += configuration_.moveAcceleration.x * dt;
   }
   if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadUp).has_value()) {
-    acceleration_.y -= configuration_.moveAcceleration.y;
+    acceleration_.y -= configuration_.moveAcceleration.y * dt;
   }
   if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadDown).has_value()) {
-    acceleration_.y += configuration_.moveAcceleration.y;
+    acceleration_.y += configuration_.moveAcceleration.y * dt;
   }
 
   // Calculate velocity
-  velocity_.x = acceleration_.x * dt;
-  velocity_.y = acceleration_.y * dt;
+  velocity_ = acceleration_ * dt;
 
   // Limit max speed
   velocity_.x = std::clamp<float>(velocity_.x, -configuration_.maxVelocity.x,
@@ -157,10 +150,10 @@ void Ufo::Update(float dt) {
   if (std::abs(acceleration_.x) < configuration_.driftThreshold.x &&
       std::abs(acceleration_.y) < configuration_.driftThreshold.y) {
     // Add random drift when UFO is stopped
-    float rotate = randMinusOneToOne() * configuration_.driftRotateMax;
-    acceleration_.Rotate(rotate);
-    acceleration_.x *= configuration_.driftAccelerationMult.x;
-    acceleration_.y *= configuration_.driftAccelerationMult.y;
+    float rx = randMinusOneToOne() * configuration_.driftAcceleration.x;
+    float ry = randMinusOneToOne() * configuration_.driftAcceleration.y;
+    acceleration_.x += rx * dt;
+    acceleration_.y += ry * dt;
   }
 
   // Dump acceleration once a second for debug
