@@ -129,6 +129,7 @@ void TextRenderer::ReFormat(
       MeasureText(width_, formatted_text_.value(), variables, fonts);
   if (!measured_text_.has_value()) {
     formatted_text_ = std::nullopt;
+
     return;
   }
 
@@ -228,8 +229,8 @@ void TextRenderer::ReFormat(
       }
     }
 
-    line.min_y = line_y;
-    line.max_y = line_y + measured_line.line_height;
+    line.min_y = y_ + line_y;
+    line.max_y = y_ + line_y + measured_line.line_height;
     line_y += measured_line.line_height;
     line_y_f += (float)measured_line.line_height;
 
@@ -292,9 +293,9 @@ void TextRenderer::Render(int scroll_y) {
       SDL_GetRenderDrawColor(sdl_renderer_.get(), &r, &g, &b, &a);
 
       SDL_SetRenderDrawColor(sdl_renderer_.get(), 128, 128, 128, 128);
-      SDL_FRect debug_rect{
-          (float)line.align_offset + x_, (float)scroll_y + line.min_y + y_,
-          (float)line.line_width, (float)line.max_y - line.min_y};
+      SDL_FRect debug_rect{(float)line.align_offset + x_,
+                           (float)scroll_y + line.min_y, (float)line.line_width,
+                           (float)line.max_y - line.min_y};
       SDL_RenderFillRect(sdl_renderer_.get(), &debug_rect);
 
       SDL_SetRenderDrawColor(sdl_renderer_.get(), r, g, b, a);

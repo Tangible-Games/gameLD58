@@ -83,6 +83,7 @@ class Game : public TitleScreen::Callback,
   FadeImage loading_;
   TitleScreen title_screen_;
   StoryScreen story_screen_;
+  BaseScreen::Status player_status_;
   BaseScreen base_screen_;
   FadeImage fade_in_out_;
   Level level_;
@@ -154,6 +155,7 @@ void Game::Update(float dt) {
     case State::kToBaseScreenFadeIn:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
+        base_screen_.Show(player_status_);
         fade_in_out_.StartFadeOut(0.5f);
         state_ = State::kToBaseScreenFadeOut;
         LOGD("Game switches to state 'State::kToBaseScreenFadeOut'.");
@@ -214,7 +216,7 @@ void Game::Load() {
     level_.Load();
     title_screen_.Load();
     story_screen_.Load(known_fonts_, default_font_);
-    base_screen_.Load();
+    base_screen_.Load(known_fonts_, default_font_);
     fade_in_out_.Load("assets/fade_in_out.png");
     quit_dialog_.Load();
 

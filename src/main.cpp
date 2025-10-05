@@ -93,7 +93,7 @@ int main(int /* argc */, char* /* argv */[]) {
 
     system_info_renderer.LoadFromFile("assets/system_counters.txt");
     system_info_renderer.SetPosition(5, 5);
-    system_info_renderer.SetSizes(10, 272);
+    system_info_renderer.SetSizes(kScreenWidth - 5, kScreenHeight - 10);
   }
 
   Game game(renderer, audio);
