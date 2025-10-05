@@ -15,6 +15,7 @@
 namespace gameLD58 {
 class Game : public TitleScreen::Callback,
              public StoryScreen::Callback,
+             public Level::Callback,
              public QuitDialog::Callback {
  public:
   Game(std::shared_ptr<SDL_Renderer> renderer,
@@ -44,6 +45,8 @@ class Game : public TitleScreen::Callback,
 
   void ContinueFromStoryScreen() override;
   void TryExitFromStoryScreen() override;
+
+  void TryExitFromLevel() override;
 
   void BackToGame() override;
   void QuitGame() override;
@@ -152,7 +155,11 @@ void Game::Update(float dt) {
       if (fade_in_out_.IsIdle()) {
         audio_->Stop(menu_audio_stream_, Symphony::Audio::StopFade(0.5f));
 
+        level_.RegisterCallback(this);
+        Keyboard::Instance().RegisterCallback(&level_);
+
         level_.SetIsPaused(false);
+
         state_ = State::kGame;
         LOGD("Game switches to state 'State::kGame'.");
       }
@@ -241,6 +248,10 @@ void Game::ContinueFromTitleScreen() {
 }
 
 void Game::TryExitFromTitleScreen() {
+  if (state_ != State::kTitleScreen) {
+    return;
+  }
+
   show_quit_dialog_ = true;
   quit_dialog_.Show();
   quit_dialog_.RegisterCallback(this);
@@ -258,6 +269,10 @@ void Game::ContinueFromStoryScreen() {
 }
 
 void Game::TryExitFromStoryScreen() {
+  if (state_ != State::kStoryScreen) {
+    return;
+  }
+
   show_quit_dialog_ = true;
   quit_dialog_.Show();
   quit_dialog_.RegisterCallback(this);
@@ -267,11 +282,32 @@ void Game::TryExitFromStoryScreen() {
   LOGD("Game shows Quit dialog from Story screen.");
 }
 
+void Game::TryExitFromLevel() {
+  if (state_ != State::kGame) {
+    return;
+  }
+
+  show_quit_dialog_ = true;
+  quit_dialog_.Show();
+  quit_dialog_.RegisterCallback(this);
+  prev_keyboard_callback_ =
+      Keyboard::Instance().RegisterCallback(&quit_dialog_);
+
+  level_.SetIsPaused(true);
+
+  LOGD("Game shows Quit dialog from Level.");
+}
+
 void Game::BackToGame() {
   level_.SetIsPaused(false);
 
   show_quit_dialog_ = false;
   Keyboard::Instance().RegisterCallback(prev_keyboard_callback_);
+
+  if (state_ == State::kGame) {
+    level_.SetIsPaused(false);
+  }
+
   LOGD("Quit dialog requests going back to game.");
 }
 
