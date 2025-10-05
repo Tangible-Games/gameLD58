@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <symphony_lite/aa_rect2d.hpp>
@@ -64,12 +65,11 @@ class Level : public Keyboard::Callback {
   bool is_paused_{false};
   Callback* callback_{nullptr};
   std::vector<Object> objects_;
-  std::vector<Human> humans_;
+  std::list<Human> humans_;
   ParallaxRenderer paralax_renderer_;
   Ufo ufo_;
   float cam_x_;
   float cam_y_;
-  std::shared_ptr<SDL_Texture> humanTexture_;
 
  private:
   static std::string readFile(const std::string& path) {
@@ -145,7 +145,7 @@ void Level::Load() {
     float half_height = h.value("half_height", 0);
     Symphony::Math::AARect2d rect{{center_x, config.height - half_height},
                                   {half_width, half_height}};
-    humans_.emplace_back(Human{.rect = rect});
+    humans_.emplace_back(renderer_, rect);
   }
 
   LOGD("Level loaded: length={}, spawn=({}, {}), obstacles={}", config.length,
@@ -156,11 +156,6 @@ void Level::Load() {
   paralax_renderer_.Load(level_config_.length, "assets/backgrounds.json");
 
   ufo_.Load();
-
-  // Temporary load human texture
-  humanTexture_ = std::shared_ptr<SDL_Texture>(
-      IMG_LoadTexture(renderer_.get(), "assets/human.png"),
-      &SDL_DestroyTexture);
 }
 
 template <typename T>
@@ -211,10 +206,8 @@ void Level::Draw() {
     DrawObject(obj, [&](SDL_FRect r) { SDL_RenderRect(renderer_.get(), &r); });
   };
 
-  for (const auto& obj : humans_) {
-    DrawObject(obj, [&](SDL_FRect r) {
-      SDL_RenderTexture(renderer_.get(), humanTexture_.get(), nullptr, &r);
-    });
+  for (auto& obj : humans_) {
+    DrawObject(obj, [&](SDL_FRect r) { obj.DrawTo(r); });
   };
 
   auto ub = ufo_.GetBounds();
@@ -273,6 +266,20 @@ void Level::Update(float dt) {
     cam_y_ = min_center;
   } else {
     cam_y_ = std::clamp(ufo_.GetBounds().center.y, min_center, max_center);
+  }
+
+  // Get visible humans
+  for (auto h = humans_.begin(); h != humans_.end();) {
+    bool collected = ufo_.MaybeCatchHuman(*h);
+    if (collected) {
+      h = humans_.erase(h);
+    } else {
+      h++;
+    }
+  }
+
+  for (auto& h : humans_) {
+    h.Update(dt);
   }
 }
 
