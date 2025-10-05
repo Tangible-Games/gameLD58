@@ -106,6 +106,7 @@ void Game::Update(float dt) {
     case State::kToGameFadeOut:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
+        level_.SetIsPaused(false);
         state_ = State::kGame;
         LOGD("Game switches to state 'State::kGame'.");
       }
@@ -174,6 +175,8 @@ void Game::Draw() {
 void Game::ToGame() {
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToGameFadeIn;
+  level_.Start();
+  level_.SetIsPaused(true);
   LOGD("Game switches to state 'State::kToGameFadeIn'.");
 }
 

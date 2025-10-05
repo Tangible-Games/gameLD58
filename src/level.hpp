@@ -23,8 +23,7 @@ struct Object {
 struct Config {
   float length;
   float height;
-  float spawn_x;
-  float spawn_y;
+  Symphony::Math::Point2d ufo_spawn;
 };
 
 class Level {
@@ -40,6 +39,8 @@ class Level {
   void Draw();
   void Update(float dt);
 
+  void Start();
+
   void SetIsPaused(bool is_paused);
 
  private:
@@ -52,12 +53,13 @@ class Level {
   Ufo ufo_;
   float cam_x_;
   float cam_y_;
-  const float scroll_speed_ = 70.f;
 
  private:
   static std::string readFile(const std::string& path) {
     std::ifstream ifs(path, std::ios::binary);
-    if (!ifs) return {};
+    if (!ifs) {
+      return "";
+    }
     std::ostringstream oss;
     oss << ifs.rdbuf();
     return oss.str();
@@ -89,14 +91,14 @@ void Level::Load() {
     LOGW("level.height {} < screen {}, clamping", config.height, kScreenHeight);
     config.height = (float)kScreenHeight;
   }
-  config.spawn_x = level_json.value("spawn_x", kScreenWidth / 2.f);
-  config.spawn_y = level_json.value("spawn_y", kScreenHeight / 2.f);
+  config.ufo_spawn.x = level_json.value("ufo_spawn_x", kScreenWidth / 2.f);
+  config.ufo_spawn.y = level_json.value("ufo_spawn_y", kScreenHeight / 2.f);
 
-  cam_x_ = config.spawn_x;
+  cam_x_ = config.ufo_spawn.x;
   cam_x_ -= config.length * std::floor(cam_x_ / config.length);
   float min_center = 0.5f * kScreenHeight;
   float max_center = std::max(min_center, config.height - 0.5f * kScreenHeight);
-  cam_y_ = std::clamp(config.spawn_y, min_center, max_center);
+  cam_y_ = std::clamp(config.ufo_spawn.y, min_center, max_center);
 
   for (const auto& item : level_json["items"]) {
     Object obj;
@@ -112,7 +114,7 @@ void Level::Load() {
   }
 
   LOGD("Level loaded: length={}, spawn=({}, {}), obstacles={}", config.length,
-       config.spawn_x, config.spawn_y, objects_.size());
+       config.ufo_spawn.x, config.ufo_spawn.y, objects_.size());
 
   level_config_ = std::move(config);
 
@@ -133,8 +135,10 @@ void Level::Draw() {
 
   for (const auto& obj : objects_) {
     const auto& b = obj.rect;
-    float cx = b.center.x, cy = b.center.y;
-    float hx = b.half_size.x, hy = b.half_size.y;
+    float cx = b.center.x;
+    float cy = b.center.y;
+    float hx = b.half_size.x;
+    float hy = b.half_size.y;
 
     auto draw_one = [&](float draw_cx) {
       float x = (draw_cx - hx) - cam_left;
@@ -149,8 +153,12 @@ void Level::Draw() {
     };
 
     draw_one(cx);
-    if (need_wrap && crosses_left) draw_one(cx - l);
-    if (need_wrap && crosses_right) draw_one(cx + l);
+    if (need_wrap && crosses_left) {
+      draw_one(cx - l);
+    }
+    if (need_wrap && crosses_right) {
+      draw_one(cx + l);
+    }
   }
 
   ufo_.Draw();
@@ -161,47 +169,18 @@ void Level::Update(float dt) {
     return;
   }
 
-  bool left =
-      Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadLeft).has_value();
-  bool right =
-      Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadRight).has_value();
-  bool up = Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadUp).has_value();
-  bool down =
-      Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadDown).has_value();
-
-  int dir_x = (int)right - (int)left;
-  int dir_y = (int)down - (int)up;
-
-  float l = level_config_.length;
-  if (dir_x != 0 && dt > 0.0f) {
-    cam_x_ += dir_x * scroll_speed_ * dt;
-    if (cam_x_ >= l || cam_x_ < 0.0f) {
-      cam_x_ -= l * std::floor(cam_x_ / l);
-    }
-  }
-
-  float world_h = level_config_.height;
-  float y = cam_y_;
-  if (dt > 0.0f && dir_y != 0) {
-    y += dir_y * scroll_speed_ * dt;
-  }
-
-  float min_center = 0.5f * kScreenHeight;
-  float max_center = world_h - 0.5f * kScreenHeight;
-
-  if (world_h <= kScreenHeight) {
-    cam_y_ = min_center;
-  } else {
-    if (y < min_center)
-      y = min_center;
-    else if (y > max_center)
-      y = max_center;
-    cam_y_ = y;
-  }
-
   ufo_.Update(dt);
   // Add collisions here:
   ufo_.SetPosition(ufo_.GetBounds().center + ufo_.GetVelocity() * dt);
+
+  cam_x_ = ufo_.GetBounds().center.x;
+  cam_y_ = ufo_.GetBounds().center.y;
+}
+
+void Level::Start() {
+  is_paused_ = false;
+
+  ufo_.SetPosition(level_config_.ufo_spawn);
 }
 
 void Level::SetIsPaused(bool is_paused) {
