@@ -13,7 +13,9 @@
 #include "title_screen.hpp"
 
 namespace gameLD58 {
-class Game : public TitleScreen::Callback, public QuitDialog::Callback {
+class Game : public TitleScreen::Callback,
+             public StoryScreen::Callback,
+             public QuitDialog::Callback {
  public:
   Game(std::shared_ptr<SDL_Renderer> renderer,
        std::shared_ptr<Symphony::Audio::Device> audio)
@@ -40,6 +42,9 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
   void ContinueFromTitleScreen() override;
   void TryExitFromTitleScreen() override;
 
+  void ContinueFromStoryScreen() override;
+  void TryExitFromStoryScreen() override;
+
   void BackToGame() override;
   void QuitGame() override;
 
@@ -49,6 +54,9 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
     kFirstLoading,
     kFadeToTitleScreen,
     kTitleScreen,
+    kToStoryScreenFadeIn,
+    kToStoryScreenFadeOut,
+    kStoryScreen,
     kToGameFadeIn,
     kToGameFadeOut,
     kGame,
@@ -108,6 +116,28 @@ void Game::Update(float dt) {
     case State::kTitleScreen:
       break;
 
+    case State::kToStoryScreenFadeIn:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        fade_in_out_.StartFadeOut(0.5f);
+        state_ = State::kToStoryScreenFadeOut;
+        LOGD("Game switches to state 'State::kToStoryScreenFadeOut'.");
+      }
+      break;
+
+    case State::kToStoryScreenFadeOut:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        state_ = State::kStoryScreen;
+        story_screen_.RegisterCallback(this);
+        Keyboard::Instance().RegisterCallback(&story_screen_);
+        LOGD("Game switches to state 'State::kStoryScreen'.");
+      }
+      break;
+
+    case State::kStoryScreen:
+      break;
+
     case State::kToGameFadeIn:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
@@ -140,6 +170,8 @@ void Game::Update(float dt) {
 
 void Game::Load() {
   if (state_ == State::kFirstLoading) {
+    loadFonts();
+
     level_.Load();
     title_screen_.Load();
     story_screen_.Load(known_fonts_, default_font_);
@@ -148,8 +180,6 @@ void Game::Load() {
 
     menu_audio_ = Symphony::Audio::LoadWave(
         "assets/05_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
-
-    loadFonts();
 
     ready_for_loading_ = false;
 
@@ -174,8 +204,19 @@ void Game::Draw() {
     case State::kTitleScreen:
       title_screen_.Draw();
       break;
-    case State::kToGameFadeIn:
+    case State::kToStoryScreenFadeIn:
       title_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kToStoryScreenFadeOut:
+      story_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kStoryScreen:
+      story_screen_.Draw();
+      break;
+    case State::kToGameFadeIn:
+      story_screen_.Draw();
       fade_in_out_.Draw();
       break;
     case State::kToGameFadeOut:
@@ -194,14 +235,12 @@ void Game::Draw() {
 
 void Game::ContinueFromTitleScreen() {
   fade_in_out_.StartFadeIn(0.5f);
-  state_ = State::kToGameFadeIn;
+  state_ = State::kToStoryScreenFadeIn;
   level_.Start(/*is_paused*/ true);
-  LOGD("Game switches to state 'State::kToGameFadeIn'.");
+  LOGD("Game switches to state 'State::kToStoryScreenFadeIn'.");
 }
 
 void Game::TryExitFromTitleScreen() {
-  level_.SetIsPaused(true);
-
   show_quit_dialog_ = true;
   quit_dialog_.Show();
   quit_dialog_.RegisterCallback(this);
@@ -209,6 +248,23 @@ void Game::TryExitFromTitleScreen() {
       Keyboard::Instance().RegisterCallback(&quit_dialog_);
 
   LOGD("Game shows Quit dialog from Title screen.");
+}
+
+void Game::ContinueFromStoryScreen() {
+  fade_in_out_.StartFadeIn(0.5f);
+  state_ = State::kToGameFadeIn;
+  level_.Start(/*is_paused*/ true);
+  LOGD("Game switches to state 'State::kToGameFadeIn'.");
+}
+
+void Game::TryExitFromStoryScreen() {
+  show_quit_dialog_ = true;
+  quit_dialog_.Show();
+  quit_dialog_.RegisterCallback(this);
+  prev_keyboard_callback_ =
+      Keyboard::Instance().RegisterCallback(&quit_dialog_);
+
+  LOGD("Game shows Quit dialog from Story screen.");
 }
 
 void Game::BackToGame() {

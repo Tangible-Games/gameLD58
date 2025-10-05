@@ -44,6 +44,7 @@ class StoryScreen : public Keyboard::Callback {
   std::string default_font_;
   std::shared_ptr<SDL_Texture> image_;
   std::vector<Story> stories_;
+  size_t cur_story_bro_{0};
   Callback* callback_{nullptr};
 };
 
@@ -58,9 +59,9 @@ void StoryScreen::Load(
 
   std::ifstream file;
 
-  file.open("assets/known_fonts.json");
+  file.open("assets/story_screen.json");
   if (!file.is_open()) {
-    LOGE("Failed to load {}", "assets/known_fonts.json");
+    LOGE("Failed to load {}", "assets/story_screen.json");
     return;
   }
 
@@ -72,10 +73,10 @@ void StoryScreen::Load(
        const auto& story_json : story_screen_json["stories"]) {
     stories_[index].text_renderer.InitRenderer(renderer_);
     stories_[index].text_renderer.LoadFromFile(story_json["file_path"]);
-    // stories_[index].text_renderer.SetPosition(story_json["x"].get<int>(),
-    //                                           story_json["y"].get<int>());
-    // stories_[index].text_renderer.SetSizes(story_json["width"].get<int>(),
-    //                                        story_json["height"].get<int>());
+    stories_[index].text_renderer.SetPosition(story_json.value("x", 0),
+                                              story_json.value("y", 0));
+    stories_[index].text_renderer.SetSizes(story_json.value("width", 0),
+                                           story_json.value("height", 0));
     stories_[index].text_renderer.ReFormat({}, default_font_, known_fonts_);
 
     ++index;
@@ -83,14 +84,39 @@ void StoryScreen::Load(
 }
 
 void StoryScreen::Update(float /*dt*/) {}
-void StoryScreen::Draw() {}
+void StoryScreen::Draw() {
+  SDL_FRect screen_rect = {0, 0, kScreenWidth, kScreenHeight};
+  SDL_FColor color;
+  color.a = 1.0f;
+  color.r = 1.0f;
+  color.g = 1.0f;
+  color.b = 1.0f;
+  SDL_SetRenderDrawBlendMode(renderer_.get(), SDL_BLENDMODE_BLEND);
+  SDL_SetTextureBlendMode(image_.get(), SDL_BLENDMODE_BLEND);
+  RenderTexture(renderer_, image_, &screen_rect, &screen_rect, &color);
+
+  if (cur_story_bro_ < stories_.size()) {
+    stories_[cur_story_bro_].text_renderer.Render(0);
+  }
+}
 
 void StoryScreen::OnKeyDown(Keyboard::Key /*key*/) {}
 
 void StoryScreen::OnKeyUp(Keyboard::Key key) {
   if (key == Keyboard::Key::kX) {
-    if (callback_) {
-      callback_->ContinueFromStoryScreen();
+    if (cur_story_bro_ + 1 == stories_.size()) {
+      if (callback_) {
+        callback_->ContinueFromStoryScreen();
+      }
+    } else {
+      ++cur_story_bro_;
+      if (cur_story_bro_ + 1 == stories_.size()) {
+        cur_story_bro_ = stories_.size() - 1;
+      }
+    }
+  } else if (key == Keyboard::Key::kCircle) {
+    if (cur_story_bro_ > 0) {
+      --cur_story_bro_;
     }
   } else if (key == Keyboard::Key::kSelect) {
     if (callback_) {
