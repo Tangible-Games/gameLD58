@@ -5,9 +5,9 @@
 #include <cstdlib>
 #include <symphony_lite/all_symphony.hpp>
 
-inline float randMinusOneToOne() {
-  return 1.0 - (2.0 * ((float)std::rand() / RAND_MAX));
-}
+inline float randToOne() { return (float)std::rand() / RAND_MAX; }
+
+inline float randMinusOneToOne() { return 1.0 - (2.0 * randToOne()); }
 
 inline SDL_FRect AARectToSdlFRect(Symphony::Math::AARect2d inp) {
   SDL_FRect out;
