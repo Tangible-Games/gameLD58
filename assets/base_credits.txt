@@ -1,0 +1,2 @@
+<style font="atarian_22" color="black" wrapping="noclip">Credits earned:</>
+<style font="atarian_22" color="black" wrapping="noclip"><sub variable="$credits">/<sub variable="$credits_of"></>

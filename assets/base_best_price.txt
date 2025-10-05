@@ -1,0 +1,2 @@
+<style font="atarian_22" color="black" wrapping="noclip">Best price:</>
+<style font="atarian_22" color="black" wrapping="noclip"><sub variable="$best_price"></>

@@ -1,0 +1,32 @@
+{
+  "base_screen": {
+    "credits_earned": {
+      "x": 25,
+      "y": 45,
+      "width": 300,
+      "height": 200,
+      "file_path": "assets/base_credits.txt"
+    },
+    "humans_captured": {
+      "x": 25,
+      "y": 90,
+      "width": 300,
+      "height": 200,
+      "file_path": "assets/base_humans_captured.txt"
+    },
+    "levels_completed": {
+      "x": 25,
+      "y": 135,
+      "width": 300,
+      "height": 200,
+      "file_path": "assets/base_levels_completed.txt"
+    },
+    "best_price": {
+      "x": 25,
+      "y": 180,
+      "width": 300,
+      "height": 200,
+      "file_path": "assets/base_best_price.txt"
+    }
+  }
+}
