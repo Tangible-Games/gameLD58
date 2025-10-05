@@ -9,6 +9,7 @@
 #include "fade_image.hpp"
 #include "keyboard.hpp"
 #include "level.hpp"
+#include "market_screen.hpp"
 #include "quit_dialog.hpp"
 #include "story_screen.hpp"
 #include "title_screen.hpp"
@@ -17,6 +18,7 @@ namespace gameLD58 {
 class Game : public TitleScreen::Callback,
              public StoryScreen::Callback,
              public BaseScreen::Callback,
+             public MarketScreen::Callback,
              public Level::Callback,
              public QuitDialog::Callback {
  public:
@@ -28,6 +30,7 @@ class Game : public TitleScreen::Callback,
         title_screen_(renderer, audio),
         story_screen_(renderer, audio),
         base_screen_(renderer, audio),
+        market_screen_(renderer, audio),
         fade_in_out_(renderer, audio, ""),
         level_(renderer, audio, "assets/level.json"),
         quit_dialog_(renderer, audio) {
@@ -52,6 +55,9 @@ class Game : public TitleScreen::Callback,
   void ContinueFromBaseScreen() override;
   void TryExitFromBaseScreen() override;
 
+  void BackFromMarketScreen() override;
+  void TryExitFromMarketScreen() override;
+
   void TryExitFromLevel() override;
 
   void BackToGame() override;
@@ -69,6 +75,9 @@ class Game : public TitleScreen::Callback,
     kToBaseScreenFadeIn,
     kToBaseScreenFadeOut,
     kBaseScreen,
+    kToMarketScreenFadeIn,
+    kToMarketScreenFadeOut,
+    kMarketScreen,
     kToGameFadeIn,
     kToGameFadeOut,
     kGame,
@@ -86,6 +95,7 @@ class Game : public TitleScreen::Callback,
   StoryScreen story_screen_;
   BaseScreen::Status player_status_;
   BaseScreen base_screen_;
+  MarketScreen market_screen_;
   FadeImage fade_in_out_;
   Level level_;
   QuitDialog quit_dialog_;
@@ -174,6 +184,29 @@ void Game::Update(float dt) {
       break;
 
     case State::kBaseScreen:
+      break;
+
+    case State::kToMarketScreenFadeIn:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        market_screen_.Show();
+        fade_in_out_.StartFadeOut(0.5f);
+        state_ = State::kToMarketScreenFadeOut;
+        LOGD("Game switches to state 'State::kToMarketScreenFadeOut'.");
+      }
+      break;
+
+    case State::kToMarketScreenFadeOut:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        state_ = State::kMarketScreen;
+        market_screen_.RegisterCallback(this);
+        Keyboard::Instance().RegisterCallback(&market_screen_);
+        LOGD("Game switches to state 'State::kMarketScreen'.");
+      }
+      break;
+
+    case State::kMarketScreen:
       break;
 
     case State::kToGameFadeIn:
@@ -270,6 +303,17 @@ void Game::Draw() {
     case State::kBaseScreen:
       base_screen_.Draw();
       break;
+    case State::kToMarketScreenFadeIn:
+      base_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kToMarketScreenFadeOut:
+      market_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kMarketScreen:
+      market_screen_.Draw();
+      break;
     case State::kToGameFadeIn:
       base_screen_.Draw();
       fade_in_out_.Draw();
@@ -351,6 +395,22 @@ void Game::ContinueFromBaseScreen() {
 
 void Game::TryExitFromBaseScreen() {
   if (state_ != State::kBaseScreen) {
+    return;
+  }
+
+  show_quit_dialog_ = true;
+  quit_dialog_.Show();
+  quit_dialog_.RegisterCallback(this);
+  prev_keyboard_callback_ =
+      Keyboard::Instance().RegisterCallback(&quit_dialog_);
+
+  LOGD("Game shows Quit dialog from Base screen.");
+}
+
+void Game::BackFromMarketScreen() {}
+
+void Game::TryExitFromMarketScreen() {
+  if (state_ != State::kMarketScreen) {
     return;
   }
 
