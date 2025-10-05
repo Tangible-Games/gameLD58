@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "consts.hpp"
+#include "human.hpp"
 #include "ufo.hpp"
 
 namespace gameLD58 {
@@ -50,9 +51,11 @@ class Level {
   Config level_config_;
   bool is_paused_{false};
   std::vector<Object> objects_;
+  std::vector<Human> humans_;
   Ufo ufo_;
   float cam_x_;
   float cam_y_;
+  std::shared_ptr<SDL_Texture> humanTexture_;
 
  private:
   static std::string readFile(const std::string& path) {
@@ -70,6 +73,9 @@ class Level {
     d -= L * std::floor((d + L * 0.5f) / L);
     return d;
   }
+
+  template <typename T>
+  void DrawObject(const T& obj, auto DrawToFn);
 };
 
 void Level::Load() {
@@ -119,63 +125,89 @@ void Level::Load() {
     objects_.push_back(obj);
   }
 
+  for (const auto& h : level_json["humans"]) {
+    float center_x = h.value("center_x", 0);
+    float half_width = h.value("half_width", 0);
+    float half_height = h.value("half_height", 0);
+    Symphony::Math::AARect2d rect{{center_x, config.height - half_height},
+                                  {half_width, half_height}};
+    humans_.emplace_back(Human{.rect = rect});
+  }
+
   LOGD("Level loaded: length={}, spawn=({}, {}), obstacles={}", config.length,
        config.ufo_spawn.x, config.ufo_spawn.y, objects_.size());
 
   level_config_ = std::move(config);
 
   ufo_.Load();
+
+  // Temporary load human texture
+  humanTexture_ = std::shared_ptr<SDL_Texture>(
+      IMG_LoadTexture(renderer_.get(), "assets/human.png"),
+      &SDL_DestroyTexture);
 }
 
-void Level::Draw() {
+template <typename T>
+void Level::DrawObject(const T& obj, auto DrawToFn) {
+  const auto& b = obj.rect;
+  float cx = b.center.x;
+  float cy = b.center.y;
+  float hx = b.half_size.x;
+  float hy = b.half_size.y;
+
+  // TODO: rework it. Before it was outside the loop
   float l = level_config_.length;
-  float cam_left = cam_x_ - kScreenWidth * 0.5f;
-  float cam_top = cam_y_ - kScreenHeight * 0.5f;
-
-  SDL_SetRenderDrawColor(renderer_.get(), 0, 255, 0, 255);
-
+  float cam_left = cam_x_ - (kScreenWidth * 0.5f);
+  float cam_top = cam_y_ - (kScreenHeight * 0.5f);
   bool crosses_left = cam_left < 0.0f;
   bool crosses_right = cam_left + kScreenWidth > l;
 
   bool need_wrap = l > kScreenWidth;
 
-  for (const auto& obj : objects_) {
-    const auto& b = obj.rect;
-    float cx = b.center.x;
-    float cy = b.center.y;
-    float hx = b.half_size.x;
-    float hy = b.half_size.y;
+  auto draw_one = [&](float draw_cx) {
+    float x = (draw_cx - hx) - cam_left;
+    float y = (cy - hy) - cam_top;
+    float rw = 2.f * hx;
+    float rh = 2.f * hy;
 
-    auto draw_one = [&](float draw_cx) {
-      float x = (draw_cx - hx) - cam_left;
-      float y = (cy - hy) - cam_top;
-      float rw = 2.f * hx, rh = 2.f * hy;
+    if (x + rw <= 0.f || x >= kScreenWidth) return;
+    if (y + rh <= 0.f || y >= kScreenHeight) return;
 
-      if (x + rw <= 0.f || x >= kScreenWidth) return;
-      if (y + rh <= 0.f || y >= kScreenHeight) return;
+    SDL_FRect r{x, y, rw, rh};
+    DrawToFn(r);
+  };
 
-      SDL_FRect r{x, y, rw, rh};
-      SDL_RenderRect(renderer_.get(), &r);
-    };
-
-    draw_one(cx);
-    if (need_wrap && crosses_left) {
-      draw_one(cx - l);
-    }
-    if (need_wrap && crosses_right) {
-      draw_one(cx + l);
-    }
+  draw_one(cx);
+  if (need_wrap && crosses_left) {
+    draw_one(cx - l);
   }
+  if (need_wrap && crosses_right) {
+    draw_one(cx + l);
+  }
+}
+
+void Level::Draw() {
+  SDL_SetRenderDrawColor(renderer_.get(), 0, 255, 0, 255);
+
+  for (const auto& obj : objects_) {
+    DrawObject(obj, [&](SDL_FRect r) { SDL_RenderRect(renderer_.get(), &r); });
+  };
+
+  for (const auto& obj : humans_) {
+    DrawObject(obj, [&](SDL_FRect r) {
+      SDL_RenderTexture(renderer_.get(), humanTexture_.get(), nullptr, &r);
+    });
+  };
 
   auto ub = ufo_.GetBounds();
-  auto dx = shortest_delta(ub.center.x, cam_x_, l);
+  auto dx = shortest_delta(ub.center.x, cam_x_, level_config_.length);
 
-  float x = kScreenWidth * 0.5f + dx - ub.half_size.x;
-  float y = kScreenHeight * 0.5f + (ub.center.y - cam_y_) - ub.half_size.y;
+  float x = (kScreenWidth * 0.5f) + dx - ub.half_size.x;
+  float y = (kScreenHeight * 0.5f) + (ub.center.y - cam_y_) - ub.half_size.y;
   SDL_FRect dst{x, y, 2.f * ub.half_size.x, 2.f * ub.half_size.y};
 
-  if (!(dst.x + dst.w <= 0.f || dst.x >= kScreenWidth || dst.y + dst.h <= 0.f ||
-        dst.y >= kScreenHeight)) {
+  if (dst.x + dst.w > 0.f && dst.x < kScreenWidth && dst.y + dst.h > 0.f &&
+      dst.y < kScreenHeight) {
     ufo_.DrawTo(dst);
   }
 }
