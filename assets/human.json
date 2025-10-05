@@ -1,9 +1,20 @@
 {
-    "accelerationY": {
-        "capturing": 2000,
-        "falling": 5000
+    "acceleration": {
+        "x": {
+            "walking": 2000,
+            "running": 4000
+        },
+        "y": {
+            "capturing": 2000,
+            "falling": 5000
+        }
     },
-    "velocityY": {
-        "deadly": 30
+    "velocity": {
+        "x": {
+            "max": 50
+        },
+        "y": {
+            "deadly": 30
+        }
     }
 }

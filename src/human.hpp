@@ -2,11 +2,14 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
+#include <cmath>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <symphony_lite/all_symphony.hpp>
 
 #include "symphony_lite/vector2d.hpp"
+#include "utils.hpp"
 
 namespace gameLD58 {
 
@@ -23,9 +26,15 @@ struct HumanConfiguration {
       file.close();
 
       ret.accelerationCapturing =
-          config["accelerationY"]["capturing"].get<float>();
-      ret.accelerationFalling = config["accelerationY"]["falling"].get<float>();
-      ret.velocityDeadly = config["velocityY"]["deadly"].get<float>();
+          config["acceleration"]["y"]["capturing"].get<float>();
+      ret.accelerationFalling =
+          config["acceleration"]["y"]["falling"].get<float>();
+      ret.accelerationWalking =
+          config["acceleration"]["x"]["walking"].get<float>();
+      ret.accelerationRunning =
+          config["acceleration"]["x"]["running"].get<float>();
+      ret.velocityDeadly = config["velocity"]["y"]["deadly"].get<float>();
+      ret.velocityXMax = config["velocity"]["x"]["max"].get<float>();
     } else {
       LOGE("Failed to load {}", kHumanConfigPath);
     }
@@ -38,9 +47,12 @@ struct HumanConfiguration {
     return config;
   }
 
+  float accelerationWalking{0};
+  float accelerationRunning{0};
   float accelerationCapturing{0};
   float accelerationFalling{0};
   float velocityDeadly{0};
+  float velocityXMax{0};
 };
 
 struct HumanTexture {
@@ -56,21 +68,51 @@ struct HumanTexture {
 class Human {
  public:
   Human(std::shared_ptr<SDL_Renderer> renderer,
-        const Symphony::Math::AARect2d& r)
+        const Symphony::Math::AARect2d& r, float maxX)
       : rect(r),
         groundY_(r.center.y),
         renderer_(renderer),
         texture_(HumanTexture::texture(renderer)),
-        configuration_(HumanConfiguration::configuration()) {}
+        configuration_(HumanConfiguration::configuration()),
+        maxX_{maxX} {}
 
   bool Update(float dt) {
     if (captured_) {
       acc_.y -= configuration_.accelerationCapturing * dt;
+      if (!prevCaptured_) {
+        acc_.x = -std::copysign(configuration_.accelerationRunning, acc_.x);
+        prevCaptured_ = true;
+      }
     } else if (rect.center.y < groundY_) {
       acc_.y += configuration_.accelerationFalling * dt;
+      if (prevCaptured_) {
+        // Reset direction and acceleration
+        prevCaptured_ = false;
+        targetX_ = -1;
+        acc_.x = 0;
+      }
+    }
+
+    if (targetX_ < 0.0) {
+      auto newDirection = randMinusOneToOne() * maxX_;
+      acc_.x = std::copysign(configuration_.accelerationWalking, newDirection);
+      targetX_ = rect.center.x + newDirection;
+      if (targetX_ < 0) {
+        targetX_ = maxX_ + targetX_;
+      } else if (targetX_ > maxX_) {
+        targetX_ = targetX_ - maxX_;
+      }
+      LOGD("New target: {}, {}", newDirection, targetX_);
+    } else if (std::abs(targetX_ - rect.center.x) < 0.1) {
+      LOGD("Reset target");
+      targetX_ = -1;
+      acc_.x = 0;
     }
 
     auto v = acc_ * dt;
+    v.x = std::clamp(v.x, -configuration_.velocityXMax,
+                     configuration_.velocityXMax);
+
     rect.center.y += v.y * dt;
     if (rect.center.y > groundY_) {
       rect.center.y = groundY_;
@@ -80,6 +122,13 @@ class Human {
         return false;
       }
     }
+    rect.center.x += v.x * dt;
+    if (rect.center.x < 0) {
+      rect.center.x = maxX_ + rect.center.x;
+    } else if (rect.center.x > maxX_) {
+      rect.center.x = rect.center.x - maxX_;
+    }
+
     return true;
   }
 
@@ -88,7 +137,6 @@ class Human {
   }
 
   Symphony::Math::AARect2d rect;
-
   float groundY_;
 
   std::shared_ptr<SDL_Renderer> renderer_;
@@ -96,6 +144,9 @@ class Human {
   HumanConfiguration configuration_;
   Symphony::Math::Vector2d acc_;
   bool captured_{false};
+  bool prevCaptured_{false};
+  float maxX_;
+  float targetX_{-1};
 };
 
 }  // namespace gameLD58

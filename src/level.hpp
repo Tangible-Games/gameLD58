@@ -145,7 +145,7 @@ void Level::Load() {
     float half_height = h.value("half_height", 0);
     Symphony::Math::AARect2d rect{{center_x, config.height - half_height},
                                   {half_width, half_height}};
-    humans_.emplace_back(renderer_, rect);
+    humans_.emplace_back(renderer_, rect, config.length);
   }
 
   LOGD("Level loaded: length={}, spawn=({}, {}), obstacles={}", config.length,
