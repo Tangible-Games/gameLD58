@@ -11,8 +11,10 @@
 #include <symphony_lite/all_symphony.hpp>
 
 #include "consts.hpp"
+#include "human.hpp"
 #include "keyboard.hpp"
 #include "symphony_lite/angle.hpp"
+#include "symphony_lite/point2d.hpp"
 #include "utils.hpp"
 
 namespace gameLD58 {
@@ -39,6 +41,10 @@ class Ufo {
   void SetPosition(const Symphony::Math::Point2d& new_position) {
     rect_.center = new_position;
   }
+
+  bool MaybeCatchHuman(Human& h);
+
+  bool IsPointInBeam(const Symphony::Math::Point2d& p);
 
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
@@ -223,6 +229,32 @@ void Ufo::DrawTo(const SDL_FRect& dst) {
     SDL_RenderGeometry(renderer_.get(), nullptr, vert.data(), vert.size(),
                        indices.data(), indices.size());
   }
+}
+
+bool Ufo::IsPointInBeam(const Symphony::Math::Point2d& p) {
+  float beamTopHalfWidth = configuration_.tractorBeam.initialWidth / 2;
+  float beamOnPointWidth =
+      beamTopHalfWidth +
+      ((p.y - rect_.center.y) *
+       std::tan(configuration_.tractorBeam.angularWidth / 2.0));
+  return rect_.center.x - beamOnPointWidth <= p.x &&
+         p.x <= rect_.center.x + beamOnPointWidth;
+}
+
+bool Ufo::MaybeCatchHuman(Human& h) {
+  (void)h;
+  if (tractorBeamTimeout_ > 0.0 && IsPointInBeam(h.rect.center)) {
+    h.captured_ = true;
+
+    if (h.rect.center.y < (rect_.center.y + rect_.half_size.y)) {
+      LOGD("Capture human");
+      return true;
+    }
+  } else {
+    h.captured_ = false;
+  }
+
+  return false;
 }
 
 }  // namespace gameLD58
