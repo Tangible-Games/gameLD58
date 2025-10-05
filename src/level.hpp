@@ -193,6 +193,7 @@ void Level::Update(float dt) {
   }
 
   ufo_.Update(dt);
+  ufo_.SetPosition(ufo_.GetBounds().center + ufo_.GetVelocity() * dt);
 }
 
 }  // namespace gameLD58

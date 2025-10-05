@@ -29,6 +29,14 @@ class Ufo {
 
   void Update(float dt);
 
+  const Symphony::Math::Vector2d& GetVelocity() const { return velocity_; }
+
+  const Symphony::Math::AARect2d& GetBounds() const { return rect_; }
+
+  void SetPosition(const Symphony::Math::Point2d& new_position) {
+    rect_.center = new_position;
+  }
+
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
@@ -137,10 +145,6 @@ void Ufo::Update(float dt) {
                                   configuration_.maxVelocity.x);
   velocity_.y = std::clamp<float>(velocity_.y, -configuration_.maxVelocity.y,
                                   configuration_.maxVelocity.y);
-
-  // Move UFO
-  rect_.center.x += velocity_.x * dt;
-  rect_.center.y += velocity_.y * dt;
 
   // Add some drag, acceleration is decreasing
   acceleration_.x *= std::pow(configuration_.dragCoef.x, dt);
