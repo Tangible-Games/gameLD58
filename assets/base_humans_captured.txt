@@ -1,2 +1,2 @@
-<style font="atarian_22" color="black" wrapping="noclip">Humans captured:</>
-<style font="atarian_22" color="black" wrapping="noclip"><sub variable="$humans_captured"></>
+<style font="sysfont_20" color="black" wrapping="noclip">Humans captured:</>
+<style font="sysfont_20" color="black" wrapping="noclip"><sub variable="$humans_captured"></>
