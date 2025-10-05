@@ -75,6 +75,7 @@ class Game : public TitleScreen::Callback,
   };
 
   void loadFonts();
+  void loadRules();
 
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
@@ -212,6 +213,7 @@ void Game::Update(float dt) {
 void Game::Load() {
   if (state_ == State::kFirstLoading) {
     loadFonts();
+    loadRules();
 
     level_.Load();
     title_screen_.Load();
@@ -422,5 +424,21 @@ void Game::loadFonts() {
   }
 
   default_font_ = known_fonts_json["default_font"];
+}
+
+void Game::loadRules() {
+  std::ifstream file;
+
+  file.open("assets/game.json");
+  if (!file.is_open()) {
+    LOGE("Failed to load {}", "assets/game.json");
+    return;
+  }
+
+  nlohmann::json game_json = nlohmann::json::parse(file);
+  file.close();
+
+  player_status_.credits_earned_of =
+      game_json["game"].value("credits_earned_of", 0);
 }
 }  // namespace gameLD58
