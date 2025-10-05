@@ -6,6 +6,7 @@
 
 #include "fade_image.hpp"
 #include "keyboard.hpp"
+#include "level.hpp"
 #include "quit_dialog.hpp"
 #include "title_screen.hpp"
 #include "ufo.hpp"
@@ -21,6 +22,7 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
         title_screen_(renderer, audio),
         fade_in_out_(renderer, audio, ""),
         ufo_(renderer, audio),
+        level_(renderer, "assets/level.json"),
         quit_dialog_(renderer, audio) {
     LOGD("Game is in state 'State::kJustStarted'.");
   }
@@ -59,6 +61,7 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
   TitleScreen title_screen_;
   FadeImage fade_in_out_;
   Ufo ufo_;
+  Level level_;
   QuitDialog quit_dialog_;
   bool show_quit_dialog_{false};
   Keyboard::Callback* prev_keyboard_callback_{nullptr};
@@ -112,6 +115,7 @@ void Game::Update(float dt) {
       break;
 
     case State::kGame:
+      level_.Update(dt);
       ufo_.Update(dt);
       break;
   }
@@ -123,6 +127,7 @@ void Game::Update(float dt) {
 
 void Game::Load() {
   if (state_ == State::kFirstLoading) {
+    level_.Load();
     ufo_.Load();
     title_screen_.Load();
     fade_in_out_.Load("assets/fade_in_out.png");
@@ -158,10 +163,12 @@ void Game::Draw() {
       fade_in_out_.Draw();
       break;
     case State::kToGameFadeOut:
+      level_.Draw();
       ufo_.Draw();
       fade_in_out_.Draw();
       break;
     case State::kGame:
+      level_.Draw();
       ufo_.Draw();
       break;
   }
