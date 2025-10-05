@@ -62,7 +62,6 @@ int main(int /* argc */, char* /* argv */[]) {
   }
   LOGI("Window is created.");
 
-  // Enable VSync on host
   if (!SDL_SetRenderVSync(renderer.get(), 1)) {
     LOGE("Could not enable VSync! SDL error: {}", SDL_GetError());
     return 1;
@@ -78,7 +77,8 @@ int main(int /* argc */, char* /* argv */[]) {
   SDL_SetRenderClipRect(renderer.get(), &clip);
 
   auto audio = std::make_shared<Symphony::Audio::Device>();
-  LOGI("Audio is created.");
+  audio->Init();
+  LOGI("Audio is created and initialized.");
 
   Symphony::Text::TextRenderer system_info_renderer(renderer);
 
@@ -145,6 +145,8 @@ int main(int /* argc */, char* /* argv */[]) {
   }
 
   LOGI("Exiting main loop.");
+
+  audio.reset();
 
   renderer.reset();
 

@@ -70,6 +70,8 @@ class Device {
  public:
   Device() = default;
 
+  ~Device();
+
   void Init();
 
   std::shared_ptr<PlayingStream> Play(
@@ -129,6 +131,8 @@ class Device {
   };
 #pragma pack(pop)
 
+  static void destroyAudioDevice(SDL_AudioStream* stream);
+
   static void startPlayingStream(
       PlayingStreamInternal* playing_stream_internal);
 
@@ -169,6 +173,11 @@ class Device {
   std::vector<int16_t> read_buffer_;
 };
 
+Device::~Device() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  playing_streams_.clear();
+}
+
 void Device::Init() {
   SDL_AudioSpec sdl_audio_spec;
 
@@ -179,7 +188,7 @@ void Device::Init() {
   sdl_audio_stream_.reset(
       SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
                                 &sdl_audio_spec, dataCallback, this),
-      SDL_DestroyAudioStream);
+      destroyAudioDevice);
   if (!sdl_audio_stream_) {
     LOGE("[Symphony::Audio::Device] Failed to create stream: {}",
          SDL_GetError());
@@ -252,6 +261,8 @@ void Device::StopImmediately(std::shared_ptr<PlayingStream> playing_stream) {
   playing_streams_.erase(playing_stream);
 }
 
+void Device::destroyAudioDevice(SDL_AudioStream* /*stream*/) {}
+
 void Device::startPlayingStream(
     PlayingStreamInternal* playing_stream_internal) {
   if (playing_stream_internal->fade_control.fade_in_time_sec > 0.0f) {
@@ -264,6 +275,8 @@ void Device::startPlayingStream(
     playing_stream_internal->total_blocks_to_play =
         playing_stream_internal->wave_file->GetNumBlocks() *
         playing_stream_internal->play_count.num_repeats;
+  } else {
+    playing_stream_internal->total_blocks_to_play = 0;
   }
 }
 
@@ -324,7 +337,7 @@ int32_t Device::updateGainStateInCallback(
   if (playing_stream_internal->gain_state == GainState::kAttack) {
     // It should be possible to switch to GainState::kRelease in
     // GainState::kAttack too.
-    if (playing_stream_internal->total_blocks_streamed) {
+    if (playing_stream_internal->total_blocks_to_play) {
       size_t num_blocks_to_fade_out = static_cast<size_t>(
           playing_stream_internal->wave_file->GetSampleRate() *
           playing_stream_internal->fade_control.fade_out_time_sec);
@@ -360,7 +373,7 @@ int32_t Device::updateGainStateInCallback(
 
   if (playing_stream_internal->gain_state == GainState::kSustain) {
     if (playing_stream_internal->fade_control.fade_out_time_sec > 0.0f) {
-      if (playing_stream_internal->total_blocks_streamed) {
+      if (playing_stream_internal->total_blocks_to_play) {
         size_t num_blocks_to_fade_out =
             (size_t)(playing_stream_internal->wave_file->GetSampleRate() *
                      playing_stream_internal->fade_control.fade_out_time_sec);

@@ -8,6 +8,7 @@
 #include "keyboard.hpp"
 #include "level.hpp"
 #include "quit_dialog.hpp"
+#include "story_screen.hpp"
 #include "title_screen.hpp"
 
 namespace gameLD58 {
@@ -19,6 +20,7 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
         audio_(audio),
         loading_(renderer, audio, "assets/loading.png"),
         title_screen_(renderer, audio),
+        story_screen_(renderer, audio),
         fade_in_out_(renderer, audio, ""),
         level_(renderer, audio, "assets/level.json"),
         quit_dialog_(renderer, audio) {
@@ -57,6 +59,7 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
   bool ready_for_loading_{false};
   FadeImage loading_;
   TitleScreen title_screen_;
+  StoryScreen story_screen_;
   FadeImage fade_in_out_;
   Level level_;
   QuitDialog quit_dialog_;
@@ -64,6 +67,8 @@ class Game : public TitleScreen::Callback, public QuitDialog::Callback {
   Keyboard::Callback* prev_keyboard_callback_{nullptr};
   State state_{State::kJustStarted};
   int just_started_updates_{30};
+  std::shared_ptr<Symphony::Audio::WaveFile> menu_audio_;
+  std::shared_ptr<Symphony::Audio::PlayingStream> menu_audio_stream_;
 };
 
 void Game::Update(float dt) {
@@ -84,6 +89,10 @@ void Game::Update(float dt) {
 
     case State::kFadeToTitleScreen:
       if (loading_.IsIdle()) {
+        menu_audio_stream_ =
+            audio_->Play(menu_audio_, Symphony::Audio::kPlayLooped,
+                         Symphony::Audio::FadeInOut(5.0f, 1.0f));
+
         state_ = State::kTitleScreen;
         title_screen_.RegisterCallback(this);
         Keyboard::Instance().RegisterCallback(&title_screen_);
@@ -106,6 +115,8 @@ void Game::Update(float dt) {
     case State::kToGameFadeOut:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
+        audio_->Stop(menu_audio_stream_, Symphony::Audio::StopFade(0.5f));
+
         level_.SetIsPaused(false);
         state_ = State::kGame;
         LOGD("Game switches to state 'State::kGame'.");
@@ -126,10 +137,12 @@ void Game::Load() {
   if (state_ == State::kFirstLoading) {
     level_.Load();
     title_screen_.Load();
+    story_screen_.Load();
     fade_in_out_.Load("assets/fade_in_out.png");
     quit_dialog_.Load();
 
-    // std::this_thread::sleep_for(std::chrono::seconds(5));
+    menu_audio_ = Symphony::Audio::LoadWave(
+        "assets/05_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
 
     ready_for_loading_ = false;
 
@@ -201,6 +214,9 @@ void Game::BackToGame() {
 
 void Game::QuitGame() {
   is_running_ = false;
+
+  audio_->StopImmediately(menu_audio_stream_);
+
   LOGD("Quit dialog requests quitting.");
 }
 }  // namespace gameLD58
