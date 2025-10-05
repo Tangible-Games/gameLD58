@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <symphony_lite/aa_rect2d.hpp>
@@ -64,7 +65,7 @@ class Level : public Keyboard::Callback {
   bool is_paused_{false};
   Callback* callback_{nullptr};
   std::vector<Object> objects_;
-  std::vector<Human> humans_;
+  std::list<Human> humans_;
   ParallaxRenderer paralax_renderer_;
   Ufo ufo_;
   float cam_x_;
@@ -265,6 +266,16 @@ void Level::Update(float dt) {
     cam_y_ = min_center;
   } else {
     cam_y_ = std::clamp(ufo_.GetBounds().center.y, min_center, max_center);
+  }
+
+  // Get visible humans
+  for (auto h = humans_.begin(); h != humans_.end();) {
+    bool collected = ufo_.MaybeCatchHuman(*h);
+    if (collected) {
+      h = humans_.erase(h);
+    } else {
+      h++;
+    }
   }
 
   for (auto& h : humans_) {
