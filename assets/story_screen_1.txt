@@ -1,5 +1,3 @@
 <style font="atarian_30" color="black" wrapping="word">Meine Geschichte</>
-
 <style font="atarian_22" color="black" wrapping="word">Ich bin ein einfacher Burger von Alpha Centauri. Nicht besonders schlau, nicht besonders glucklich.</>
-
 <style font="atarian_22" color="black" wrapping="word">Aber eines Tages hatte ich Gluck und kaufte eine ramponierte und bemalte fliegende Untertasse.</>
