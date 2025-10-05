@@ -12,6 +12,7 @@
 
 #include "consts.hpp"
 #include "human.hpp"
+#include "paralax_renderer.hpp"
 #include "ufo.hpp"
 
 namespace gameLD58 {
@@ -39,6 +40,7 @@ class Level : public Keyboard::Callback {
       : renderer_(renderer),
         audio_(audio),
         level_path_(std::move(path)),
+        paralax_renderer_(renderer),
         ufo_(renderer, audio) {}
 
   void Load();
@@ -63,6 +65,7 @@ class Level : public Keyboard::Callback {
   Callback* callback_{nullptr};
   std::vector<Object> objects_;
   std::vector<Human> humans_;
+  ParallaxRenderer paralax_renderer_;
   Ufo ufo_;
   float cam_x_;
   float cam_y_;
@@ -150,6 +153,8 @@ void Level::Load() {
 
   level_config_ = std::move(config);
 
+  paralax_renderer_.Load(level_config_.length, "assets/backgrounds.json");
+
   ufo_.Load();
 
   // Temporary load human texture
@@ -198,6 +203,8 @@ void Level::DrawObject(const T& obj, auto DrawToFn) {
 }
 
 void Level::Draw() {
+  paralax_renderer_.Draw(cam_x_, cam_y_);
+
   SDL_SetRenderDrawColor(renderer_.get(), 0, 255, 0, 255);
 
   for (const auto& obj : objects_) {
