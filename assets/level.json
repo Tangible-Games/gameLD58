@@ -33,5 +33,27 @@
       "half_width": 5,
       "half_height": 10
     }
+  ],
+  "humans": [
+    {
+      "center_x": 20,
+      "half_width": 10,
+      "half_height": 20
+    },
+    {
+      "center_x": 400,
+      "half_width": 10,
+      "half_height": 20
+    },
+    {
+      "center_x": 500,
+      "half_width": 10,
+      "half_height": 20
+    },
+    {
+      "center_x": 600,
+      "half_width": 10,
+      "half_height": 20
+    }
   ]
 }
