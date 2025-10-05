@@ -15,7 +15,7 @@
         "x": 0.3,
         "y": 0.3
     },
-    "drift" : {
+    "drift": {
         "acceleration": {
             "x": 8000,
             "y": 8000
@@ -24,6 +24,11 @@
             "x": 2000,
             "y": 2000
         }
+    },
+    "tractor_beam": {
+        "latency": 1,
+        "initial_width": 30,
+        "angular_width": 20
     },
     "texture": "assets/ufo.png"
 }
