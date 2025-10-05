@@ -12,6 +12,7 @@
 
 #include "consts.hpp"
 #include "keyboard.hpp"
+#include "symphony_lite/angle.hpp"
 #include "utils.hpp"
 
 namespace gameLD58 {
@@ -51,12 +52,19 @@ class Ufo {
     Symphony::Math::Vector2d dragCoef{0, 0};
     Symphony::Math::Vector2d driftAcceleration{0, 0};
     Symphony::Math::Vector2d driftThreshold{0, 0};
+    struct TractorBeam {
+      float latency{0};
+      float initialWidth{0};
+      float angularWidth{0};
+    } tractorBeam;
   } configuration_;
 
   bool is_paused_{false};
   Symphony::Math::AARect2d rect_{};
   Symphony::Math::Vector2d velocity_{0, 0};
   Symphony::Math::Vector2d acceleration_{0, 0};
+
+  float tractorBeamTimeout_{0};
 
   float prevTime_{0};
 };
@@ -101,6 +109,13 @@ void Ufo::Load() {
       config["drift"]["acceleration_threshold"]["x"].get<float>(),
       config["drift"]["acceleration_threshold"]["y"].get<float>()};
 
+  configuration_.tractorBeam.latency =
+      config["tractor_beam"]["latency"].get<float>();
+  configuration_.tractorBeam.initialWidth =
+      config["tractor_beam"]["initial_width"].get<float>();
+  configuration_.tractorBeam.angularWidth = Symphony::Math::DegToRad(
+      config["tractor_beam"]["angular_width"].get<float>());
+
   const std::string texturePath = config["texture"].get<std::string>();
   texture_ = std::shared_ptr<SDL_Texture>(
       IMG_LoadTexture(renderer_.get(), texturePath.c_str()),
@@ -139,6 +154,9 @@ void Ufo::Update(float dt) {
   if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadDown).has_value()) {
     acceleration_.y += configuration_.moveAcceleration.y * dt;
   }
+  if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kSquare).has_value()) {
+    tractorBeamTimeout_ = configuration_.tractorBeam.latency;
+  }
 
   // Calculate velocity
   velocity_ = acceleration_ * dt;
@@ -169,12 +187,42 @@ void Ufo::Update(float dt) {
     LOGD("acc: {}, velocity: {}, pos: {}", acceleration_, velocity_, rect_);
   }
   prevTime_ = newTime;
+
+  tractorBeamTimeout_ -= dt;
+  tractorBeamTimeout_ =
+      std::clamp(tractorBeamTimeout_, 0.0f, configuration_.tractorBeam.latency);
 }
 
 void Ufo::SetIsPaused(bool is_paused) { is_paused_ = is_paused; }
 
 void Ufo::DrawTo(const SDL_FRect& dst) {
   SDL_RenderTexture(renderer_.get(), texture_.get(), nullptr, &dst);
+
+  // TODO: DrawTo might be not convenient for cases like this. Factor it out.
+  if (tractorBeamTimeout_ > 0.0) {
+    float x = dst.x + rect_.half_size.x;
+    float y = dst.y + (rect_.half_size.y * 2);
+
+    float beamTopHalfWidth = configuration_.tractorBeam.initialWidth / 2;
+    float beamBottomHalfWidth =
+        beamTopHalfWidth +
+        ((kScreenHeight - y) *
+         std::tan(configuration_.tractorBeam.angularWidth / 2.0));
+
+    const std::array<SDL_Vertex, 4> vert = {
+        SDL_Vertex{{x + beamTopHalfWidth, y}, {0, 0, 1, 0.3}, {}},
+        SDL_Vertex{{x - beamTopHalfWidth, y}, {0, 0, 1, 0.3}, {}},
+        SDL_Vertex{
+            {x - beamBottomHalfWidth, kScreenHeight}, {0, 0, 1, 0.3}, {}},
+        SDL_Vertex{
+            {x + beamBottomHalfWidth, kScreenHeight}, {0, 0, 1, 0.3}, {}},
+    };
+
+    const std::array<int, 6> indices = {0, 1, 2, 2, 3, 0};
+
+    SDL_RenderGeometry(renderer_.get(), nullptr, vert.data(), vert.size(),
+                       indices.data(), indices.size());
+  }
 }
 
 }  // namespace gameLD58
