@@ -25,7 +25,7 @@ class Ufo {
   virtual ~Ufo() = default;
 
   void Load();
-  void Draw();
+  void DrawTo(const SDL_FRect& dst);
 
   void Update(float dt);
 
@@ -173,9 +173,8 @@ void Ufo::Update(float dt) {
 
 void Ufo::SetIsPaused(bool is_paused) { is_paused_ = is_paused; }
 
-void Ufo::Draw() {
-  SDL_FRect rect = AARectToSdlFRect(rect_);
-  SDL_RenderTexture(renderer_.get(), texture_.get(), NULL, &rect);
+void Ufo::DrawTo(const SDL_FRect& dst) {
+  SDL_RenderTexture(renderer_.get(), texture_.get(), nullptr, &dst);
 }
 
 }  // namespace gameLD58
