@@ -12,6 +12,7 @@
 
 #include "consts.hpp"
 #include "human.hpp"
+#include "paralax_renderer.hpp"
 #include "ufo.hpp"
 
 namespace gameLD58 {
@@ -27,13 +28,19 @@ struct Config {
   Symphony::Math::Point2d ufo_spawn;
 };
 
-class Level {
+class Level : public Keyboard::Callback {
  public:
+  class Callback {
+   public:
+    virtual void TryExitFromLevel() = 0;
+  };
+
   Level(std::shared_ptr<SDL_Renderer> renderer,
         std::shared_ptr<Symphony::Audio::Device> audio, std::string path)
       : renderer_(renderer),
         audio_(audio),
         level_path_(std::move(path)),
+        paralax_renderer_(renderer),
         ufo_(renderer, audio) {}
 
   void Load();
@@ -44,14 +51,21 @@ class Level {
 
   void SetIsPaused(bool is_paused);
 
+  void OnKeyDown(Keyboard::Key key) override;
+  void OnKeyUp(Keyboard::Key key) override;
+
+  void RegisterCallback(Callback* callback_);
+
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
   std::string level_path_;
   Config level_config_;
   bool is_paused_{false};
+  Callback* callback_{nullptr};
   std::vector<Object> objects_;
   std::vector<Human> humans_;
+  ParallaxRenderer paralax_renderer_;
   Ufo ufo_;
   float cam_x_;
   float cam_y_;
@@ -139,6 +153,8 @@ void Level::Load() {
 
   level_config_ = std::move(config);
 
+  paralax_renderer_.Load(level_config_.length, "assets/backgrounds.json");
+
   ufo_.Load();
 
   // Temporary load human texture
@@ -187,6 +203,8 @@ void Level::DrawObject(const T& obj, auto DrawToFn) {
 }
 
 void Level::Draw() {
+  paralax_renderer_.Draw(cam_x_, cam_y_);
+
   SDL_SetRenderDrawColor(renderer_.get(), 0, 255, 0, 255);
 
   for (const auto& obj : objects_) {
@@ -268,5 +286,17 @@ void Level::SetIsPaused(bool is_paused) {
   is_paused_ = is_paused;
   ufo_.SetIsPaused(is_paused);
 }
+
+void Level::OnKeyDown(Keyboard::Key /*key*/) {}
+
+void Level::OnKeyUp(Keyboard::Key key) {
+  if (key == Keyboard::Key::kSelect) {
+    if (callback_) {
+      callback_->TryExitFromLevel();
+    }
+  }
+}
+
+void Level::RegisterCallback(Callback* callback) { callback_ = callback; }
 
 }  // namespace gameLD58
