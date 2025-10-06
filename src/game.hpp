@@ -9,6 +9,7 @@
 #include "fade_image.hpp"
 #include "keyboard.hpp"
 #include "level.hpp"
+#include "market_rules.hpp"
 #include "market_screen.hpp"
 #include "quit_dialog.hpp"
 #include "story_screen.hpp"
@@ -96,6 +97,7 @@ class Game : public TitleScreen::Callback,
   TitleScreen title_screen_;
   StoryScreen story_screen_;
   BaseScreen::Status player_status_;
+  MarketInfo market_info_;
   BaseScreen base_screen_;
   MarketScreen market_screen_;
   float market_before_next_music_timeout_{0.0f};
@@ -171,7 +173,7 @@ void Game::Update(float dt) {
     case State::kToBaseScreenFromMarketFadeIn:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
-        base_screen_.Show(player_status_);
+        base_screen_.Show(player_status_, &market_info_);
         fade_in_out_.StartFadeOut(0.5f);
         state_ = State::kToBaseScreenFadeOut;
         LOGD("Game switches to state 'State::kToBaseScreenFadeOut'.");
