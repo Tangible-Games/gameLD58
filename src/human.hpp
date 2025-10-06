@@ -36,6 +36,9 @@ struct HumanConfiguration {
       ret.velocityDeadly = config["velocity"]["y"]["deadly"].get<float>();
       ret.velocityXMax = config["velocity"]["x"]["max"].get<float>();
       ret.captureDelay = config["capture_delay"].get<float>();
+      ret.half_width = config["half_width"].get<float>();
+      ret.half_height = config["half_height"].get<float>();
+
     } else {
       LOGE("Failed to load {}", kHumanConfigPath);
     }
@@ -55,6 +58,8 @@ struct HumanConfiguration {
   float velocityDeadly{0};
   float velocityXMax{0};
   float captureDelay{0};
+  float half_width{0};
+  float half_height{0};
 };
 
 struct HumanTexture {
@@ -69,13 +74,15 @@ struct HumanTexture {
 
 class Human {
  public:
-  Human(std::shared_ptr<SDL_Renderer> renderer,
-        const Symphony::Math::AARect2d& r, float maxX)
-      : rect(r),
-        groundY_(r.center.y),
+  Human(std::shared_ptr<SDL_Renderer> renderer, float posX, float posY,
+        float maxX)
+      : configuration_(HumanConfiguration::configuration()),
+        rect{Symphony::Math::AARect2d{
+            {posX, posY - configuration_.half_height},
+            {configuration_.half_width, configuration_.half_height}}},
+        groundY_(rect.center.y),
         renderer_(renderer),
         texture_(HumanTexture::texture(renderer)),
-        configuration_(HumanConfiguration::configuration()),
         maxX_{maxX} {}
 
   bool Update(float dt) {
@@ -150,12 +157,11 @@ class Human {
     SDL_RenderTexture(renderer_.get(), texture_.get(), nullptr, &r);
   }
 
+  HumanConfiguration configuration_;
   Symphony::Math::AARect2d rect;
   float groundY_;
-
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<SDL_Texture> texture_;
-  HumanConfiguration configuration_;
   Symphony::Math::Vector2d acc_;
   bool captured_{false};
   bool prevCaptured_{false};
