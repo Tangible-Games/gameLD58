@@ -271,12 +271,18 @@ void Level::Update(float dt) {
     if (ufo_.GetVelocity().y < 0.0f) {
       auto v = ufo_.GetVelocity();
       ufo_.SetVelocity({v.x, 0.0f});
+
+      auto a = ufo_.GetAcceleration();
+      ufo_.SetAcceleration({a.x, 0.0f});
     }
   } else if (ufo_center.y > level_config_.ufo_max_height) {
     ufo_center.y = level_config_.ufo_max_height;
     if (ufo_.GetVelocity().y > 0.0f) {
       auto v = ufo_.GetVelocity();
       ufo_.SetVelocity({v.x, 0.0f});
+
+      auto a = ufo_.GetAcceleration();
+      ufo_.SetAcceleration({a.x, 0.0f});
     }
   }
   ufo_.SetPosition(ufo_center);
