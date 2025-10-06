@@ -39,7 +39,7 @@ class Game : public TitleScreen::Callback,
         base_screen_(renderer, audio, &all_audio_),
         market_screen_(renderer, audio, &all_audio_),
         fade_in_out_(renderer, audio, ""),
-        level_(renderer, audio, "assets/level.json"),
+        level_(renderer, audio, &all_audio_, "assets/level.json"),
         victory_screen_(renderer, audio, &all_audio_),
         defeat_screen_(renderer, audio, &all_audio_),
         quit_dialog_(renderer, audio) {

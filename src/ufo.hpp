@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 #include <symphony_lite/all_symphony.hpp>
 
+#include "all_audio.hpp"
 #include "consts.hpp"
 #include "human.hpp"
 #include "keyboard.hpp"
@@ -24,8 +25,8 @@ class Ufo {
 
  public:
   Ufo(std::shared_ptr<SDL_Renderer> renderer,
-      std::shared_ptr<Symphony::Audio::Device> audio)
-      : renderer_(renderer), audio_(audio) {}
+      std::shared_ptr<Symphony::Audio::Device> audio, AllAudio* all_audio)
+      : renderer_(renderer), audio_(audio), all_audio_(all_audio) {}
   virtual ~Ufo() = default;
 
   void Load();
@@ -62,6 +63,7 @@ class Ufo {
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
+  AllAudio* all_audio_{nullptr};
 
   std::shared_ptr<SDL_Texture> texture_{};
 
@@ -173,6 +175,10 @@ void Ufo::Update(float dt) {
     acceleration_.y += configuration_.moveAcceleration.y * dt;
   }
   if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kSquare).has_value()) {
+    if (tractorBeamTimeout_ == 0.0f) {
+      audio_->Play(all_audio_->audio[Sound::kBeamLoop],
+                   Symphony::Audio::PlayTimes(10), Symphony::Audio::kNoFade);
+    }
     tractorBeamTimeout_ = configuration_.tractorBeam.latency;
   }
 
