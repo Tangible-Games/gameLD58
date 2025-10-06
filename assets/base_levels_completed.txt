@@ -1,2 +1,2 @@
-<style font="atarian_22" color="black" wrapping="noclip">Levels completed:</>
-<style font="atarian_22" color="black" wrapping="noclip"><sub variable="$levels_completed"></>
+<style font="sysfont_20" color="black" wrapping="noclip">Levels completed:</>
+<style font="sysfont_20" color="black" wrapping="noclip"><sub variable="$levels_completed"></>

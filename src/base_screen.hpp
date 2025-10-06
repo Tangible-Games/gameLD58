@@ -7,12 +7,14 @@
 #include "draw_texture.hpp"
 #include "fade_image.hpp"
 #include "keyboard.hpp"
+#include "market_rules.hpp"
 
 namespace gameLD58 {
 class BaseScreen : public Keyboard::Callback {
  public:
   class Callback {
    public:
+    virtual void ToMarketFromBaseScreen() = 0;
     virtual void ContinueFromBaseScreen() = 0;
     virtual void TryExitFromBaseScreen() = 0;
   };
@@ -33,7 +35,7 @@ class BaseScreen : public Keyboard::Callback {
       std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts,
       const std::string& default_font);
 
-  void Show(const Status& status);
+  void Show(const Status& status, const MarketInfo* market_info);
 
   void Update(float dt);
   void Draw();
@@ -53,7 +55,9 @@ class BaseScreen : public Keyboard::Callback {
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
   std::string default_font_;
   std::shared_ptr<SDL_Texture> image_;
+  std::shared_ptr<SDL_Texture> market_button_image_;
   Status status_;
+  const MarketInfo* market_info_{nullptr};
   StatusItem credits_earned;
   StatusItem humans_captured;
   StatusItem levels_completed;
@@ -69,6 +73,10 @@ void BaseScreen::Load(
 
   image_.reset(IMG_LoadTexture(renderer_.get(), "assets/base.png"),
                &SDL_DestroyTexture);
+
+  market_button_image_.reset(
+      IMG_LoadTexture(renderer_.get(), "assets/market_button.png"),
+      &SDL_DestroyTexture);
 
   std::ifstream file;
 
@@ -120,8 +128,9 @@ void BaseScreen::Load(
                                     best_price_json.value("height", 0));
 }
 
-void BaseScreen::Show(const Status& status) {
+void BaseScreen::Show(const Status& status, const MarketInfo* market_info) {
   status_ = status;
+  market_info_ = market_info;
 
   std::string credits_earned_str = std::to_string(status_.credits_earned);
   std::string credits_earned_of_str = std::to_string(status_.credits_earned_of);
@@ -146,15 +155,38 @@ void BaseScreen::Show(const Status& status) {
 void BaseScreen::Update(float /*dt*/) {}
 
 void BaseScreen::Draw() {
-  SDL_FRect screen_rect = {0, 0, kScreenWidth, kScreenHeight};
-  SDL_FColor color;
-  color.a = 1.0f;
-  color.r = 1.0f;
-  color.g = 1.0f;
-  color.b = 1.0f;
-  SDL_SetRenderDrawBlendMode(renderer_.get(), SDL_BLENDMODE_BLEND);
-  SDL_SetTextureBlendMode(image_.get(), SDL_BLENDMODE_BLEND);
-  RenderTexture(renderer_, image_, &screen_rect, &screen_rect, &color);
+  {
+    SDL_FRect screen_rect = {0, 0, kScreenWidth, kScreenHeight};
+    SDL_FColor color;
+    color.a = 1.0f;
+    color.r = 1.0f;
+    color.g = 1.0f;
+    color.b = 1.0f;
+    SDL_SetRenderDrawBlendMode(renderer_.get(), SDL_BLENDMODE_BLEND);
+    SDL_SetTextureBlendMode(image_.get(), SDL_BLENDMODE_BLEND);
+    RenderTexture(renderer_, image_, &screen_rect, &screen_rect, &color);
+  }
+
+  {
+    float texture_width = 0;
+    float texture_height = 0;
+    SDL_GetTextureSize(market_button_image_.get(), &texture_width,
+                       &texture_height);
+
+    SDL_FRect texture_rect = {0, 0, texture_width, texture_height};
+    SDL_FRect screen_rect = {(kScreenWidth - texture_width) / 2.0f,
+                             kScreenHeight - texture_height, texture_width,
+                             texture_height};
+    SDL_FColor color;
+    color.a = 1.0f;
+    color.r = 1.0f;
+    color.g = 1.0f;
+    color.b = 1.0f;
+    SDL_SetRenderDrawBlendMode(renderer_.get(), SDL_BLENDMODE_BLEND);
+    SDL_SetTextureBlendMode(market_button_image_.get(), SDL_BLENDMODE_BLEND);
+    RenderTexture(renderer_, market_button_image_, &texture_rect, &screen_rect,
+                  &color);
+  }
 
   credits_earned.text_renderer.Render(0);
   humans_captured.text_renderer.Render(0);
@@ -172,7 +204,9 @@ void BaseScreen::OnKeyUp(Keyboard::Key key) {
   } else if (key == Keyboard::Key::kSquare) {
     // Repair shop:
   } else if (key == Keyboard::Key::kTriangle) {
-    // Info:
+    if (callback_) {
+      callback_->ToMarketFromBaseScreen();
+    }
   } else if (key == Keyboard::Key::kSelect) {
     if (callback_) {
       callback_->TryExitFromBaseScreen();

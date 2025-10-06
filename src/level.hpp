@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <symphony_lite/aa_rect2d.hpp>
@@ -27,6 +28,9 @@ struct Config {
   float length;
   float height;
   Symphony::Math::Point2d ufo_spawn;
+  int humansMin_;
+  int humansMax_;
+  std::vector<float> humanRespawnX_;
 };
 
 class Level : public Keyboard::Callback {
@@ -70,6 +74,8 @@ class Level : public Keyboard::Callback {
   Ufo ufo_;
   float cam_x_;
   float cam_y_;
+
+  size_t capturedHumans_{0};
 
  private:
   static std::string readFile(const std::string& path) {
@@ -139,13 +145,10 @@ void Level::Load() {
     objects_.push_back(obj);
   }
 
-  for (const auto& h : level_json["humans"]) {
-    float center_x = h.value("center_x", 0);
-    float half_width = h.value("half_width", 0);
-    float half_height = h.value("half_height", 0);
-    Symphony::Math::AARect2d rect{{center_x, config.height - half_height},
-                                  {half_width, half_height}};
-    humans_.emplace_back(renderer_, rect, config.length);
+  config.humansMin_ = level_json["humans"]["min"].get<int>();
+  config.humansMax_ = level_json["humans"]["max"].get<int>();
+  for (const auto& h : level_json["humans"]["respawn_points"]) {
+    config.humanRespawnX_.push_back(h.get<float>());
   }
 
   LOGD("Level loaded: length={}, spawn=({}, {}), obstacles={}", config.length,
@@ -228,13 +231,34 @@ void Level::Update(float dt) {
     return;
   }
 
+  // Respawn humans if needed
+  if ((int)humans_.size() < level_config_.humansMin_) {
+    int max = level_config_.humansMax_ - (int)humans_.size();
+    int min = level_config_.humansMin_ - (int)humans_.size();
+    int randNum = min + ((1ULL * (max - min) * std::rand()) / RAND_MAX);
+    LOGD("Repawn {} humans", randNum);
+    for (int i = 0; i < randNum; i++) {
+      int randPointNum =
+          ((1ULL * level_config_.humanRespawnX_.size() * std::rand()) /
+           RAND_MAX);
+      humans_.emplace_back(renderer_,
+                           level_config_.humanRespawnX_[randPointNum],
+                           level_config_.height, level_config_.length);
+      LOGD("Create a human at {}x{}",
+           level_config_.humanRespawnX_[randPointNum], level_config_.height);
+    }
+  }
+
   ufo_.Update(dt);
   // Add collisions here:
   auto ufo_center = ufo_.GetBounds().center + ufo_.GetVelocity() * dt;
   if (ufo_center.x > level_config_.length) {
-    ufo_center.x -=
-        level_config_.length * std::floor(ufo_center.x / level_config_.length);
+    ufo_center.x -= level_config_.length;
   }
+  if (ufo_center.x < 0.f) {
+    ufo_center.x = level_config_.length - ufo_center.x;
+  }
+
   if (ufo_center.y < 0.f) {
     ufo_center.y = 0.f;
   } else if (ufo_center.y > level_config_.height) {
@@ -273,6 +297,8 @@ void Level::Update(float dt) {
     bool collected = ufo_.MaybeCatchHuman(*h);
     if (collected) {
       h = humans_.erase(h);
+      capturedHumans_++;
+      // TODO: Cargo size limitations here?
     } else {
       h++;
     }

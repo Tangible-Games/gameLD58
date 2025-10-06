@@ -20,6 +20,7 @@
 namespace gameLD58 {
 class Ufo {
   static constexpr auto kUfoConfigPath{"assets/ufo.json"};
+  static constexpr bool kDebugDump = true;
 
  public:
   Ufo(std::shared_ptr<SDL_Renderer> renderer,
@@ -187,12 +188,14 @@ void Ufo::Update(float dt) {
     acceleration_.y += ry * dt;
   }
 
-  // Dump acceleration once a second for debug
-  auto newTime = prevTime_ + dt;
-  if (std::floor(newTime) > std::floor(prevTime_)) {
-    LOGD("acc: {}, velocity: {}, pos: {}", acceleration_, velocity_, rect_);
+  if (kDebugDump) {
+    // Dump acceleration once a second for debug
+    auto newTime = prevTime_ + dt;
+    if (std::floor(newTime) > std::floor(prevTime_)) {
+      LOGD("acc: {}, velocity: {}, pos: {}", acceleration_, velocity_, rect_);
+    }
+    prevTime_ = newTime;
   }
-  prevTime_ = newTime;
 
   tractorBeamTimeout_ -= dt;
   tractorBeamTimeout_ =

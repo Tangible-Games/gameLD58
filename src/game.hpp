@@ -9,6 +9,8 @@
 #include "fade_image.hpp"
 #include "keyboard.hpp"
 #include "level.hpp"
+#include "market_rules.hpp"
+#include "market_screen.hpp"
 #include "quit_dialog.hpp"
 #include "story_screen.hpp"
 #include "title_screen.hpp"
@@ -17,6 +19,7 @@ namespace gameLD58 {
 class Game : public TitleScreen::Callback,
              public StoryScreen::Callback,
              public BaseScreen::Callback,
+             public MarketScreen::Callback,
              public Level::Callback,
              public QuitDialog::Callback {
  public:
@@ -28,6 +31,7 @@ class Game : public TitleScreen::Callback,
         title_screen_(renderer, audio),
         story_screen_(renderer, audio),
         base_screen_(renderer, audio),
+        market_screen_(renderer, audio),
         fade_in_out_(renderer, audio, ""),
         level_(renderer, audio, "assets/level.json"),
         quit_dialog_(renderer, audio) {
@@ -49,8 +53,12 @@ class Game : public TitleScreen::Callback,
   void ContinueFromStoryScreen() override;
   void TryExitFromStoryScreen() override;
 
+  void ToMarketFromBaseScreen() override;
   void ContinueFromBaseScreen() override;
   void TryExitFromBaseScreen() override;
+
+  void BackFromMarketScreen() override;
+  void TryExitFromMarketScreen() override;
 
   void TryExitFromLevel() override;
 
@@ -67,8 +75,12 @@ class Game : public TitleScreen::Callback,
     kToStoryScreenFadeOut,
     kStoryScreen,
     kToBaseScreenFadeIn,
+    kToBaseScreenFromMarketFadeIn,
     kToBaseScreenFadeOut,
     kBaseScreen,
+    kToMarketScreenFadeIn,
+    kToMarketScreenFadeOut,
+    kMarketScreen,
     kToGameFadeIn,
     kToGameFadeOut,
     kGame,
@@ -85,7 +97,10 @@ class Game : public TitleScreen::Callback,
   TitleScreen title_screen_;
   StoryScreen story_screen_;
   BaseScreen::Status player_status_;
+  MarketInfo market_info_;
   BaseScreen base_screen_;
+  MarketScreen market_screen_;
+  float market_before_next_music_timeout_{0.0f};
   FadeImage fade_in_out_;
   Level level_;
   QuitDialog quit_dialog_;
@@ -94,6 +109,7 @@ class Game : public TitleScreen::Callback,
   State state_{State::kJustStarted};
   int just_started_updates_{30};
   std::shared_ptr<Symphony::Audio::WaveFile> menu_audio_;
+  std::shared_ptr<Symphony::Audio::WaveFile> market_audio_;
   std::shared_ptr<Symphony::Audio::PlayingStream> menu_audio_stream_;
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
   std::string default_font_;
@@ -154,9 +170,10 @@ void Game::Update(float dt) {
       break;
 
     case State::kToBaseScreenFadeIn:
+    case State::kToBaseScreenFromMarketFadeIn:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
-        base_screen_.Show(player_status_);
+        base_screen_.Show(player_status_, &market_info_);
         fade_in_out_.StartFadeOut(0.5f);
         state_ = State::kToBaseScreenFadeOut;
         LOGD("Game switches to state 'State::kToBaseScreenFadeOut'.");
@@ -175,6 +192,40 @@ void Game::Update(float dt) {
 
     case State::kBaseScreen:
       break;
+
+    case State::kToMarketScreenFadeIn:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        market_screen_.Show();
+        fade_in_out_.StartFadeOut(0.5f);
+        state_ = State::kToMarketScreenFadeOut;
+        LOGD("Game switches to state 'State::kToMarketScreenFadeOut'.");
+      }
+      break;
+
+    case State::kToMarketScreenFadeOut:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        state_ = State::kMarketScreen;
+        market_screen_.RegisterCallback(this);
+        Keyboard::Instance().RegisterCallback(&market_screen_);
+        LOGD("Game switches to state 'State::kMarketScreen'.");
+      }
+      break;
+
+    case State::kMarketScreen: {
+      if (market_before_next_music_timeout_ > 0.0f) {
+        market_before_next_music_timeout_ -= dt;
+        if (market_before_next_music_timeout_ < 0.0f) {
+          menu_audio_stream_ =
+              audio_->Play(market_audio_, Symphony::Audio::PlayTimes(2),
+                           Symphony::Audio::FadeInOut(5.0f, 5.0f));
+          market_before_next_music_timeout_ =
+              market_audio_->GetLengthSec() * 2.0f + 2.0f + (float)(rand() % 4);
+        }
+      }
+      break;
+    }
 
     case State::kToGameFadeIn:
       fade_in_out_.Update(dt);
@@ -219,11 +270,14 @@ void Game::Load() {
     title_screen_.Load();
     story_screen_.Load(known_fonts_, default_font_);
     base_screen_.Load(known_fonts_, default_font_);
+    market_screen_.Load(known_fonts_, default_font_);
     fade_in_out_.Load("assets/fade_in_out.png");
     quit_dialog_.Load();
 
     menu_audio_ = Symphony::Audio::LoadWave(
         "assets/05_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
+    market_audio_ = Symphony::Audio::LoadWave(
+        "assets/14_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
 
     ready_for_loading_ = false;
 
@@ -263,12 +317,27 @@ void Game::Draw() {
       story_screen_.Draw();
       fade_in_out_.Draw();
       break;
+    case State::kToBaseScreenFromMarketFadeIn:
+      market_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
     case State::kToBaseScreenFadeOut:
       base_screen_.Draw();
       fade_in_out_.Draw();
       break;
     case State::kBaseScreen:
       base_screen_.Draw();
+      break;
+    case State::kToMarketScreenFadeIn:
+      base_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kToMarketScreenFadeOut:
+      market_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kMarketScreen:
+      market_screen_.Draw();
       break;
     case State::kToGameFadeIn:
       base_screen_.Draw();
@@ -320,7 +389,6 @@ void Game::ContinueFromStoryScreen() {
 
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToBaseScreenFadeIn;
-  level_.Start(/*is_paused*/ true);
   LOGD("Game switches to state 'State::kToBaseScreenFadeIn'.");
 }
 
@@ -338,6 +406,23 @@ void Game::TryExitFromStoryScreen() {
   LOGD("Game shows Quit dialog from Story screen.");
 }
 
+void Game::ToMarketFromBaseScreen() {
+  if (state_ != State::kBaseScreen) {
+    return;
+  }
+
+  audio_->Stop(menu_audio_stream_, Symphony::Audio::StopFade(0.5f));
+  menu_audio_stream_ =
+      audio_->Play(market_audio_, Symphony::Audio::PlayTimes(2),
+                   Symphony::Audio::FadeInOut(5.0f, 5.0f));
+  market_before_next_music_timeout_ =
+      market_audio_->GetLengthSec() * 2.0f + 2.0f + (float)(rand() % 4);
+
+  fade_in_out_.StartFadeIn(0.5f);
+  state_ = State::kToMarketScreenFadeIn;
+  LOGD("Game switches to state 'State::kToMarketScreenFadeIn'.");
+}
+
 void Game::ContinueFromBaseScreen() {
   if (state_ != State::kBaseScreen) {
     return;
@@ -351,6 +436,34 @@ void Game::ContinueFromBaseScreen() {
 
 void Game::TryExitFromBaseScreen() {
   if (state_ != State::kBaseScreen) {
+    return;
+  }
+
+  show_quit_dialog_ = true;
+  quit_dialog_.Show();
+  quit_dialog_.RegisterCallback(this);
+  prev_keyboard_callback_ =
+      Keyboard::Instance().RegisterCallback(&quit_dialog_);
+
+  LOGD("Game shows Quit dialog from Base screen.");
+}
+
+void Game::BackFromMarketScreen() {
+  if (state_ != State::kMarketScreen) {
+    return;
+  }
+
+  audio_->Stop(menu_audio_stream_, Symphony::Audio::StopFade(0.5f));
+  menu_audio_stream_ = audio_->Play(menu_audio_, Symphony::Audio::kPlayLooped,
+                                    Symphony::Audio::FadeInOut(2.0f, 1.0f));
+
+  fade_in_out_.StartFadeIn(0.5f);
+  state_ = State::kToBaseScreenFromMarketFadeIn;
+  LOGD("Game switches to state 'State::kToBaseScreenFromMarketFadeIn'.");
+}
+
+void Game::TryExitFromMarketScreen() {
+  if (state_ != State::kMarketScreen) {
     return;
   }
 
