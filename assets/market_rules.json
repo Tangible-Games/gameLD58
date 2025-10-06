@@ -19,6 +19,22 @@
     },
     {
       "Sex": "Male",
+      "Age": "52 years",
+      "Shape": "Average",
+      "Character": "Average",
+      "Job": "Astronomer",
+      "Hobby": "Cooking"
+    },
+    {
+      "Sex": "Male",
+      "Age": "45 years",
+      "Shape": "Average",
+      "Character": "Average",
+      "Job": "Chef",
+      "Hobby": "Stargazing"
+    },
+    {
+      "Sex": "Male",
       "Age": "20 years",
       "Shape": "Fit",
       "Character": "Sweet",
@@ -128,6 +144,14 @@
       "Character": "Active",
       "Job": "Photo model",
       "Hobby": "Posing"
+    },
+    {
+      "Sex": "Female",
+      "Age": "21 years",
+      "Shape": "Average",
+      "Character": "Average",
+      "Job": "Blogging",
+      "Hobby": "Writing"
     },
     {
       "Sex": "Female",
