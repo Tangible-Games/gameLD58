@@ -15,6 +15,7 @@
 #include <symphony_lite/sprite_sheet.hpp>
 #include <vector>
 
+#include "all_audio.hpp"
 #include "consts.hpp"
 #include "human.hpp"
 #include "paralax_renderer.hpp"
@@ -51,12 +52,14 @@ class Level : public Keyboard::Callback {
   };
 
   Level(std::shared_ptr<SDL_Renderer> renderer,
-        std::shared_ptr<Symphony::Audio::Device> audio, std::string path)
+        std::shared_ptr<Symphony::Audio::Device> audio, AllAudio* all_audio,
+        std::string path)
       : renderer_(renderer),
         audio_(audio),
+        all_audio_(all_audio),
         level_path_(std::move(path)),
         paralax_renderer_(renderer),
-        ufo_(renderer, audio) {
+        ufo_(renderer, audio, all_audio) {
     const char* files[] = {"humanoid.json",   "humanoid_2.json",
                            "humanoid_3.json", "humanoid_4.json",
                            "humanoid_5.json", "humanoid_6.json"};
@@ -87,6 +90,7 @@ class Level : public Keyboard::Callback {
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
+  AllAudio* all_audio_{nullptr};
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
   std::string default_font_;
   Symphony::Text::TextRenderer captured_text_;
@@ -425,6 +429,9 @@ void Level::Update(float dt) {
       h = humans_.erase(h);
       capturedHumans_++;
       reFormatCapturedText();
+
+      audio_->Play(all_audio_->audio[Sound::kCapture],
+                   Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
     } else {
       h++;
     }

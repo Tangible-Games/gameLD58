@@ -17,7 +17,7 @@ enum class Sound {
   kPanic_3,
   kPanic_4,
   kPanic_5,
-  kPanic_5,
+  kPanic_6,
 };
 
 struct AllAudio {
