@@ -64,6 +64,7 @@ class Ufo {
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
   AllAudio* all_audio_{nullptr};
+  std::shared_ptr<Symphony::Audio::PlayingStream> beam_audio_stream_;
 
   std::shared_ptr<SDL_Texture> texture_{};
 
@@ -176,8 +177,10 @@ void Ufo::Update(float dt) {
   }
   if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kSquare).has_value()) {
     if (tractorBeamTimeout_ == 0.0f) {
-      audio_->Play(all_audio_->audio[Sound::kBeamLoop],
-                   Symphony::Audio::PlayTimes(10), Symphony::Audio::kNoFade);
+      audio_->Stop(beam_audio_stream_, Symphony::Audio::StopFade(0.25f));
+      beam_audio_stream_ =
+          audio_->Play(all_audio_->audio[Sound::kBeamLoop],
+                       Symphony::Audio::kPlayLooped, Symphony::Audio::kNoFade);
     }
     tractorBeamTimeout_ = configuration_.tractorBeam.latency;
   }
@@ -217,9 +220,16 @@ void Ufo::Update(float dt) {
   tractorBeamTimeout_ -= dt;
   tractorBeamTimeout_ =
       std::clamp(tractorBeamTimeout_, 0.0f, configuration_.tractorBeam.latency);
+  if (tractorBeamTimeout_ == 0.0f) {
+    audio_->Stop(beam_audio_stream_, Symphony::Audio::StopFade(0.25f));
+    beam_audio_stream_.reset();
+  }
 }
 
-void Ufo::FinishLevel() { tractorBeamTimeout_ = 0.0f; }
+void Ufo::FinishLevel() {
+  tractorBeamTimeout_ = 0.0f;
+  audio_->Stop(beam_audio_stream_, Symphony::Audio::StopFade(0.25f));
+}
 
 static SDL_FColor SdlColorFromUInt32(uint32_t color) {
   SDL_FColor sdl_color;
