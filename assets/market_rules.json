@@ -1,0 +1,47 @@
+{
+  "known_traits": [
+    "Sex",
+    "Age",
+    "Shape",
+    "Character",
+    "Occupation",
+    "Hobby"
+  ],
+
+  "known_humanoids": [
+    {
+      "Sex": "Male",
+      "Age": "49 years",
+      "Shape": "Fit",
+      "Character": "Stoic",
+      "Occupation": "Meta Engineer",
+      "Hobby": "Fishing"
+    },
+    {
+      "Sex": "Female",
+      "Age": "18 years",
+      "Shape": "Fit",
+      "Character": "Active",
+      "Occupation": "Photo model",
+      "Hobby": "Posing"
+    }
+  ],
+
+  "known_aliens": [
+    {
+      "name": "Boshaan Zalesh Farmer",
+      "likes": {
+        "Sex": ["Female"],
+        "Age": ["18 years", "19 years", "20 years", "21 years"],
+        "Shape": ["Fit"],
+        "Character": ["Active"],
+        "Occupation": ["Photo model", "Cheerleader"],
+        "Hobby": ["Posing"]
+      },
+      "pays_when_likes": 1000,
+      "says_when_likes": "Year, that's my thing!",
+      "pays_when_dislikes": 10,
+      "says_when_likes": "Hm, another item in my collection."
+    }
+  ]
+}

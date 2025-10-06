@@ -98,6 +98,7 @@ class Game : public TitleScreen::Callback,
   StoryScreen story_screen_;
   BaseScreen::Status player_status_;
   MarketInfo market_info_;
+  MarketRules market_rules_;
   BaseScreen base_screen_;
   MarketScreen market_screen_;
   float market_before_next_music_timeout_{0.0f};
@@ -265,6 +266,7 @@ void Game::Load() {
   if (state_ == State::kFirstLoading) {
     loadFonts();
     loadRules();
+    market_rules_ = LoadMarketRules();
 
     level_.Load();
     title_screen_.Load();

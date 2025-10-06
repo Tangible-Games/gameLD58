@@ -85,6 +85,8 @@ std::optional<uint32_t> ColorFromString(const std::string& value) {
     return 0xFF0000FF;
   } else if (value == "black") {
     return 0xFF000000;
+  } else if (value == "white") {
+    return 0xFFFFFFFF;
   }
 
   return std::nullopt;
