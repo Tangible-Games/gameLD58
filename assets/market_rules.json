@@ -294,5 +294,6 @@
     }
   ],
 
-  "VAT": 0.2
+  "VAT": 0.2,
+  "match_threshold": 2
 }

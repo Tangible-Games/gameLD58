@@ -367,8 +367,7 @@ void MarketScreen::OnKeyUp(Keyboard::Key key) {
         size_t match_result = MatchHumanoidWithAlien(
             *market_rules_, *cur_humanoid_it_,
             market_rules_->known_aliens[cur_alien_index_]);
-        // Matching all known traits:
-        if (match_result == market_rules_->known_traits.size()) {
+        if (match_result >= market_rules_->match_threshold) {
           is_alien_happy_ = true;
           alien_pays_ =
               market_rules_->known_aliens[cur_alien_index_].pays_when_likes;

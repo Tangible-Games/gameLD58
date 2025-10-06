@@ -25,6 +25,7 @@ struct MarketRules {
   std::vector<KnownHumanoid> known_humanoids;
   std::vector<KnownAlien> known_aliens;
   float vat;
+  size_t match_threshold;
 };
 
 struct PlayerStatus {
@@ -95,6 +96,8 @@ MarketRules LoadMarketRules() {
   }
 
   result.vat = market_rules_json.value("VAT", 0.0f);
+
+  result.match_threshold = market_rules_json.value("match_threshold", 0);
 
   LOGD("Finished loading Market rules.");
   LOGD("Known traits:");
