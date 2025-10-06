@@ -75,6 +75,8 @@ class Level : public Keyboard::Callback {
   float cam_x_;
   float cam_y_;
 
+  size_t capturedHumans_{0};
+
  private:
   static std::string readFile(const std::string& path) {
     std::ifstream ifs(path, std::ios::binary);
@@ -295,6 +297,8 @@ void Level::Update(float dt) {
     bool collected = ufo_.MaybeCatchHuman(*h);
     if (collected) {
       h = humans_.erase(h);
+      capturedHumans_++;
+      // TODO: Cargo size limitations here?
     } else {
       h++;
     }
