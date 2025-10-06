@@ -46,7 +46,7 @@ TEST(FormattedText, SpecifyStyle) {
   ASSERT_EQ(formatted_text->paragraphs[0].style_runs[0].style.font,
             "system_24.fnt");
   ASSERT_EQ(formatted_text->paragraphs[0].style_runs[0].style.color,
-            0xFFFF0000);
+            0xFFF00F13);
   ASSERT_EQ(formatted_text->paragraphs[0].paragraph_parameters.align,
             HorizontalAlignment::kRight);
 }

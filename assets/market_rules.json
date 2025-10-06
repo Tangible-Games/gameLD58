@@ -4,7 +4,7 @@
     "Age",
     "Shape",
     "Character",
-    "Occupation",
+    "Job",
     "Hobby"
   ],
 
@@ -14,7 +14,7 @@
       "Age": "49 years",
       "Shape": "Fit",
       "Character": "Stoic",
-      "Occupation": "Meta Engineer",
+      "Job": "Meta Engineer",
       "Hobby": "Fishing"
     },
     {
@@ -22,7 +22,7 @@
       "Age": "18 years",
       "Shape": "Fit",
       "Character": "Active",
-      "Occupation": "Photo model",
+      "Job": "Photo model",
       "Hobby": "Posing"
     }
   ],
@@ -35,7 +35,7 @@
         "Age": ["18 years", "19 years", "20 years", "21 years"],
         "Shape": ["Fit"],
         "Character": ["Active"],
-        "Occupation": ["Photo model", "Cheerleader"],
+        "Job": ["Photo model", "Cheerleader"],
         "Hobby": ["Posing"]
       },
       "pays_when_likes": 1000,

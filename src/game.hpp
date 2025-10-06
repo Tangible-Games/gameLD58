@@ -96,9 +96,8 @@ class Game : public TitleScreen::Callback,
   FadeImage loading_;
   TitleScreen title_screen_;
   StoryScreen story_screen_;
-  BaseScreen::Status player_status_;
-  MarketInfo market_info_;
   MarketRules market_rules_;
+  PlayerStatus player_status_;
   BaseScreen base_screen_;
   MarketScreen market_screen_;
   float market_before_next_music_timeout_{0.0f};
@@ -174,7 +173,7 @@ void Game::Update(float dt) {
     case State::kToBaseScreenFromMarketFadeIn:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
-        base_screen_.Show(player_status_, &market_info_);
+        base_screen_.Show(&player_status_);
         fade_in_out_.StartFadeOut(0.5f);
         state_ = State::kToBaseScreenFadeOut;
         LOGD("Game switches to state 'State::kToBaseScreenFadeOut'.");
@@ -197,7 +196,13 @@ void Game::Update(float dt) {
     case State::kToMarketScreenFadeIn:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
-        market_screen_.Show();
+        std::list<KnownHumanoid> new_captured_humanoids =
+            CaptureRandomHumanoids(market_rules_, 5);
+        player_status_.cur_captured_humanoids.insert(
+            player_status_.cur_captured_humanoids.end(),
+            new_captured_humanoids.begin(), new_captured_humanoids.end());
+
+        market_screen_.Show(&player_status_);
         fade_in_out_.StartFadeOut(0.5f);
         state_ = State::kToMarketScreenFadeOut;
         LOGD("Game switches to state 'State::kToMarketScreenFadeOut'.");

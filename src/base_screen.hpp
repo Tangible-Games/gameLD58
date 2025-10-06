@@ -19,14 +19,6 @@ class BaseScreen : public Keyboard::Callback {
     virtual void TryExitFromBaseScreen() = 0;
   };
 
-  struct Status {
-    int credits_earned{0};
-    int credits_earned_of{0};
-    int humans_captured{0};
-    int levels_completed{0};
-    int best_price{0};
-  };
-
   BaseScreen(std::shared_ptr<SDL_Renderer> renderer,
              std::shared_ptr<Symphony::Audio::Device> audio)
       : renderer_(renderer), audio_(audio) {}
@@ -35,7 +27,7 @@ class BaseScreen : public Keyboard::Callback {
       std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts,
       const std::string& default_font);
 
-  void Show(const Status& status, const MarketInfo* market_info);
+  void Show(const PlayerStatus* player_status_);
 
   void Update(float dt);
   void Draw();
@@ -56,8 +48,7 @@ class BaseScreen : public Keyboard::Callback {
   std::string default_font_;
   std::shared_ptr<SDL_Texture> image_;
   std::shared_ptr<SDL_Texture> market_button_image_;
-  Status status_;
-  const MarketInfo* market_info_{nullptr};
+  const PlayerStatus* player_status_{nullptr};
   StatusItem credits_earned;
   StatusItem humans_captured;
   StatusItem levels_completed;
@@ -128,26 +119,29 @@ void BaseScreen::Load(
                                     best_price_json.value("height", 0));
 }
 
-void BaseScreen::Show(const Status& status, const MarketInfo* market_info) {
-  status_ = status;
-  market_info_ = market_info;
+void BaseScreen::Show(const PlayerStatus* player_status) {
+  player_status_ = player_status;
 
-  std::string credits_earned_str = std::to_string(status_.credits_earned);
-  std::string credits_earned_of_str = std::to_string(status_.credits_earned_of);
+  std::string credits_earned_str =
+      std::to_string(player_status_->credits_earned);
+  std::string credits_earned_of_str =
+      std::to_string(player_status_->credits_earned_of);
   credits_earned.text_renderer.ReFormat(
       {{"credits", credits_earned_str}, {"credits_of", credits_earned_of_str}},
       default_font_, known_fonts_);
 
-  std::string humans_captured_str = std::to_string(status_.humans_captured);
+  std::string humans_captured_str =
+      std::to_string(player_status_->humans_captured);
   humans_captured.text_renderer.ReFormat(
       {{"humans_captured", humans_captured_str}}, default_font_, known_fonts_);
 
-  std::string levels_completed_str = std::to_string(status_.levels_completed);
+  std::string levels_completed_str =
+      std::to_string(player_status_->levels_completed);
   levels_completed.text_renderer.ReFormat(
       {{"levels_completed", levels_completed_str}}, default_font_,
       known_fonts_);
 
-  std::string best_price_str = std::to_string(status_.best_price);
+  std::string best_price_str = std::to_string(player_status_->best_price);
   best_price.text_renderer.ReFormat({{"best_price", levels_completed_str}},
                                     default_font_, known_fonts_);
 }
