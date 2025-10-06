@@ -29,8 +29,8 @@ class Game : public TitleScreen::Callback,
       : renderer_(renderer),
         audio_(audio),
         loading_(renderer, audio, "assets/loading.png"),
-        title_screen_(renderer, audio),
-        story_screen_(renderer, audio),
+        title_screen_(renderer, audio, &all_audio_),
+        story_screen_(renderer, audio, &all_audio_),
         base_screen_(renderer, audio, &all_audio_),
         market_screen_(renderer, audio, &all_audio_),
         fade_in_out_(renderer, audio, ""),
@@ -378,6 +378,8 @@ void Game::ContinueFromTitleScreen() {
     return;
   }
 
+  Keyboard::Instance().RegisterCallback(nullptr);
+
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToStoryScreenFadeIn;
   level_.Start(/*is_paused*/ true);
@@ -402,6 +404,8 @@ void Game::ContinueFromStoryScreen() {
   if (state_ != State::kStoryScreen) {
     return;
   }
+
+  Keyboard::Instance().RegisterCallback(nullptr);
 
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToBaseScreenFadeIn;
@@ -434,6 +438,8 @@ void Game::ToMarketFromBaseScreen() {
   market_before_next_music_timeout_ =
       market_audio_->GetLengthSec() * 2.0f + 2.0f + (float)(rand() % 4);
 
+  Keyboard::Instance().RegisterCallback(nullptr);
+
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToMarketScreenFadeIn;
   LOGD("Game switches to state 'State::kToMarketScreenFadeIn'.");
@@ -443,6 +449,8 @@ void Game::ContinueFromBaseScreen() {
   if (state_ != State::kBaseScreen) {
     return;
   }
+
+  Keyboard::Instance().RegisterCallback(nullptr);
 
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToGameFadeIn;
@@ -472,6 +480,8 @@ void Game::BackFromMarketScreen() {
   audio_->Stop(menu_audio_stream_, Symphony::Audio::StopFade(0.5f));
   menu_audio_stream_ = audio_->Play(menu_audio_, Symphony::Audio::kPlayLooped,
                                     Symphony::Audio::FadeInOut(2.0f, 1.0f));
+
+  Keyboard::Instance().RegisterCallback(nullptr);
 
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToBaseScreenFromMarketFadeIn;

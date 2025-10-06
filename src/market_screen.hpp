@@ -65,7 +65,7 @@ class MarketScreen : public Keyboard::Callback {
   std::string default_font_;
   State state_{State::kShowWare};
   float no_button_time_{1.0f};
-  const float no_button_timeout_{0.5f};
+  const float no_button_timeout_{0.25f};
   std::shared_ptr<SDL_Texture> image_;
   Symphony::Text::TextRenderer humanoid_text_;
   Symphony::Text::TextRenderer alien_text_;

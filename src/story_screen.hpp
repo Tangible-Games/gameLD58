@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 
+#include "all_audio.hpp"
 #include "consts.hpp"
 #include "draw_texture.hpp"
 #include "fade_image.hpp"
@@ -18,8 +19,9 @@ class StoryScreen : public Keyboard::Callback {
   };
 
   StoryScreen(std::shared_ptr<SDL_Renderer> renderer,
-              std::shared_ptr<Symphony::Audio::Device> audio)
-      : renderer_(renderer), audio_(audio) {}
+              std::shared_ptr<Symphony::Audio::Device> audio,
+              AllAudio* all_audio)
+      : renderer_(renderer), audio_(audio), all_audio_(all_audio) {}
 
   void Load(
       std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts,
@@ -40,6 +42,7 @@ class StoryScreen : public Keyboard::Callback {
 
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
+  AllAudio* all_audio_{nullptr};
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
   std::string default_font_;
   std::shared_ptr<SDL_Texture> image_;
@@ -114,12 +117,21 @@ void StoryScreen::OnKeyUp(Keyboard::Key key) {
         cur_story_bro_ = stories_.size() - 1;
       }
     }
+
+    audio_->Play(all_audio_->audio[Sound::kButtonClick],
+                 Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
   } else if (key == Keyboard::Key::kCircle) {
     if (cur_story_bro_ > 0) {
       --cur_story_bro_;
+
+      audio_->Play(all_audio_->audio[Sound::kButtonClick],
+                   Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
     }
   } else if (key == Keyboard::Key::kSelect) {
     if (callback_) {
+      audio_->Play(all_audio_->audio[Sound::kButtonClick],
+                   Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
+
       callback_->TryExitFromStoryScreen();
     }
   }

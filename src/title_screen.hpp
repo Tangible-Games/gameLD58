@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 
+#include "all_audio.hpp"
 #include "consts.hpp"
 #include "draw_texture.hpp"
 #include "keyboard.hpp"
@@ -17,8 +18,9 @@ class TitleScreen : public Keyboard::Callback {
   };
 
   TitleScreen(std::shared_ptr<SDL_Renderer> renderer,
-              std::shared_ptr<Symphony::Audio::Device> audio)
-      : renderer_(renderer), audio_(audio) {}
+              std::shared_ptr<Symphony::Audio::Device> audio,
+              AllAudio* all_audio)
+      : renderer_(renderer), audio_(audio), all_audio_(all_audio) {}
 
   void Load();
 
@@ -33,6 +35,7 @@ class TitleScreen : public Keyboard::Callback {
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
+  AllAudio* all_audio_{nullptr};
   std::shared_ptr<SDL_Texture> image_;
   Callback* callback_{nullptr};
 };
@@ -61,10 +64,16 @@ void TitleScreen::OnKeyDown(Keyboard::Key /*key*/) {}
 void TitleScreen::OnKeyUp(Keyboard::Key key) {
   if (key == Keyboard::Key::kX) {
     if (callback_) {
+      audio_->Play(all_audio_->audio[Sound::kButtonClick],
+                   Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
+
       callback_->ContinueFromTitleScreen();
     }
   } else if (key == Keyboard::Key::kSelect) {
     if (callback_) {
+      audio_->Play(all_audio_->audio[Sound::kButtonClick],
+                   Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
+
       callback_->TryExitFromTitleScreen();
     }
   }
