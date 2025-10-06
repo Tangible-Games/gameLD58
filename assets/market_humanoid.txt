@@ -1,0 +1,7 @@
+<style font="sysfont_20" color="black" wrapping="word">Lot No. <sub variable="$index_plus_1">
+<sub variable="$Sex">: <sub variable="$Sex_value">
+<sub variable="$Age">: <sub variable="$Age_value">
+<sub variable="$Shape">: <sub variable="$Shape_value">
+<sub variable="$Character">: <sub variable="$Character_value">
+<sub variable="$Occupation">: <sub variable="$Occupation_value">
+<sub variable="$Hobby">: <sub variable="$Hobby_value">

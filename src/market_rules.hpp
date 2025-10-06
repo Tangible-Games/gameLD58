@@ -21,11 +21,16 @@ struct KnownAlien {
 
 struct MarketRules {
   std::list<std::string> known_traits;
-  std::list<KnownHumanoid> known_humanoids;
+  std::vector<KnownHumanoid> known_humanoids;
   std::vector<KnownAlien> known_aliens;
 };
 
-struct MarketInfo {
+struct PlayerStatus {
+  int credits_earned{0};
+  int credits_earned_of{0};
+  int humans_captured{0};
+  int levels_completed{0};
+  int best_price{0};
   std::list<KnownHumanoid> cur_captured_humanoids;
 };
 
@@ -141,6 +146,17 @@ int MatchHumanoidWithAlien(const MarketRules& rules,
     if (it != alien_likes_it->second.end()) {
       ++result;
     }
+  }
+
+  return result;
+}
+
+std::list<KnownHumanoid> CaptureRandomHumanoids(const MarketRules& rules,
+                                                size_t amount) {
+  std::list<KnownHumanoid> result;
+  for (size_t i = 0; i < amount; ++i) {
+    int rand_index = rand() % rules.known_humanoids.size();
+    result.push_back(rules.known_humanoids[rand_index]);
   }
 
   return result;

@@ -7,6 +7,7 @@
 #include "draw_texture.hpp"
 #include "fade_image.hpp"
 #include "keyboard.hpp"
+#include "market_rules.hpp"
 
 namespace gameLD58 {
 class MarketScreen : public Keyboard::Callback {
@@ -25,7 +26,7 @@ class MarketScreen : public Keyboard::Callback {
       std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts,
       const std::string& default_font);
 
-  void Show();
+  void Show(const PlayerStatus* player_status);
 
   void Update(float dt);
   void Draw();
@@ -41,6 +42,7 @@ class MarketScreen : public Keyboard::Callback {
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
   std::string default_font_;
   std::shared_ptr<SDL_Texture> image_;
+  const PlayerStatus* player_status_{nullptr};
   Callback* callback_{nullptr};
 };
 
@@ -54,7 +56,9 @@ void MarketScreen::Load(
                &SDL_DestroyTexture);
 }
 
-void MarketScreen::Show() {}
+void MarketScreen::Show(const PlayerStatus* player_status) {
+  player_status_ = player_status;
+}
 
 void MarketScreen::Update(float /*dt*/) {}
 
