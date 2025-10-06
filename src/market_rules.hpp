@@ -17,6 +17,7 @@ struct KnownAlien {
   std::string says_when_likes;
   int pays_when_dislikes{0};
   std::string says_when_dislikes;
+  std::string portrait_file_path;
 };
 
 struct MarketRules {
@@ -80,6 +81,8 @@ MarketRules LoadMarketRules() {
         known_alien_json.value("pays_when_dislikes", 0);
     result.known_aliens.back().says_when_dislikes =
         known_alien_json.value("says_when_dislikes", "");
+    result.known_aliens.back().portrait_file_path =
+        known_alien_json.value("portrait_file_path", "");
 
     for (const auto& trait : result.known_traits) {
       for (const auto& trait_value_json : known_alien_json["likes"][trait]) {
@@ -123,10 +126,10 @@ MarketRules LoadMarketRules() {
   return result;
 }
 
-int MatchHumanoidWithAlien(const MarketRules& rules,
-                           const KnownHumanoid& known_humanoid,
-                           const KnownAlien& known_alien) {
-  int result = 0;
+size_t MatchHumanoidWithAlien(const MarketRules& rules,
+                              const KnownHumanoid& known_humanoid,
+                              const KnownAlien& known_alien) {
+  size_t result = 0;
   for (const auto& trait : rules.known_traits) {
     auto humanoid_trait_it = known_humanoid.traits.find(trait);
     if (humanoid_trait_it == known_humanoid.traits.end()) {

@@ -1,0 +1,2 @@
+<style font="sysfont_20" color="black" wrapping="word"><sub variable="$reply">
+I pay you <style color="red"><sub variable="$credits"></>.

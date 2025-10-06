@@ -98,6 +98,7 @@ class Game : public TitleScreen::Callback,
   StoryScreen story_screen_;
   MarketRules market_rules_;
   PlayerStatus player_status_;
+  size_t cur_alien_index_{0};
   BaseScreen base_screen_;
   MarketScreen market_screen_;
   float market_before_next_music_timeout_{0.0f};
@@ -202,7 +203,10 @@ void Game::Update(float dt) {
             player_status_.cur_captured_humanoids.end(),
             new_captured_humanoids.begin(), new_captured_humanoids.end());
 
-        market_screen_.Show(&player_status_);
+        cur_alien_index_ = rand() % market_rules_.known_aliens.size();
+
+        // Can modify player_status_ when selling:
+        market_screen_.Show(&player_status_, cur_alien_index_);
         fade_in_out_.StartFadeOut(0.5f);
         state_ = State::kToMarketScreenFadeOut;
         LOGD("Game switches to state 'State::kToMarketScreenFadeOut'.");
@@ -277,7 +281,7 @@ void Game::Load() {
     title_screen_.Load();
     story_screen_.Load(known_fonts_, default_font_);
     base_screen_.Load(known_fonts_, default_font_);
-    market_screen_.Load(known_fonts_, default_font_);
+    market_screen_.Load(&market_rules_, known_fonts_, default_font_);
     fade_in_out_.Load("assets/fade_in_out.png");
     quit_dialog_.Load();
 

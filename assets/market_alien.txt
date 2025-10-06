@@ -1,0 +1,1 @@
+<style font="sysfont_20" color="black" wrapping="word" align="center"><sub variable="$name">
