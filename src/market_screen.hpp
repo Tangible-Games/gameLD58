@@ -42,6 +42,7 @@ class MarketScreen : public Keyboard::Callback {
   void reFormatAlien();
   void reFormatCredits();
   void reFormatAlienReply();
+  void reFormatReceipt();
 
   struct Alien {
     std::shared_ptr<SDL_Texture> portrait;
@@ -51,6 +52,7 @@ class MarketScreen : public Keyboard::Callback {
     kShowWare,
     kAlienReply,
     kReceipt,
+    kAllSold,
   };
 
   std::shared_ptr<SDL_Renderer> renderer_;
@@ -59,23 +61,30 @@ class MarketScreen : public Keyboard::Callback {
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
   std::string default_font_;
   State state_{State::kShowWare};
+  float no_button_time_{1.0f};
+  const float no_button_timeout_{0.5f};
   std::shared_ptr<SDL_Texture> image_;
   Symphony::Text::TextRenderer humanoid_text_;
   Symphony::Text::TextRenderer alien_text_;
   Symphony::Text::TextRenderer credits_text_;
   std::shared_ptr<SDL_Texture> alien_reply_image_;
   Symphony::Text::TextRenderer alien_reply_text_;
+  std::shared_ptr<SDL_Texture> receipt_image_;
+  Symphony::Text::TextRenderer receipt_text_;
   int alien_reply_image_x_{0};
   int alien_reply_image_y_{0};
   std::vector<Alien> aliens_;
   // Can modify when selling:
   PlayerStatus* player_status_{nullptr};
   bool is_alien_happy_{false};
+  int alien_pays_{0};
+  int alien_pays_after_vat_{0};
   size_t cur_alien_index_{0};
   int alien_x_{0};
   int alien_y_{0};
   int alien_width_{0};
   int alien_height_{0};
+  int receipt_y_{0};
   std::list<KnownHumanoid>::const_iterator cur_humanoid_it_;
   int cur_humanoid_index_{0};
   Callback* callback_{nullptr};
@@ -95,6 +104,9 @@ void MarketScreen::Load(
   alien_reply_image_.reset(
       IMG_LoadTexture(renderer_.get(), "assets/talking_bubble.png"),
       &SDL_DestroyTexture);
+
+  receipt_image_.reset(IMG_LoadTexture(renderer_.get(), "assets/receipt.png"),
+                       &SDL_DestroyTexture);
 
   std::ifstream file;
 
@@ -152,6 +164,18 @@ void MarketScreen::Load(
   alien_reply_text_.SetSizes(alien_reply_json.value("width", 0),
                              alien_reply_json.value("height", 0));
 
+  const auto& receipt_image_json =
+      market_screen_json["market_screen"]["receipt_image"];
+  receipt_y_ = receipt_image_json.value("y", 0);
+
+  const auto& receipt_json = market_screen_json["market_screen"]["receipt"];
+  receipt_text_.InitRenderer(renderer_);
+  receipt_text_.LoadFromFile(receipt_json["file_path"]);
+  receipt_text_.SetPosition(receipt_json.value("x", 0),
+                            receipt_json.value("y", 0));
+  receipt_text_.SetSizes(receipt_json.value("width", 0),
+                         receipt_json.value("height", 0));
+
   aliens_.resize(market_rules_->known_aliens.size());
   for (size_t i = 0; i < aliens_.size(); ++i) {
     aliens_[i].portrait.reset(
@@ -170,13 +194,19 @@ void MarketScreen::Show(PlayerStatus* player_status, size_t cur_alien_index) {
   cur_alien_index_ = cur_alien_index;
 
   state_ = State::kShowWare;
+  no_button_time_ = no_button_timeout_;
 
   reFormatHumanoid();
   reFormatAlien();
   reFormatCredits();
 }
 
-void MarketScreen::Update(float /*dt*/) {}
+void MarketScreen::Update(float dt) {
+  no_button_time_ -= dt;
+  if (no_button_time_ < 0.0f) {
+    no_button_time_ = 0.0f;
+  }
+}
 
 void MarketScreen::Draw() {
   {
@@ -241,12 +271,38 @@ void MarketScreen::Draw() {
   }
 
   alien_text_.Render(0);
+
+  if (state_ == State::kReceipt) {
+    float texture_width = 0;
+    float texture_height = 0;
+    SDL_GetTextureSize(receipt_image_.get(), &texture_width, &texture_height);
+
+    SDL_FRect texture_rect = {0, 0, texture_width, texture_height};
+    SDL_FRect screen_rect = {(float)(kScreenWidth - texture_width) / 2.0f,
+                             (float)receipt_y_, texture_width, texture_height};
+    SDL_FColor color;
+    color.a = 1.0f;
+    color.r = 1.0f;
+    color.g = 1.0f;
+    color.b = 1.0f;
+    SDL_SetRenderDrawBlendMode(renderer_.get(), SDL_BLENDMODE_BLEND);
+    SDL_SetTextureBlendMode(receipt_image_.get(), SDL_BLENDMODE_BLEND);
+    RenderTexture(renderer_, receipt_image_, &texture_rect, &screen_rect,
+                  &color);
+
+    receipt_text_.Render(0);
+  }
+
   credits_text_.Render(0);
 }
 
 void MarketScreen::OnKeyDown(Keyboard::Key /*key*/) {}
 
 void MarketScreen::OnKeyUp(Keyboard::Key key) {
+  if (no_button_time_ > 0.0f) {
+    return;
+  }
+
   bool need_humanoid_re_format = false;
   switch (state_) {
     case State::kShowWare:
@@ -276,12 +332,21 @@ void MarketScreen::OnKeyUp(Keyboard::Key key) {
         // Matching all known traits:
         if (match_result == market_rules_->known_traits.size()) {
           is_alien_happy_ = true;
+          alien_pays_ =
+              market_rules_->known_aliens[cur_alien_index_].pays_when_likes;
         } else {
           is_alien_happy_ = false;
+          alien_pays_ =
+              market_rules_->known_aliens[cur_alien_index_].pays_when_dislikes;
         }
+
+        alien_pays_after_vat_ =
+            (int)((1.0f - market_rules_->vat) * alien_pays_);
+
         reFormatAlienReply();
 
         state_ = State::kAlienReply;
+        no_button_time_ = no_button_timeout_;
       } else if (key == Keyboard::Key::kSelect) {
         if (callback_) {
           callback_->TryExitFromMarketScreen();
@@ -291,15 +356,39 @@ void MarketScreen::OnKeyUp(Keyboard::Key key) {
 
     case State::kAlienReply:
       if (key == Keyboard::Key::kX) {
+        player_status_->credits_earned += alien_pays_after_vat_;
+        reFormatCredits();
+
+        reFormatReceipt();
+
         state_ = State::kReceipt;
+        no_button_time_ = no_button_timeout_;
       }
       break;
 
     case State::kReceipt:
       if (key == Keyboard::Key::kX) {
-        need_humanoid_re_format = true;
+        player_status_->cur_captured_humanoids.erase(cur_humanoid_it_);
 
-        state_ = State::kShowWare;
+        cur_humanoid_it_ = player_status_->cur_captured_humanoids.begin();
+        if (cur_humanoid_it_ == player_status_->cur_captured_humanoids.end()) {
+          state_ = State::kAllSold;
+        } else {
+          cur_humanoid_index_ = 0;
+
+          need_humanoid_re_format = true;
+
+          state_ = State::kShowWare;
+          no_button_time_ = no_button_timeout_;
+        }
+      }
+      break;
+
+    case State::kAllSold:
+      if (key == Keyboard::Key::kCircle) {
+        if (callback_) {
+          callback_->BackFromMarketScreen();
+        }
       }
       break;
   }
@@ -327,7 +416,7 @@ void MarketScreen::reFormatHumanoid() {
 
 void MarketScreen::reFormatAlien() {
   alien_text_.ReFormat(
-      {{"name", market_rules_->known_aliens[cur_humanoid_index_].name}},
+      {{"name", market_rules_->known_aliens[cur_alien_index_].name}},
       default_font_, known_fonts_);
 }
 
@@ -343,15 +432,26 @@ void MarketScreen::reFormatAlienReply() {
   if (is_alien_happy_) {
     variables["reply"] =
         market_rules_->known_aliens[cur_alien_index_].says_when_likes;
-    variables["credits"] = std::to_string(
-        market_rules_->known_aliens[cur_alien_index_].pays_when_likes);
   } else {
     variables["reply"] =
         market_rules_->known_aliens[cur_alien_index_].says_when_dislikes;
-    variables["credits"] = std::to_string(
-        market_rules_->known_aliens[cur_alien_index_].pays_when_dislikes);
   }
 
+  variables["credits"] = std::to_string(alien_pays_);
+
   alien_reply_text_.ReFormat(variables, default_font_, known_fonts_);
+}
+
+void MarketScreen::reFormatReceipt() {
+  std::map<std::string, std::string> variables;
+
+  variables["credits"] = std::to_string(alien_pays_);
+
+  receipt_text_.ReFormat(
+      {{"date", ""},
+       {"credits", std::to_string(alien_pays_)},
+       {"vat", std::to_string(alien_pays_ - alien_pays_after_vat_)},
+       {"credits_after_vat", std::to_string(alien_pays_after_vat_)}},
+      default_font_, known_fonts_);
 }
 }  // namespace gameLD58

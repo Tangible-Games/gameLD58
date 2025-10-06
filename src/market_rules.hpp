@@ -24,6 +24,7 @@ struct MarketRules {
   std::list<std::string> known_traits;
   std::vector<KnownHumanoid> known_humanoids;
   std::vector<KnownAlien> known_aliens;
+  float vat;
 };
 
 struct PlayerStatus {
@@ -91,6 +92,8 @@ MarketRules LoadMarketRules() {
       }
     }
   }
+
+  result.vat = market_rules_json.value("VAT", 0.0f);
 
   LOGD("Finished loading Market rules.");
   LOGD("Known traits:");

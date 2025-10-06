@@ -197,12 +197,6 @@ void Game::Update(float dt) {
     case State::kToMarketScreenFadeIn:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
-        std::list<KnownHumanoid> new_captured_humanoids =
-            CaptureRandomHumanoids(market_rules_, 5);
-        player_status_.cur_captured_humanoids.insert(
-            player_status_.cur_captured_humanoids.end(),
-            new_captured_humanoids.begin(), new_captured_humanoids.end());
-
         cur_alien_index_ = rand() % market_rules_.known_aliens.size();
 
         // Can modify player_status_ when selling:
@@ -224,6 +218,7 @@ void Game::Update(float dt) {
       break;
 
     case State::kMarketScreen: {
+      market_screen_.Update(dt);
       if (market_before_next_music_timeout_ > 0.0f) {
         market_before_next_music_timeout_ -= dt;
         if (market_before_next_music_timeout_ < 0.0f) {
@@ -295,6 +290,13 @@ void Game::Load() {
     loading_.StartFadeOut(1.0f);
     state_ = State::kFadeToTitleScreen;
     LOGD("Game switches to state 'State::kFadeToTitleScreen'.");
+
+    // Should be after level:
+    std::list<KnownHumanoid> new_captured_humanoids =
+        CaptureRandomHumanoids(market_rules_, 5);
+    player_status_.cur_captured_humanoids.insert(
+        player_status_.cur_captured_humanoids.end(),
+        new_captured_humanoids.begin(), new_captured_humanoids.end());
   }
 }
 

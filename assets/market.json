@@ -37,6 +37,16 @@
       "width": 180,
       "height": 115,
       "file_path": "assets/market_alien_reply.txt"
+    },
+    "receipt_image": {
+      "y": 35
+    },
+    "receipt": {
+      "x": 170,
+      "y": 65,
+      "width": 300,
+      "height": 300,
+      "file_path": "assets/market_receipt.txt"
     }
   }
 }

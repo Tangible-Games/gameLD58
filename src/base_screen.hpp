@@ -161,7 +161,7 @@ void BaseScreen::Draw() {
     RenderTexture(renderer_, image_, &screen_rect, &screen_rect, &color);
   }
 
-  {
+  if (!player_status_->cur_captured_humanoids.empty()) {
     float texture_width = 0;
     float texture_height = 0;
     SDL_GetTextureSize(market_button_image_.get(), &texture_width,
@@ -198,8 +198,10 @@ void BaseScreen::OnKeyUp(Keyboard::Key key) {
   } else if (key == Keyboard::Key::kSquare) {
     // Repair shop:
   } else if (key == Keyboard::Key::kTriangle) {
-    if (callback_) {
-      callback_->ToMarketFromBaseScreen();
+    if (!player_status_->cur_captured_humanoids.empty()) {
+      if (callback_) {
+        callback_->ToMarketFromBaseScreen();
+      }
     }
   } else if (key == Keyboard::Key::kSelect) {
     if (callback_) {
