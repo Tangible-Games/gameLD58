@@ -1,3 +1,3 @@
-<style font="sysfont_24" color="black" wrapping="word">Meine Geschichte</>
-<style font="sysfont_20" color="black" wrapping="word">Ich bin ein einfacher Burger von Alpha Centauri. Nicht besonders schlau, nicht besonders glucklich.</>
-<style font="sysfont_20" color="black" wrapping="word">Aber eines Tages hatte ich Gluck und kaufte eine ramponierte und bemalte fliegende Untertasse.</>
+<style font="sysfont_24" color="green" wrapping="word">Hello from Alpha Centauri.</>
+<style font="sysfont_20" color="white" wrapping="word">This is my story.</>
+<style font="sysfont_20" color="white" wrapping="word">I was born and raised in the Omchauta Megacity. An average student. Menial jobs. Had been a part of a quintet once, long ago. No offspring.</>
