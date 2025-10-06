@@ -78,15 +78,17 @@ void PrintParseError(std::istringstream& input_stream,
 // TODO(truvorskameikin): Implement parsing AARRBBGG colors.
 std::optional<uint32_t> ColorFromString(const std::string& value) {
   if (value == "red") {
-    return 0xFFFF0000;
+    return 0xFFF00F13;
   } else if (value == "green") {
-    return 0xFF00FF00;
+    return 0xFF29C41B;
   } else if (value == "blue") {
-    return 0xFF0000FF;
+    return 0xFF2B7FEE;
   } else if (value == "black") {
     return 0xFF000000;
   } else if (value == "white") {
     return 0xFFFFFFFF;
+  } else if (value == "grey") {
+    return 0xFFBFC2C7;
   }
 
   return std::nullopt;

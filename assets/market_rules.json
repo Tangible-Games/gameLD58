@@ -41,7 +41,7 @@
       "pays_when_likes": 1000,
       "says_when_likes": "Year, that's my thing!",
       "pays_when_dislikes": 10,
-      "says_when_likes": "Hm, another item in my collection."
+      "says_when_dislikes": "Hm, another item in my collection."
     }
   ]
 }
