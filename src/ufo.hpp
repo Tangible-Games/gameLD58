@@ -37,6 +37,18 @@ class Ufo {
 
   const Symphony::Math::Vector2d& GetVelocity() const { return velocity_; }
 
+  void SetVelocity(const Symphony::Math::Vector2d& new_velocity) {
+    velocity_ = new_velocity;
+  }
+
+  const Symphony::Math::Vector2d& GetAcceleration() const {
+    return acceleration_;
+  }
+
+  void SetAcceleration(const Symphony::Math::Vector2d& new_acceleration) {
+    acceleration_ = new_acceleration;
+  }
+
   const Symphony::Math::AARect2d& GetBounds() const { return rect_; }
 
   void SetPosition(const Symphony::Math::Point2d& new_position) {

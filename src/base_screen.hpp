@@ -20,8 +20,9 @@ class BaseScreen : public Keyboard::Callback {
   };
 
   BaseScreen(std::shared_ptr<SDL_Renderer> renderer,
-             std::shared_ptr<Symphony::Audio::Device> audio)
-      : renderer_(renderer), audio_(audio) {}
+             std::shared_ptr<Symphony::Audio::Device> audio,
+             AllAudio* all_audio)
+      : renderer_(renderer), audio_(audio), all_audio_(all_audio) {}
 
   void Load(
       std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts,
@@ -44,6 +45,7 @@ class BaseScreen : public Keyboard::Callback {
 
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
+  AllAudio* all_audio_{nullptr};
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
   std::string default_font_;
   std::shared_ptr<SDL_Texture> image_;
@@ -193,6 +195,9 @@ void BaseScreen::OnKeyDown(Keyboard::Key /*key*/) {}
 void BaseScreen::OnKeyUp(Keyboard::Key key) {
   if (key == Keyboard::Key::kX) {
     if (callback_) {
+      audio_->Play(all_audio_->audio[Sound::kButtonClick],
+                   Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
+
       callback_->ContinueFromBaseScreen();
     }
   } else if (key == Keyboard::Key::kSquare) {
@@ -200,11 +205,17 @@ void BaseScreen::OnKeyUp(Keyboard::Key key) {
   } else if (key == Keyboard::Key::kTriangle) {
     if (!player_status_->cur_captured_humanoids.empty()) {
       if (callback_) {
+        audio_->Play(all_audio_->audio[Sound::kButtonClick],
+                     Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
+
         callback_->ToMarketFromBaseScreen();
       }
     }
   } else if (key == Keyboard::Key::kSelect) {
     if (callback_) {
+      audio_->Play(all_audio_->audio[Sound::kButtonClick],
+                   Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
+
       callback_->TryExitFromBaseScreen();
     }
   }
