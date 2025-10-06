@@ -16,5 +16,6 @@
         "y": {
             "deadly": 30
         }
-    }
+    },
+    "capture_delay": 3
 }
