@@ -216,6 +216,15 @@ void Ufo::Update(float dt) {
 
 void Ufo::SetIsPaused(bool is_paused) { is_paused_ = is_paused; }
 
+static SDL_FColor SdlColorFromUInt32(uint32_t color) {
+  SDL_FColor sdl_color;
+  sdl_color.a = (float)((color >> 24) & 0xFF) / 255.0f;
+  sdl_color.r = (float)((color >> 16) & 0xFF) / 255.0f;
+  sdl_color.g = (float)((color >> 8) & 0xFF) / 255.0f;
+  sdl_color.b = (float)(color & 0xFF) / 255.0f;
+  return sdl_color;
+}
+
 void Ufo::DrawTo(const SDL_FRect& dst) {
   SDL_RenderTexture(renderer_.get(), texture_.get(), nullptr, &dst);
 
@@ -231,12 +240,16 @@ void Ufo::DrawTo(const SDL_FRect& dst) {
          std::tan(configuration_.tractorBeam.angularWidth / 2.0));
 
     const std::array<SDL_Vertex, 4> vert = {
-        SDL_Vertex{{x + beamTopHalfWidth, y}, {0, 0, 1, 0.3}, {}},
-        SDL_Vertex{{x - beamTopHalfWidth, y}, {0, 0, 1, 0.3}, {}},
         SDL_Vertex{
-            {x - beamBottomHalfWidth, kScreenHeight}, {0, 0, 1, 0.3}, {}},
+            {x + beamTopHalfWidth, y}, SdlColorFromUInt32(0x887DE974), {}},
         SDL_Vertex{
-            {x + beamBottomHalfWidth, kScreenHeight}, {0, 0, 1, 0.3}, {}},
+            {x - beamTopHalfWidth, y}, SdlColorFromUInt32(0x887DE974), {}},
+        SDL_Vertex{{x - beamBottomHalfWidth, kScreenHeight},
+                   SdlColorFromUInt32(0x887DE974),
+                   {}},
+        SDL_Vertex{{x + beamBottomHalfWidth, kScreenHeight},
+                   SdlColorFromUInt32(0x887DE974),
+                   {}},
     };
 
     const std::array<int, 6> indices = {0, 1, 2, 2, 3, 0};

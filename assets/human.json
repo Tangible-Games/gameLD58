@@ -19,5 +19,7 @@
             "deadly": 30
         }
     },
-    "capture_delay": 3
+    "capture_delay": 3,
+    "at_capture_change_dir_time_min": 1,
+    "at_capture_change_dir_time_max": 3
 }

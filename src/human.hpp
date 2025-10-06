@@ -36,6 +36,10 @@ struct HumanConfiguration {
       ret.velocityDeadly = config["velocity"]["y"]["deadly"].get<float>();
       ret.velocityXMax = config["velocity"]["x"]["max"].get<float>();
       ret.captureDelay = config["capture_delay"].get<float>();
+      ret.at_capture_change_dir_time_min =
+          config["at_capture_change_dir_time_min"].get<float>();
+      ret.at_capture_change_dir_time_max =
+          config["at_capture_change_dir_time_max"].get<float>();
       ret.half_width = config["half_width"].get<float>();
       ret.half_height = config["half_height"].get<float>();
 
@@ -58,6 +62,8 @@ struct HumanConfiguration {
   float velocityDeadly{0};
   float velocityXMax{0};
   float captureDelay{0};
+  float at_capture_change_dir_time_min{0.0f};
+  float at_capture_change_dir_time_max{0.0f};
   float half_width{0};
   float half_height{0};
 };
@@ -71,6 +77,11 @@ struct HumanTexture {
     return _;
   }
 };
+
+static float RandF(float min_value, float max_value) {
+  return (max_value - min_value) * ((float)rand() / (float)RAND_MAX) +
+         min_value;
+}
 
 class Human {
  public:
@@ -90,6 +101,9 @@ class Human {
       if (!prevCaptured_) {
         LOGD("Capturing started");
         capturedDelay_ = configuration_.captureDelay;
+        at_capture_change_direction_delay_ =
+            RandF(configuration_.at_capture_change_dir_time_min,
+                  configuration_.at_capture_change_dir_time_max);
         acc_.x = -std::copysign(configuration_.accelerationRunning, acc_.x);
         prevCaptured_ = true;
       }
@@ -106,6 +120,16 @@ class Human {
     }
     if (captured_) {
       if (capturedDelay_ > 0) {
+        if (at_capture_change_direction_delay_ > 0.0f) {
+          at_capture_change_direction_delay_ -= dt;
+          if (at_capture_change_direction_delay_ < 0.0f) {
+            at_capture_change_direction_delay_ = 0.0f;
+            acc_.x = -acc_.x;
+
+            LOGD("Change direction.");
+          }
+        }
+
         capturedDelay_ -= dt;
         LOGD_IF(capturedDelay_ <= 0, "Start tracking up");
       }
@@ -168,6 +192,7 @@ class Human {
   float maxX_;
   float targetX_{-1};
   float capturedDelay_;
+  float at_capture_change_direction_delay_{0.0f};
 };
 
 }  // namespace gameLD58
