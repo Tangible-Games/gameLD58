@@ -46,7 +46,7 @@
       600
     ]
   },
-  "to_capture": 1,
+  "to_capture": 10,
   "time_on_level": 60,
-  "ufo_velocity_at_end": -80
+  "ufo_velocity_at_end": -150
 }
