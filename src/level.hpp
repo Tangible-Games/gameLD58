@@ -57,9 +57,9 @@ class Level : public Keyboard::Callback {
         level_path_(std::move(path)),
         paralax_renderer_(renderer),
         ufo_(renderer, audio) {
-    const char* files[] = {"humanoid_2.json", "humanoid_3.json",
-                           "humanoid_4.json", "humanoid_5.json",
-                           "humanoid_6.json"};
+    const char* files[] = {"humanoid.json",   "humanoid_2.json",
+                           "humanoid_3.json", "humanoid_4.json",
+                           "humanoid_5.json", "humanoid_6.json"};
 
     human_sprite_sheets_.reserve(std::size(files));
     for (const char* f : files) {
