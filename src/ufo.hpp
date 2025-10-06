@@ -20,7 +20,7 @@
 namespace gameLD58 {
 class Ufo {
   static constexpr auto kUfoConfigPath{"assets/ufo.json"};
-  static constexpr bool kDebugDump = false;
+  static constexpr bool kDebugDump = true;
 
  public:
   Ufo(std::shared_ptr<SDL_Renderer> renderer,

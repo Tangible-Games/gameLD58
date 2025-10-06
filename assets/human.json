@@ -1,4 +1,6 @@
 {
+    "half_width": 10,
+    "half_height": 20,
     "acceleration": {
         "x": {
             "walking": 2000,
