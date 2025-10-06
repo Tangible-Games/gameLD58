@@ -108,6 +108,7 @@ class Level : public Keyboard::Callback {
   Ufo ufo_;
   float cam_x_;
   float cam_y_;
+  static constexpr float cam_bias_ = 60.f;
 
   size_t capturedHumans_{0};
   float time_left_{0.0f};
@@ -188,7 +189,7 @@ void Level::Load(
   cam_x_ -= config.length * std::floor(cam_x_ / config.length);
   float min_center = 0.5f * kScreenHeight;
   float max_center = std::max(min_center, config.height - 0.5f * kScreenHeight);
-  cam_y_ = std::clamp(config.ufo_spawn.y, min_center, max_center);
+  cam_y_ = std::clamp(config.ufo_spawn.y + cam_bias_, min_center, max_center);
 
   for (const auto& item : level_json["items"]) {
     Object obj;
@@ -417,10 +418,12 @@ void Level::Update(float dt) {
   float min_center = 0.5f * kScreenHeight;
   float max_center =
       std::max(min_center, level_config_.height - 0.5f * kScreenHeight);
+
   if (level_config_.height <= kScreenHeight) {
     cam_y_ = min_center;
   } else {
-    cam_y_ = std::clamp(ufo_.GetBounds().center.y, min_center, max_center);
+    float ufo_y = ufo_.GetBounds().center.y;
+    cam_y_ = std::clamp(ufo_y + cam_bias_, min_center, max_center);
   }
 
   // Get visible humans
