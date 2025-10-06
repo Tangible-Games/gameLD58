@@ -67,6 +67,7 @@ class MarketScreen : public Keyboard::Callback {
   float no_button_time_{1.0f};
   const float no_button_timeout_{0.25f};
   std::shared_ptr<SDL_Texture> image_;
+  std::shared_ptr<SDL_Texture> sell_humanoid_image_;
   Symphony::Text::TextRenderer humanoid_text_;
   Symphony::Text::TextRenderer alien_text_;
   Symphony::Text::TextRenderer credits_text_;
@@ -103,6 +104,10 @@ void MarketScreen::Load(
 
   image_.reset(IMG_LoadTexture(renderer_.get(), "assets/market.png"),
                &SDL_DestroyTexture);
+
+  sell_humanoid_image_.reset(
+      IMG_LoadTexture(renderer_.get(), "assets/sell_button.png"),
+      &SDL_DestroyTexture);
 
   alien_reply_image_.reset(
       IMG_LoadTexture(renderer_.get(), "assets/talking_bubble.png"),
@@ -222,6 +227,27 @@ void MarketScreen::Draw() {
     SDL_SetRenderDrawBlendMode(renderer_.get(), SDL_BLENDMODE_BLEND);
     SDL_SetTextureBlendMode(image_.get(), SDL_BLENDMODE_BLEND);
     RenderTexture(renderer_, image_, &screen_rect, &screen_rect, &color);
+  }
+
+  if (state_ != State::kAllSold) {
+    float texture_width = 0;
+    float texture_height = 0;
+    SDL_GetTextureSize(sell_humanoid_image_.get(), &texture_width,
+                       &texture_height);
+
+    SDL_FRect texture_rect = {0, 0, texture_width, texture_height};
+    SDL_FRect screen_rect = {kScreenWidth - texture_width - 5,
+                             kScreenHeight - texture_height, texture_width,
+                             texture_height};
+    SDL_FColor color;
+    color.a = 1.0f;
+    color.r = 1.0f;
+    color.g = 1.0f;
+    color.b = 1.0f;
+    SDL_SetRenderDrawBlendMode(renderer_.get(), SDL_BLENDMODE_BLEND);
+    SDL_SetTextureBlendMode(sell_humanoid_image_.get(), SDL_BLENDMODE_BLEND);
+    RenderTexture(renderer_, sell_humanoid_image_, &texture_rect, &screen_rect,
+                  &color);
   }
 
   {
