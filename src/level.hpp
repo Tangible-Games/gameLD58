@@ -357,9 +357,10 @@ void Level::Update(float dt) {
       int randPointNum =
           ((1ULL * level_config_.humanRespawnX_.size() * std::rand()) /
            RAND_MAX);
-      humans_.emplace_back(
-          renderer_, level_config_.humanRespawnX_[randPointNum],
-          level_config_.human_y, level_config_.length, RandomSheet());
+      humans_.emplace_back(renderer_, audio_, all_audio_,
+                           level_config_.humanRespawnX_[randPointNum],
+                           level_config_.human_y, level_config_.length,
+                           RandomSheet());
       LOGD("Create a human at {}x{}",
            level_config_.humanRespawnX_[randPointNum], level_config_.human_y);
     }
@@ -441,6 +442,11 @@ void Level::Update(float dt) {
     if (!h->Update(dt)) {
       LOGD("Dead");
       h = humans_.erase(h);
+
+      Sound sounds[3] = {Sound::kBodyFall_1, Sound::kBodyFall_2,
+                         Sound::kBodyFall_3};
+      audio_->Play(all_audio_->audio[sounds[rand() % 3]],
+                   Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
     } else {
       h++;
     }

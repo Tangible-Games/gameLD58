@@ -87,14 +87,18 @@ static float RandF(float min_value, float max_value) {
 
 class Human {
  public:
-  Human(std::shared_ptr<SDL_Renderer> renderer, float posX, float posY,
-        float maxX, std::shared_ptr<Symphony::Sprite::SpriteSheet> animation_sp)
+  Human(std::shared_ptr<SDL_Renderer> renderer,
+        std::shared_ptr<Symphony::Audio::Device> audio, AllAudio* all_audio,
+        float posX, float posY, float maxX,
+        std::shared_ptr<Symphony::Sprite::SpriteSheet> animation_sp)
       : configuration_(HumanConfiguration::configuration()),
         rect{Symphony::Math::AARect2d{
             {posX, posY - configuration_.half_height},
             {configuration_.half_width, configuration_.half_height}}},
         groundY_(rect.center.y),
         renderer_(renderer),
+        audio_(audio),
+        all_audio_(all_audio),
         texture_(HumanTexture::texture(renderer)),
         maxX_{maxX},
         animations_{animation_sp} {}
@@ -111,6 +115,11 @@ class Human {
                   configuration_.at_capture_change_dir_time_max);
         acc_.x = -std::copysign(configuration_.accelerationRunning, acc_.x);
         prevCaptured_ = true;
+
+        Sound sounds[6] = {Sound::kPanic_1, Sound::kPanic_2, Sound::kPanic_3,
+                           Sound::kPanic_4, Sound::kPanic_5, Sound::kPanic_6};
+        audio_->Play(all_audio_->audio[sounds[rand() % 6]],
+                     Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
       }
     } else if (rect.center.y < groundY_) {
       LOGD("Run away");
@@ -237,6 +246,8 @@ class Human {
   Symphony::Math::AARect2d rect;
   float groundY_;
   std::shared_ptr<SDL_Renderer> renderer_;
+  std::shared_ptr<Symphony::Audio::Device> audio_;
+  AllAudio* all_audio_{nullptr};
   std::shared_ptr<SDL_Texture> texture_;
   Symphony::Math::Vector2d acc_;
   bool captured_{false};
