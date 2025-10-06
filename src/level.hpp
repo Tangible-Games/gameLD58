@@ -149,6 +149,7 @@ void Level::Load(
   config.ufo_max_height =
       level_json.value("ufo_max_height", (float)kScreenHeight);
   config.human_y = level_json.value("human_y", (float)kScreenHeight);
+  LOGD("human y = {}", config.human_y);
 
   if (config.length < kScreenWidth) {
     LOGW("level.length {} < screen {}, clamping", config.length, kScreenWidth);
@@ -265,11 +266,6 @@ void Level::Draw() {
   paralax_renderer_.Draw(cam_x_, cam_y_);
 
   SDL_SetRenderDrawColor(renderer_.get(), 0, 255, 0, 255);
-
-  // for (const auto& obj : objects_) {
-  //   DrawObject(obj, [&](SDL_FRect r) { SDL_RenderRect(renderer_.get(), &r);
-  //   });
-  // };
 
   for (auto& obj : humans_) {
     DrawObject(obj, [&](SDL_FRect r) { obj.DrawTo(r); });
