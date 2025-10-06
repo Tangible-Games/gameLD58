@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <symphony_lite/all_symphony.hpp>
 
+#include "all_audio.hpp"
 #include "base_screen.hpp"
 #include "fade_image.hpp"
 #include "keyboard.hpp"
@@ -31,7 +32,7 @@ class Game : public TitleScreen::Callback,
         title_screen_(renderer, audio),
         story_screen_(renderer, audio),
         base_screen_(renderer, audio),
-        market_screen_(renderer, audio),
+        market_screen_(renderer, audio, &all_audio_),
         fade_in_out_(renderer, audio, ""),
         level_(renderer, audio, "assets/level.json"),
         quit_dialog_(renderer, audio) {
@@ -109,6 +110,7 @@ class Game : public TitleScreen::Callback,
   Keyboard::Callback* prev_keyboard_callback_{nullptr};
   State state_{State::kJustStarted};
   int just_started_updates_{30};
+  AllAudio all_audio_;
   std::shared_ptr<Symphony::Audio::WaveFile> menu_audio_;
   std::shared_ptr<Symphony::Audio::WaveFile> market_audio_;
   std::shared_ptr<Symphony::Audio::PlayingStream> menu_audio_stream_;
@@ -284,6 +286,7 @@ void Game::Load() {
         "assets/05_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
     market_audio_ = Symphony::Audio::LoadWave(
         "assets/14_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
+    all_audio_ = LoadAllAudio();
 
     ready_for_loading_ = false;
 
