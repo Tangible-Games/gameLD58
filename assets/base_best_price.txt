@@ -1,2 +1,2 @@
-<style font="sysfont_20" color="black" wrapping="noclip">Best price:</>
-<style font="sysfont_20" color="black" wrapping="noclip"><sub variable="$best_price"></>
+<style font="sysfont_20" color="white" wrapping="noclip">Best price:</>
+<style font="sysfont_20" color="white" wrapping="noclip"><sub variable="$best_price"></>
