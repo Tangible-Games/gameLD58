@@ -1,0 +1,1 @@
+<style font="sysfont_20" color="black" wrapping="noclip" align="right">Time: <sub variable="$time">

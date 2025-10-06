@@ -62,6 +62,7 @@ class Game : public TitleScreen::Callback,
   void BackFromMarketScreen() override;
   void TryExitFromMarketScreen() override;
 
+  void FinishLevel(size_t captured_humans) override;
   void TryExitFromLevel() override;
 
   void BackToGame() override;
@@ -85,6 +86,8 @@ class Game : public TitleScreen::Callback,
     kMarketScreen,
     kToGameFadeIn,
     kToGameFadeOut,
+    kToBaseScreenFromLevelFadeIn,
+    kToBaseScreenFromLevelFadeOut,
     kGame,
   };
 
@@ -277,7 +280,7 @@ void Game::Load() {
     loadRules();
     market_rules_ = LoadMarketRules();
 
-    level_.Load();
+    level_.Load(known_fonts_, default_font_);
     title_screen_.Load();
     story_screen_.Load(known_fonts_, default_font_);
     base_screen_.Load(known_fonts_, default_font_);
@@ -508,6 +511,18 @@ void Game::TryExitFromMarketScreen() {
       Keyboard::Instance().RegisterCallback(&quit_dialog_);
 
   LOGD("Game shows Quit dialog from Base screen.");
+}
+
+void Game::FinishLevel(size_t /*captured_humans*/) {
+  if (state_ != State::kGame) {
+    return;
+  }
+
+  level_.SetIsPaused(true);
+
+  fade_in_out_.StartFadeIn(0.5f);
+  state_ = State::kToBaseScreenFromLevelFadeIn;
+  LOGD("Game switches to state 'State::kToBaseScreenFromLevelFadeIn'.");
 }
 
 void Game::TryExitFromLevel() {

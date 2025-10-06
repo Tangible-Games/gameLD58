@@ -45,5 +45,7 @@
       100,
       300
     ]
-  }
+  },
+  "to_capture": 10,
+  "time_on_level": 60
 }
