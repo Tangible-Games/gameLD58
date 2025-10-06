@@ -1,4 +1,4 @@
-<style font="sysfont_20" color="black" wrapping="word">Lot No. <sub variable="$index_plus_1">
+<style font="sysfont_20" color="black" wrapping="word">       Lot No. <sub variable="$index_plus_1">
 <sub variable="$Sex">: <sub variable="$Sex_value">
 <sub variable="$Age">: <sub variable="$Age_value">
 <sub variable="$Shape">: <sub variable="$Shape_value">

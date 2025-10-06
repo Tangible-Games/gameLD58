@@ -1,0 +1,11 @@
+{
+  "market_screen": {
+    "humanoid": {
+      "x": 12,
+      "y": 67,
+      "width": 175,
+      "height": 155,
+      "file_path": "assets/market_humanoid.txt"
+    }
+  }
+}
