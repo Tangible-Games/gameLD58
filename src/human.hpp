@@ -35,6 +35,7 @@ struct HumanConfiguration {
           config["acceleration"]["x"]["running"].get<float>();
       ret.velocityDeadly = config["velocity"]["y"]["deadly"].get<float>();
       ret.velocityXMax = config["velocity"]["x"]["max"].get<float>();
+      ret.captureDelay = config["capture_delay"].get<float>();
     } else {
       LOGE("Failed to load {}", kHumanConfigPath);
     }
@@ -53,6 +54,7 @@ struct HumanConfiguration {
   float accelerationFalling{0};
   float velocityDeadly{0};
   float velocityXMax{0};
+  float captureDelay{0};
 };
 
 struct HumanTexture {
@@ -78,18 +80,30 @@ class Human {
 
   bool Update(float dt) {
     if (captured_) {
-      acc_.y -= configuration_.accelerationCapturing * dt;
       if (!prevCaptured_) {
+        LOGD("Capturing started");
+        capturedDelay_ = configuration_.captureDelay;
         acc_.x = -std::copysign(configuration_.accelerationRunning, acc_.x);
         prevCaptured_ = true;
       }
     } else if (rect.center.y < groundY_) {
+      LOGD("Run away");
       acc_.y += configuration_.accelerationFalling * dt;
       if (prevCaptured_) {
         // Reset direction and acceleration
+        LOGD("Forget target");
         prevCaptured_ = false;
         targetX_ = -1;
         acc_.x = 0;
+      }
+    }
+    if (captured_) {
+      if (capturedDelay_ > 0) {
+        capturedDelay_ -= dt;
+        LOGD_IF(capturedDelay_ <= 0, "Start tracking up");
+      }
+      if (capturedDelay_ <= 0) {
+        acc_.y -= configuration_.accelerationCapturing * dt;
       }
     }
 
@@ -118,7 +132,7 @@ class Human {
       rect.center.y = groundY_;
       acc_.y = 0;
       if (v.y > configuration_.velocityDeadly) {
-        // TODO: Do something
+        // TODO: Do something to handle death
         return false;
       }
     }
@@ -147,6 +161,7 @@ class Human {
   bool prevCaptured_{false};
   float maxX_;
   float targetX_{-1};
+  float capturedDelay_;
 };
 
 }  // namespace gameLD58
