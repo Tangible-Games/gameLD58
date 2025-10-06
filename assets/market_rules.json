@@ -240,11 +240,11 @@
       "name": "Ak'grndtok Sm'aani Scientist",
       "likes": {
         "Sex": ["Male"],
-        "Age": ["49 years"],
+        "Age": ["49 years", "80 years"],
         "Shape": ["Fit"],
         "Character": ["Stoic"],
-        "Job": ["Meta Engineer", "Scientist"],
-        "Hobby": ["Fishing"]
+        "Job": ["Meta Engineer", "Scientist", "Astronomer"],
+        "Hobby": ["Fishing", "Cooking"]
       },
       "pays_when_likes": 2000,
       "says_when_likes": "Fits in my Lab perfectly!",
