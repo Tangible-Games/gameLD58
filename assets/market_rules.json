@@ -227,7 +227,7 @@
         "Age": ["18 years", "19 years", "20 years", "21 years"],
         "Shape": ["Fit"],
         "Character": ["Active"],
-        "Job": ["Photo model", "Cheerleader"],
+        "Job": ["Photo model", "Cheerleader", "Nun"],
         "Hobby": ["Posing"]
       },
       "pays_when_likes": 1000,
@@ -243,7 +243,7 @@
         "Age": ["49 years"],
         "Shape": ["Fit"],
         "Character": ["Stoic"],
-        "Job": ["Meta Engineer"],
+        "Job": ["Meta Engineer", "Scientist"],
         "Hobby": ["Fishing"]
       },
       "pays_when_likes": 2000,
@@ -256,10 +256,10 @@
       "name": "Hloboo the Elder Sculptor",
       "likes": {
         "Sex": ["Female"],
-        "Age": ["32 years"],
+        "Age": ["32 years", "50 years", "41 years"],
         "Shape": ["Fit"],
         "Character": ["Sweet"],
-        "Job": ["Psychologist"],
+        "Job": ["Psychologist", "Lawyer"],
         "Hobby": ["TV shows"]
       },
       "pays_when_likes": 1500,
@@ -272,10 +272,10 @@
       "name": "Snagro Abigool Cowboy",
       "likes": {
         "Sex": ["Male"],
-        "Age": ["47 years"],
+        "Age": ["47 years", "30 years", "80 years"],
         "Shape": ["Fit"],
-        "Character": ["Strong"],
-        "Job": ["Builder"],
+        "Character": ["Strong", "Stoic"],
+        "Job": ["Builder", "Driver"],
         "Hobby": ["DIY"]
       },
       "pays_when_likes": 3000,
@@ -288,11 +288,11 @@
       "name": "Carro the Rot Dictator",
       "likes": {
         "Sex": ["Female"],
-        "Age": ["60 years"],
+        "Age": ["60 years", "21 years", "19 years", "26 years"],
         "Shape": ["Average"],
-        "Character": ["Funny"],
-        "Job": ["Teacher"],
-        "Hobby": ["Chess"]
+        "Character": ["Funny", "Bitchy"],
+        "Job": ["Teacher", "Psychologist"],
+        "Hobby": ["Chess", "Darts"]
       },
       "pays_when_likes": 3000,
       "says_when_likes": "Ah, this one will cheer me up!",
@@ -304,11 +304,11 @@
       "name": "Mia, Admiral of Alaor Empire",
       "likes": {
         "Sex": ["Male"],
-        "Age": ["86 years"],
+        "Age": ["86 years", "32 years"],
         "Shape": ["Fit"],
         "Character": ["Sweet"],
-        "Job": ["Pilot"],
-        "Hobby": ["Boxer"]
+        "Job": ["Pilot", "Driver"],
+        "Hobby": ["Boxer", "DIY"]
       },
       "pays_when_likes": 3000,
       "says_when_likes": "It will fight to the death!",
@@ -319,5 +319,5 @@
   ],
 
   "VAT": 0.2,
-  "match_threshold": 2
+  "match_threshold": 3
 }
