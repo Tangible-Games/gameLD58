@@ -87,6 +87,7 @@ void StoryScreen::Load(
 }
 
 void StoryScreen::Update(float /*dt*/) {}
+
 void StoryScreen::Draw() {
   SDL_FRect screen_rect = {0, 0, kScreenWidth, kScreenHeight};
   SDL_FColor color;

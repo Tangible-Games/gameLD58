@@ -139,9 +139,12 @@ void BaseScreen::Show(const PlayerStatus* player_status) {
 
   std::string levels_completed_str =
       std::to_string(player_status_->levels_completed);
+  std::string levels_completed_of_str =
+      std::to_string(player_status_->levels_completed_of);
   levels_completed.text_renderer.ReFormat(
-      {{"levels_completed", levels_completed_str}}, default_font_,
-      known_fonts_);
+      {{"levels_completed", levels_completed_str},
+       {"levels_completed_of", levels_completed_of_str}},
+      default_font_, known_fonts_);
 
   std::string best_price_str = std::to_string(player_status_->best_price);
   best_price.text_renderer.ReFormat({{"best_price", best_price_str}},

@@ -16,6 +16,7 @@
 #include "quit_dialog.hpp"
 #include "story_screen.hpp"
 #include "title_screen.hpp"
+#include "victory_screen.hpp"
 
 namespace gameLD58 {
 class Game : public TitleScreen::Callback,
@@ -23,6 +24,7 @@ class Game : public TitleScreen::Callback,
              public BaseScreen::Callback,
              public MarketScreen::Callback,
              public Level::Callback,
+             public VictoryScreen::Callback,
              public QuitDialog::Callback {
  public:
   Game(std::shared_ptr<SDL_Renderer> renderer,
@@ -36,6 +38,7 @@ class Game : public TitleScreen::Callback,
         market_screen_(renderer, audio, &all_audio_),
         fade_in_out_(renderer, audio, ""),
         level_(renderer, audio, "assets/level.json"),
+        victory_screen_(renderer, audio, &all_audio_),
         quit_dialog_(renderer, audio) {
     LOGD("Game is in state 'State::kJustStarted'.");
   }
@@ -65,6 +68,9 @@ class Game : public TitleScreen::Callback,
   void FinishLevel(size_t captured_humans) override;
   void TryExitFromLevel() override;
 
+  void ContinueFromVictoryScreen() override;
+  void TryExitFromVictoryScreen() override;
+
   void BackToGame() override;
   void QuitGame() override;
 
@@ -87,6 +93,9 @@ class Game : public TitleScreen::Callback,
     kToGameFadeIn,
     kToGameFadeOut,
     kToBaseScreenFromLevelFadeIn,
+    kToVictoryFadeIn,
+    kToVictoryFadeOut,
+    kVictoryScreen,
     kGame,
   };
 
@@ -108,6 +117,7 @@ class Game : public TitleScreen::Callback,
   float market_before_next_music_timeout_{0.0f};
   FadeImage fade_in_out_;
   Level level_;
+  VictoryScreen victory_screen_;
   QuitDialog quit_dialog_;
   bool show_quit_dialog_{false};
   Keyboard::Callback* prev_keyboard_callback_{nullptr};
@@ -278,6 +288,29 @@ void Game::Update(float dt) {
         LOGD("Game switches to state 'State::kToBaseScreenFadeOut'.");
       }
       break;
+
+    case State::kToVictoryFadeIn:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        fade_in_out_.StartFadeOut(0.5f);
+        state_ = State::kToVictoryFadeOut;
+        LOGD("Game switches to state 'State::kToVictoryFadeOut'.");
+      }
+      break;
+
+    case State::kToVictoryFadeOut:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        state_ = State::kVictoryScreen;
+        victory_screen_.RegisterCallback(this);
+        Keyboard::Instance().RegisterCallback(&victory_screen_);
+        LOGD("Game switches to state 'State::kVictoryScreen'.");
+      }
+      break;
+
+    case State::kVictoryScreen:
+      victory_screen_.Update(dt);
+      break;
   }
 
   if (show_quit_dialog_) {
@@ -299,6 +332,7 @@ void Game::Load() {
     base_screen_.Load(known_fonts_, default_font_);
     market_screen_.Load(&market_rules_, known_fonts_, default_font_);
     fade_in_out_.Load("assets/fade_in_out.png");
+    victory_screen_.Load();
     quit_dialog_.Load();
 
     menu_audio_ = Symphony::Audio::LoadWave(
@@ -387,6 +421,17 @@ void Game::Draw() {
       level_.Draw();
       fade_in_out_.Draw();
       break;
+    case State::kToVictoryFadeIn:
+      base_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kToVictoryFadeOut:
+      victory_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kVictoryScreen:
+      victory_screen_.Draw();
+      break;
   }
 
   if (show_quit_dialog_) {
@@ -473,10 +518,21 @@ void Game::ContinueFromBaseScreen() {
 
   Keyboard::Instance().RegisterCallback(nullptr);
 
-  fade_in_out_.StartFadeIn(0.5f);
-  state_ = State::kToGameFadeIn;
-  level_.Start(/*is_paused*/ true);
-  LOGD("Game switches to state 'State::kToGameFadeIn'.");
+  if (player_status_.credits_earned >= player_status_.credits_earned_of) {
+    // Victory:
+    fade_in_out_.StartFadeIn(0.5f);
+    state_ = State::kToVictoryFadeIn;
+    LOGD("Game switches to state 'State::kToVictoryFadeIn'.");
+  } else if (player_status_.levels_completed >=
+             player_status_.levels_completed_of) {
+    // Defeat:
+    LOGD("Game switches to state 'State::kToDefeatFadeIn'.");
+  } else {
+    fade_in_out_.StartFadeIn(0.5f);
+    state_ = State::kToGameFadeIn;
+    level_.Start(/*is_paused*/ true);
+    LOGD("Game switches to state 'State::kToGameFadeIn'.");
+  }
 }
 
 void Game::TryExitFromBaseScreen() {
@@ -559,6 +615,22 @@ void Game::TryExitFromLevel() {
   LOGD("Game shows Quit dialog from Level.");
 }
 
+void Game::ContinueFromVictoryScreen() {}
+
+void Game::TryExitFromVictoryScreen() {
+  if (state_ != State::kVictoryScreen) {
+    return;
+  }
+
+  show_quit_dialog_ = true;
+  quit_dialog_.Show();
+  quit_dialog_.RegisterCallback(this);
+  prev_keyboard_callback_ =
+      Keyboard::Instance().RegisterCallback(&quit_dialog_);
+
+  LOGD("Game shows Quit dialog from Victory screen.");
+}
+
 void Game::BackToGame() {
   level_.SetIsPaused(false);
 
@@ -620,5 +692,7 @@ void Game::loadRules() {
 
   player_status_.credits_earned_of =
       game_json["game"].value("credits_earned_of", 0);
+  player_status_.levels_completed_of =
+      game_json["game"].value("levels_completed_of", 0);
 }
 }  // namespace gameLD58
