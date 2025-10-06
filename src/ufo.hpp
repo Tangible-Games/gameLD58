@@ -34,6 +34,7 @@ class Ufo {
 
   void Update(float dt);
 
+  void StartLevel();
   void FinishLevel();
 
   const Symphony::Math::Vector2d& GetVelocity() const { return velocity_; }
@@ -88,6 +89,8 @@ class Ufo {
   float tractorBeamTimeout_{0};
 
   float prevTime_{0};
+
+  bool is_ending_{false};
 };
 
 void Ufo::Load() {
@@ -163,26 +166,28 @@ void Ufo::Load() {
 
 void Ufo::Update(float dt) {
   // Handle keys
-  if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadLeft).has_value()) {
-    acceleration_.x -= configuration_.moveAcceleration.x * dt;
-  }
-  if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadRight).has_value()) {
-    acceleration_.x += configuration_.moveAcceleration.x * dt;
-  }
-  if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadUp).has_value()) {
-    acceleration_.y -= configuration_.moveAcceleration.y * dt;
-  }
-  if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadDown).has_value()) {
-    acceleration_.y += configuration_.moveAcceleration.y * dt;
-  }
-  if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kSquare).has_value()) {
-    if (tractorBeamTimeout_ == 0.0f) {
-      audio_->Stop(beam_audio_stream_, Symphony::Audio::StopFade(0.25f));
-      beam_audio_stream_ =
-          audio_->Play(all_audio_->audio[Sound::kBeamLoop],
-                       Symphony::Audio::kPlayLooped, Symphony::Audio::kNoFade);
+  if (!is_ending_) {
+    if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadLeft).has_value()) {
+      acceleration_.x -= configuration_.moveAcceleration.x * dt;
     }
-    tractorBeamTimeout_ = configuration_.tractorBeam.latency;
+    if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadRight).has_value()) {
+      acceleration_.x += configuration_.moveAcceleration.x * dt;
+    }
+    if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadUp).has_value()) {
+      acceleration_.y -= configuration_.moveAcceleration.y * dt;
+    }
+    if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kDpadDown).has_value()) {
+      acceleration_.y += configuration_.moveAcceleration.y * dt;
+    }
+    if (Keyboard::Instance().IsKeyDown(Keyboard::Key::kSquare).has_value()) {
+      if (tractorBeamTimeout_ == 0.0f) {
+        audio_->Stop(beam_audio_stream_, Symphony::Audio::StopFade(0.25f));
+        beam_audio_stream_ = audio_->Play(all_audio_->audio[Sound::kBeamLoop],
+                                          Symphony::Audio::kPlayLooped,
+                                          Symphony::Audio::kNoFade);
+      }
+      tractorBeamTimeout_ = configuration_.tractorBeam.latency;
+    }
   }
 
   // Calculate velocity
@@ -226,9 +231,14 @@ void Ufo::Update(float dt) {
   }
 }
 
+void Ufo::StartLevel() { is_ending_ = false; }
+
 void Ufo::FinishLevel() {
   tractorBeamTimeout_ = 0.0f;
   audio_->Stop(beam_audio_stream_, Symphony::Audio::StopFade(0.25f));
+  beam_audio_stream_.reset();
+
+  is_ending_ = true;
 }
 
 static SDL_FColor SdlColorFromUInt32(uint32_t color) {

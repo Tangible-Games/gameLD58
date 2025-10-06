@@ -261,6 +261,8 @@ void Game::Update(float dt) {
     case State::kToGameFadeIn:
       fade_in_out_.Update(dt);
       if (fade_in_out_.IsIdle()) {
+        level_.SetIsPaused(false);
+
         fade_in_out_.StartFadeOut(0.5f);
         state_ = State::kToGameFadeOut;
         LOGD("Game switches to state 'State::kToGameFadeOut'.");
@@ -274,8 +276,6 @@ void Game::Update(float dt) {
 
         level_.RegisterCallback(this);
         Keyboard::Instance().RegisterCallback(&level_);
-
-        level_.SetIsPaused(false);
 
         state_ = State::kGame;
         LOGD("Game switches to state 'State::kGame'.");

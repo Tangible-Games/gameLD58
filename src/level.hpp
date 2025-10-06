@@ -470,6 +470,7 @@ void Level::Start(bool is_paused) {
   ufo_.SetPosition(level_config_.ufo_spawn);
   ufo_.SetVelocity(Symphony::Math::Vector2d());
   ufo_.SetAcceleration(Symphony::Math::Vector2d());
+  ufo_.StartLevel();
 
   is_ending_ = false;
   ending_timeout_ = 0.0f;
