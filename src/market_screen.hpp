@@ -502,7 +502,7 @@ void MarketScreen::reFormatReceipt() {
   variables["credits"] = std::to_string(alien_pays_);
 
   receipt_text_.ReFormat(
-      {{"date", ""},
+      {{"date", std::to_string(player_status_->levels_completed)},
        {"credits", std::to_string(alien_pays_)},
        {"vat", std::to_string(alien_pays_ - alien_pays_after_vat_)},
        {"credits_after_vat", std::to_string(alien_pays_after_vat_)}},
