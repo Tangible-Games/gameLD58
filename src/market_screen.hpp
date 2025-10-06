@@ -375,6 +375,8 @@ void MarketScreen::OnKeyUp(Keyboard::Key key) {
     case State::kAlienReply:
       if (key == Keyboard::Key::kX) {
         player_status_->credits_earned += alien_pays_after_vat_;
+        player_status_->best_price =
+            std::max(player_status_->best_price, alien_pays_);
         reFormatCredits();
 
         reFormatReceipt();

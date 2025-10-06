@@ -144,7 +144,7 @@ void BaseScreen::Show(const PlayerStatus* player_status) {
       known_fonts_);
 
   std::string best_price_str = std::to_string(player_status_->best_price);
-  best_price.text_renderer.ReFormat({{"best_price", levels_completed_str}},
+  best_price.text_renderer.ReFormat({{"best_price", best_price_str}},
                                     default_font_, known_fonts_);
 }
 

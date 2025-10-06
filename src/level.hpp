@@ -36,6 +36,7 @@ struct Config {
   std::vector<float> humanRespawnX_;
   size_t to_capture{0};
   int time_on_level{0};
+  float ufo_velocity_at_end{0.0f};
 };
 
 class Level : public Keyboard::Callback {
@@ -89,6 +90,9 @@ class Level : public Keyboard::Callback {
 
   size_t capturedHumans_{0};
   float time_left_{0.0f};
+
+  bool is_ending_{false};
+  float ending_timeout_{0.0f};
 
  private:
   static std::string readFile(const std::string& path) {
@@ -178,6 +182,7 @@ void Level::Load(
 
   config.to_capture = level_json["to_capture"].get<size_t>();
   config.time_on_level = level_json["time_on_level"].get<size_t>();
+  config.ufo_velocity_at_end = level_json["ufo_velocity_at_end"].get<float>();
 
   LOGD("Level loaded: length={}, spawn=({}, {}), obstacles={}", config.length,
        config.ufo_spawn.x, config.ufo_spawn.y, objects_.size());
@@ -286,13 +291,35 @@ void Level::Update(float dt) {
     return;
   }
 
+  if (is_ending_) {
+    auto ufo_center =
+        ufo_.GetBounds().center +
+        Symphony::Math::Vector2d(0.0f, level_config_.ufo_velocity_at_end) * dt;
+    ufo_.SetPosition(ufo_center);
+
+    if (ending_timeout_ > 0.0f) {
+      ending_timeout_ -= dt;
+      if (ending_timeout_ < 0.0f) {
+        ending_timeout_ = 0.0;
+
+        if (callback_) {
+          callback_->FinishLevel(capturedHumans_);
+        }
+      }
+    }
+
+    return;
+  }
+
   time_left_ -= dt;
   if (time_left_ < 0.0f) {
     time_left_ = 0.0f;
 
-    if (callback_) {
-      callback_->FinishLevel(capturedHumans_);
-    }
+    is_ending_ = true;
+    ending_timeout_ = 1.0f;
+    ufo_.FinishLevel();
+
+    LOGD("Ending level, time's up.");
   }
 
   // Respawn humans if needed
@@ -377,12 +404,6 @@ void Level::Update(float dt) {
       h = humans_.erase(h);
       capturedHumans_++;
       reFormatCapturedText();
-
-      if (capturedHumans_ > level_config_.to_capture) {
-        if (callback_) {
-          callback_->FinishLevel(capturedHumans_);
-        }
-      }
     } else {
       h++;
     }
@@ -396,22 +417,32 @@ void Level::Update(float dt) {
       h++;
     }
   }
+
+  if (capturedHumans_ >= level_config_.to_capture) {
+    is_ending_ = true;
+    ending_timeout_ = 1.0f;
+    ufo_.FinishLevel();
+
+    LOGD("Ending level, captured enough.");
+  }
 }
 
 void Level::Start(bool is_paused) {
   is_paused_ = is_paused;
 
   ufo_.SetPosition(level_config_.ufo_spawn);
+  ufo_.SetVelocity(Symphony::Math::Vector2d());
+  ufo_.SetAcceleration(Symphony::Math::Vector2d());
+
+  is_ending_ = false;
+  ending_timeout_ = 0.0f;
 
   capturedHumans_ = 0;
   time_left_ = (float)level_config_.time_on_level + 0.5f;
   reFormatCapturedText();
 }
 
-void Level::SetIsPaused(bool is_paused) {
-  is_paused_ = is_paused;
-  ufo_.SetIsPaused(is_paused);
-}
+void Level::SetIsPaused(bool is_paused) { is_paused_ = is_paused; }
 
 void Level::OnKeyDown(Keyboard::Key /*key*/) {}
 
