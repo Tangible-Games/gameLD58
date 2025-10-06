@@ -231,6 +231,51 @@ class Logger {
         __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);          \
   } while (0)
 
+#define LOGE_IF(condition, fmt, ...)                                   \
+  do {                                                                 \
+    if ((condition)) {                                                 \
+      Symphony::Log::Logger::instance().print(                         \
+          Symphony::Log::Logger::Verbosity::ERROR, __FILE__, __func__, \
+          __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);          \
+    }                                                                  \
+  } while (0)
+
+#define LOGW_IF(condition, fmt, ...)                                     \
+  do {                                                                   \
+    if ((condition)) {                                                   \
+      Symphony::Log::Logger::instance().print(                           \
+          Symphony::Log::Logger::Verbosity::WARNING, __FILE__, __func__, \
+          __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);            \
+    }                                                                    \
+  } while (0)
+
+#define LOGI_IF(condition, fmt, ...)                                  \
+  do {                                                                \
+    if ((condition)) {                                                \
+      Symphony::Log::Logger::instance().print(                        \
+          Symphony::Log::Logger::Verbosity::INFO, __FILE__, __func__, \
+          __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);         \
+    }                                                                 \
+  } while (0)
+
+#define LOGD_IF(condition, fmt, ...)                                   \
+  do {                                                                 \
+    if ((condition)) {                                                 \
+      Symphony::Log::Logger::instance().print(                         \
+          Symphony::Log::Logger::Verbosity::DEBUG, __FILE__, __func__, \
+          __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);          \
+    }                                                                  \
+  } while (0)
+
+#define LOGT_IF(condition, fmt, ...)                                   \
+  do {                                                                 \
+    if ((condition)) {                                                 \
+      Symphony::Log::Logger::instance().print(                         \
+          Symphony::Log::Logger::Verbosity::TRACE, __FILE__, __func__, \
+          __PRETTY_FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);          \
+    }                                                                  \
+  } while (0)
+
 #else
 
 #define LOGE(fmt, ...)
@@ -238,5 +283,10 @@ class Logger {
 #define LOGI(fmt, ...)
 #define LOGD(fmt, ...)
 #define LOGT(fmt, ...)
+#define LOGE_IF(condition, fmt, ...)
+#define LOGW_IF(condition, fmt, ...)
+#define LOGI_IF(condition, fmt, ...)
+#define LOGD_IF(condition, fmt, ...)
+#define LOGT_IF(condition, fmt, ...)
 
 #endif
