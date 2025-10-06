@@ -9,24 +9,24 @@
     "texture": "assets/city_bg.png",
     "factor_x": 0.4,
     "scale": 1.0,
-    "world_y": 40.0
+    "world_y": 78.0
   },
   {
     "texture": "assets/buildings_fg.png",
     "factor_x": 0.9,
     "scale": 1.0,
-    "world_y": 168.0
+    "world_y": 206.0
   },
   {
     "texture": "assets/ground_fg.png",
     "factor_x": 1.4,
     "scale": 1.0,
-    "world_y": 296.0
+    "world_y": 334.0
   },
   {
     "texture": "assets/objects_fg.png",
     "factor_x": 2.0,
     "scale": 1.0,
-    "world_y": 290.0
+    "world_y": 334.0
   }
 ]
