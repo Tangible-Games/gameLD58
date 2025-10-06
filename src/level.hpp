@@ -9,7 +9,9 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <symphony_lite/aa_rect2d.hpp>
+#include <symphony_lite/animated_sprite.hpp>
 #include <symphony_lite/log.hpp>
+#include <symphony_lite/sprite_sheet.hpp>
 #include <vector>
 
 #include "consts.hpp"
@@ -53,7 +55,10 @@ class Level : public Keyboard::Callback {
         audio_(audio),
         level_path_(std::move(path)),
         paralax_renderer_(renderer),
-        ufo_(renderer, audio) {}
+        ufo_(renderer, audio) {
+    human_sprite_sheet_ = std::make_shared<Symphony::Sprite::SpriteSheet>(
+        renderer.get(), "assets", "humanoid_2.json");
+  }
 
   void Load(
       std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts,
@@ -84,6 +89,7 @@ class Level : public Keyboard::Callback {
   std::vector<Object> objects_;
   std::list<Human> humans_;
   ParallaxRenderer paralax_renderer_;
+  std::shared_ptr<Symphony::Sprite::SpriteSheet> human_sprite_sheet_;
   Ufo ufo_;
   float cam_x_;
   float cam_y_;
@@ -143,6 +149,7 @@ void Level::Load(
   config.ufo_max_height =
       level_json.value("ufo_max_height", (float)kScreenHeight);
   config.human_y = level_json.value("human_y", (float)kScreenHeight);
+  LOGD("human y = {}", config.human_y);
 
   if (config.length < kScreenWidth) {
     LOGW("level.length {} < screen {}, clamping", config.length, kScreenWidth);
@@ -260,10 +267,6 @@ void Level::Draw() {
 
   SDL_SetRenderDrawColor(renderer_.get(), 0, 255, 0, 255);
 
-  for (const auto& obj : objects_) {
-    DrawObject(obj, [&](SDL_FRect r) { SDL_RenderRect(renderer_.get(), &r); });
-  };
-
   for (auto& obj : humans_) {
     DrawObject(obj, [&](SDL_FRect r) { obj.DrawTo(r); });
   };
@@ -332,9 +335,9 @@ void Level::Update(float dt) {
       int randPointNum =
           ((1ULL * level_config_.humanRespawnX_.size() * std::rand()) /
            RAND_MAX);
-      humans_.emplace_back(renderer_,
-                           level_config_.humanRespawnX_[randPointNum],
-                           level_config_.human_y, level_config_.length);
+      humans_.emplace_back(
+          renderer_, level_config_.humanRespawnX_[randPointNum],
+          level_config_.human_y, level_config_.length, human_sprite_sheet_);
       LOGD("Create a human at {}x{}",
            level_config_.humanRespawnX_[randPointNum], level_config_.human_y);
     }

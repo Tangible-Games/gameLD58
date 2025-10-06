@@ -7,6 +7,8 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <symphony_lite/all_symphony.hpp>
+#include <symphony_lite/animated_sprite.hpp>
+#include <symphony_lite/sprite_sheet.hpp>
 
 #include "symphony_lite/vector2d.hpp"
 #include "utils.hpp"
@@ -86,7 +88,7 @@ static float RandF(float min_value, float max_value) {
 class Human {
  public:
   Human(std::shared_ptr<SDL_Renderer> renderer, float posX, float posY,
-        float maxX)
+        float maxX, std::shared_ptr<Symphony::Sprite::SpriteSheet> animation_sp)
       : configuration_(HumanConfiguration::configuration()),
         rect{Symphony::Math::AARect2d{
             {posX, posY - configuration_.half_height},
@@ -94,7 +96,10 @@ class Human {
         groundY_(rect.center.y),
         renderer_(renderer),
         texture_(HumanTexture::texture(renderer)),
-        maxX_{maxX} {}
+        maxX_{maxX},
+        animations_{animation_sp} {}
+
+  enum class AnimState { Idle, WalkLeft, WalkRight, Capture, Fall, Dead };
 
   bool Update(float dt) {
     if (captured_) {
@@ -163,8 +168,8 @@ class Human {
       rect.center.y = groundY_;
       acc_.y = 0;
       if (v.y > configuration_.velocityDeadly) {
-        // TODO: Do something to handle death
-        return false;
+        dead_ = true;
+        return true;
       }
     }
     rect.center.x += v.x * dt;
@@ -174,11 +179,58 @@ class Human {
       rect.center.x = rect.center.x - maxX_;
     }
 
+    UpdateAnimationState(dt);
+    animations_.Update(dt);
+
     return true;
   }
 
-  void DrawTo(const SDL_FRect& r) {
-    SDL_RenderTexture(renderer_.get(), texture_.get(), nullptr, &r);
+  void DrawTo(const SDL_FRect& r) { animations_.Draw(renderer_, r); }
+
+  void UpdateAnimationState(float dt) {
+    AnimState next = state_;
+
+    bool is_falling =
+        !captured_ && rect.center.y < groundY_ - 1e-4f && acc_.y > 1e-4f;
+    bool is_flying = captured_ && rect.center.y < groundY_ - 10.f;
+
+    if (dead_) {
+      next = AnimState::Dead;
+      death_timer_ += dt;
+      if (death_timer_ > 1.f) {
+        next = AnimState::Idle;
+      }
+    } else if (!captured_) {
+      next = (acc_.x >= 0) ? AnimState::WalkRight : AnimState::WalkLeft;
+    } else if (is_falling) {
+      next = AnimState::Fall;
+    } else if (is_flying) {
+      next = AnimState::Capture;
+    }
+
+    if (next != state_) {
+      state_ = next;
+      switch (state_) {
+        case AnimState::Idle:
+          animations_.Stop();
+          break;
+        case AnimState::WalkLeft:
+          animations_.Play("walk_left", 50, true);
+          break;
+        case AnimState::WalkRight:
+          animations_.Play("walk", 50, true);
+          break;
+        case AnimState::Capture:
+          animations_.Play("capture", 50, true);
+          break;
+        case AnimState::Fall:
+          animations_.Play("fall", 50, true);
+          break;
+        case AnimState::Dead:
+          animations_.Play("crash", 50, false);
+          break;
+      }
+    }
   }
 
   HumanConfiguration configuration_;
@@ -193,6 +245,10 @@ class Human {
   float targetX_{-1};
   float capturedDelay_;
   float at_capture_change_direction_delay_{0.0f};
+  Symphony::Sprite::AnimatedSprite animations_;
+  AnimState state_{AnimState::Idle};
+  bool dead_{false};
+  float death_timer_{0.0f};
 };
 
 }  // namespace gameLD58

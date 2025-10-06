@@ -83,6 +83,7 @@ class AnimatedSprite {
   void Draw(std::shared_ptr<SDL_Renderer> renderer,
             const SDL_FRect& dst) const {
     if (!sheet_) return;
+    if (!playing_) return;
 
     SDL_Texture* atlas = sheet_->GetAtlas();
     if (!atlas) return;
