@@ -18,12 +18,180 @@
       "Hobby": "Fishing"
     },
     {
+      "Sex": "Male",
+      "Age": "20 years",
+      "Shape": "Fit",
+      "Character": "Sweet",
+      "Job": "Student",
+      "Hobby": "Running"
+    },
+    {
+      "Sex": "Male",
+      "Age": "34 years",
+      "Shape": "Average",
+      "Character": "Lame",
+      "Job": "N/A",
+      "Hobby": "Psychology"
+    },
+    {
+      "Sex": "Male",
+      "Age": "50 years",
+      "Shape": "Fit",
+      "Character": "Strong",
+      "Job": "Builder",
+      "Hobby": "DIY"
+    },
+    {
+      "Sex": "Male",
+      "Age": "72 years",
+      "Shape": "Average",
+      "Character": "Strong",
+      "Job": "Pilot",
+      "Hobby": "Painting"
+    },
+    {
+      "Sex": "Male",
+      "Age": "42 years",
+      "Shape": "Bad",
+      "Character": "Bitchy",
+      "Job": "Lawyer",
+      "Hobby": "Drinking"
+    },
+    {
+      "Sex": "Male",
+      "Age": "37 years",
+      "Shape": "Average",
+      "Character": "Sweet",
+      "Job": "Artist",
+      "Hobby": "Kabuki"
+    },
+    {
+      "Sex": "Male",
+      "Age": "29 years",
+      "Shape": "Average",
+      "Character": "Lame",
+      "Job": "Designer",
+      "Hobby": "Chess"
+    },
+    {
+      "Sex": "Male",
+      "Age": "44 years",
+      "Shape": "Average",
+      "Character": "Silent",
+      "Job": "Driver",
+      "Hobby": "Casino"
+    },
+    {
+      "Sex": "Male",
+      "Age": "80 years",
+      "Shape": "Bad",
+      "Character": "Bitchy",
+      "Job": "Scientist",
+      "Hobby": "Science"
+    },
+    {
+      "Sex": "Male",
+      "Age": "30 years",
+      "Shape": "Average",
+      "Character": "Sweet",
+      "Job": "Electrician",
+      "Hobby": "Card tricks"
+    },
+    {
+      "Sex": "Male",
+      "Age": "34 years",
+      "Shape": "Fit",
+      "Character": "Cunning",
+      "Job": "Plumber",
+      "Hobby": "Romance"
+    },
+    {
+      "Sex": "Male",
+      "Age": "47 years",
+      "Shape": "Fit",
+      "Character": "Strong",
+      "Job": "FBI Agent",
+      "Hobby": "UFOlogy"
+    },
+    {
+      "Sex": "Male",
+      "Age": "50 years",
+      "Shape": "Fit",
+      "Character": "Stoic",
+      "Job": "Fisherman",
+      "Hobby": "Reading"
+    },
+    {
       "Sex": "Female",
       "Age": "18 years",
       "Shape": "Fit",
       "Character": "Active",
       "Job": "Photo model",
       "Hobby": "Posing"
+    },
+    {
+      "Sex": "Female",
+      "Age": "30 years",
+      "Shape": "Average",
+      "Character": "Workaholic",
+      "Job": "Acountant",
+      "Hobby": "Bar-hopping"
+    },
+    {
+      "Sex": "Female",
+      "Age": "41 years",
+      "Shape": "Fit",
+      "Character": "Strong",
+      "Job": "Psychologist",
+      "Hobby": "TV shows"
+    },
+    {
+      "Sex": "Female",
+      "Age": "60 years",
+      "Shape": "Average",
+      "Character": "Funny",
+      "Job": "Professor",
+      "Hobby": "Travel"
+    },
+    {
+      "Sex": "Female",
+      "Age": "26 years",
+      "Shape": "Bad",
+      "Character": "Bad",
+      "Job": "CEO",
+      "Hobby": "Darts"
+    },
+    {
+      "Sex": "Female",
+      "Age": "32 years",
+      "Shape": "Average",
+      "Character": "Sweet",
+      "Job": "Shop assistant",
+      "Hobby": "Chess"
+    },
+    {
+      "Sex": "Female",
+      "Age": "45 years",
+      "Shape": "Average",
+      "Character": "Stoic",
+      "Job": "Teacher",
+      "Hobby": "Photography"
+    },
+    {
+      "Sex": "Female",
+      "Age": "86 years",
+      "Shape": "Fit",
+      "Character": "Sweet",
+      "Job": "Nun",
+      "Hobby": "Shooting"
+    },
+    {
+      "Sex": "Female",
+      "Age": "29 years",
+      "Shape": "Fit",
+      "Character": "Bitchy",
+      "Job": "Boxer",
+      "Hobby": "Football"
     }
   ],
 
@@ -59,6 +227,70 @@
       "pays_when_dislikes": 20,
       "says_when_dislikes": "Ok to wash measuring cups.",
       "portrait_file_path": "assets/alien_2.png"
+    },
+    {
+      "name": "Hloboo the Elder Sculptor",
+      "likes": {
+        "Sex": ["Female"],
+        "Age": ["32 years"],
+        "Shape": ["Fit"],
+        "Character": ["Sweet"],
+        "Job": ["Psychologist"],
+        "Hobby": ["TV shows"]
+      },
+      "pays_when_likes": 1500,
+      "says_when_likes": "I like to sculpt them hoomans!",
+      "pays_when_dislikes": 15,
+      "says_when_dislikes": "Can it lift heavy stones?",
+      "portrait_file_path": "assets/alien_4.png"
+    },
+    {
+      "name": "Snagro Abigool Cowboy",
+      "likes": {
+        "Sex": ["Male"],
+        "Age": ["47 years"],
+        "Shape": ["Fit"],
+        "Character": ["Strong"],
+        "Job": ["Builder"],
+        "Hobby": ["DIY"]
+      },
+      "pays_when_likes": 3000,
+      "says_when_likes": "Strong, will plow the field!",
+      "pays_when_dislikes": 15,
+      "says_when_dislikes": "Who needs that trash?",
+      "portrait_file_path": "assets/alien_3.png"
+    },
+    {
+      "name": "Carro the Rot Dictator",
+      "likes": {
+        "Sex": ["Female"],
+        "Age": ["60 years"],
+        "Shape": ["Average"],
+        "Character": ["Funny"],
+        "Job": ["Teacher"],
+        "Hobby": ["Chess"]
+      },
+      "pays_when_likes": 3000,
+      "says_when_likes": "Ah, this one will cheer me up!",
+      "pays_when_dislikes": 15,
+      "says_when_dislikes": "Oh well, another servant...",
+      "portrait_file_path": "assets/alien_5.png"
+    },
+    {
+      "name": "Mia, Admiral of Alaor Empire",
+      "likes": {
+        "Sex": ["Male"],
+        "Age": ["86 years"],
+        "Shape": ["Fit"],
+        "Character": ["Sweet"],
+        "Job": ["Pilot"],
+        "Hobby": ["Boxer"]
+      },
+      "pays_when_likes": 3000,
+      "says_when_likes": "It will fight to the death!",
+      "pays_when_dislikes": 15,
+      "says_when_dislikes": "Regular food supplies...",
+      "portrait_file_path": "assets/alien_6.png"
     }
   ],
 
