@@ -8,6 +8,7 @@
 
 #include "all_audio.hpp"
 #include "base_screen.hpp"
+#include "defeat_screen.hpp"
 #include "fade_image.hpp"
 #include "keyboard.hpp"
 #include "level.hpp"
@@ -25,6 +26,7 @@ class Game : public TitleScreen::Callback,
              public MarketScreen::Callback,
              public Level::Callback,
              public VictoryScreen::Callback,
+             public DefeatScreen::Callback,
              public QuitDialog::Callback {
  public:
   Game(std::shared_ptr<SDL_Renderer> renderer,
@@ -39,6 +41,7 @@ class Game : public TitleScreen::Callback,
         fade_in_out_(renderer, audio, ""),
         level_(renderer, audio, "assets/level.json"),
         victory_screen_(renderer, audio, &all_audio_),
+        defeat_screen_(renderer, audio, &all_audio_),
         quit_dialog_(renderer, audio) {
     LOGD("Game is in state 'State::kJustStarted'.");
   }
@@ -69,7 +72,8 @@ class Game : public TitleScreen::Callback,
   void TryExitFromLevel() override;
 
   void ContinueFromVictoryScreen() override;
-  void TryExitFromVictoryScreen() override;
+
+  void ContinueFromDefeatScreen() override;
 
   void BackToGame() override;
   void QuitGame() override;
@@ -96,6 +100,9 @@ class Game : public TitleScreen::Callback,
     kToVictoryFadeIn,
     kToVictoryFadeOut,
     kVictoryScreen,
+    kToDefeatFadeIn,
+    kToDefeatFadeOut,
+    kDefeatScreen,
     kGame,
   };
 
@@ -118,6 +125,7 @@ class Game : public TitleScreen::Callback,
   FadeImage fade_in_out_;
   Level level_;
   VictoryScreen victory_screen_;
+  DefeatScreen defeat_screen_;
   QuitDialog quit_dialog_;
   bool show_quit_dialog_{false};
   Keyboard::Callback* prev_keyboard_callback_{nullptr};
@@ -311,6 +319,29 @@ void Game::Update(float dt) {
     case State::kVictoryScreen:
       victory_screen_.Update(dt);
       break;
+
+    case State::kToDefeatFadeIn:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        fade_in_out_.StartFadeOut(0.5f);
+        state_ = State::kToDefeatFadeOut;
+        LOGD("Game switches to state 'State::kToDefeatFadeOut'.");
+      }
+      break;
+
+    case State::kToDefeatFadeOut:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        state_ = State::kDefeatScreen;
+        defeat_screen_.RegisterCallback(this);
+        Keyboard::Instance().RegisterCallback(&defeat_screen_);
+        LOGD("Game switches to state 'State::kDefeatScreen'.");
+      }
+      break;
+
+    case State::kDefeatScreen:
+      defeat_screen_.Update(dt);
+      break;
   }
 
   if (show_quit_dialog_) {
@@ -333,6 +364,7 @@ void Game::Load() {
     market_screen_.Load(&market_rules_, known_fonts_, default_font_);
     fade_in_out_.Load("assets/fade_in_out.png");
     victory_screen_.Load();
+    defeat_screen_.Load();
     quit_dialog_.Load();
 
     menu_audio_ = Symphony::Audio::LoadWave(
@@ -432,6 +464,17 @@ void Game::Draw() {
     case State::kVictoryScreen:
       victory_screen_.Draw();
       break;
+    case State::kToDefeatFadeIn:
+      base_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kToDefeatFadeOut:
+      defeat_screen_.Draw();
+      fade_in_out_.Draw();
+      break;
+    case State::kDefeatScreen:
+      defeat_screen_.Draw();
+      break;
   }
 
   if (show_quit_dialog_) {
@@ -526,6 +569,8 @@ void Game::ContinueFromBaseScreen() {
   } else if (player_status_.levels_completed >=
              player_status_.levels_completed_of) {
     // Defeat:
+    fade_in_out_.StartFadeIn(0.5f);
+    state_ = State::kToDefeatFadeIn;
     LOGD("Game switches to state 'State::kToDefeatFadeIn'.");
   } else {
     fade_in_out_.StartFadeIn(0.5f);
@@ -615,21 +660,9 @@ void Game::TryExitFromLevel() {
   LOGD("Game shows Quit dialog from Level.");
 }
 
-void Game::ContinueFromVictoryScreen() {}
+void Game::ContinueFromVictoryScreen() { QuitGame(); }
 
-void Game::TryExitFromVictoryScreen() {
-  if (state_ != State::kVictoryScreen) {
-    return;
-  }
-
-  show_quit_dialog_ = true;
-  quit_dialog_.Show();
-  quit_dialog_.RegisterCallback(this);
-  prev_keyboard_callback_ =
-      Keyboard::Instance().RegisterCallback(&quit_dialog_);
-
-  LOGD("Game shows Quit dialog from Victory screen.");
-}
+void Game::ContinueFromDefeatScreen() { QuitGame(); }
 
 void Game::BackToGame() {
   level_.SetIsPaused(false);

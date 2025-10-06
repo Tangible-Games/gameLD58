@@ -15,7 +15,6 @@ class VictoryScreen : public Keyboard::Callback {
   class Callback {
    public:
     virtual void ContinueFromVictoryScreen() = 0;
-    virtual void TryExitFromVictoryScreen() = 0;
   };
 
   VictoryScreen(std::shared_ptr<SDL_Renderer> renderer,
@@ -68,13 +67,6 @@ void VictoryScreen::OnKeyUp(Keyboard::Key key) {
 
     if (callback_) {
       callback_->ContinueFromVictoryScreen();
-    }
-  } else if (key == Keyboard::Key::kSelect) {
-    if (callback_) {
-      audio_->Play(all_audio_->audio[Sound::kButtonClick],
-                   Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
-
-      callback_->TryExitFromVictoryScreen();
     }
   }
 }
