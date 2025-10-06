@@ -32,6 +32,7 @@ struct PlayerStatus {
   int credits_earned_of{0};
   int humans_captured{0};
   int levels_completed{0};
+  int levels_completed_of{0};
   int best_price{0};
   std::list<KnownHumanoid> cur_captured_humanoids;
 };

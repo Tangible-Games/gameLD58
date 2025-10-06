@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <chrono>
 #include <nlohmann/json.hpp>
 #include <symphony_lite/all_symphony.hpp>
 
@@ -270,6 +271,8 @@ void Game::Update(float dt) {
 
 void Game::Load() {
   if (state_ == State::kFirstLoading) {
+    auto prev_time{std::chrono::steady_clock::now()};
+
     loadFonts();
     loadRules();
     market_rules_ = LoadMarketRules();
@@ -300,6 +303,11 @@ void Game::Load() {
     player_status_.cur_captured_humanoids.insert(
         player_status_.cur_captured_humanoids.end(),
         new_captured_humanoids.begin(), new_captured_humanoids.end());
+
+    auto cur_time{std::chrono::steady_clock::now()};
+    std::chrono::duration<float> load_time_seconds{cur_time - prev_time};
+    float to_sleep_seconds = 3.0f - load_time_seconds.count();
+    std::this_thread::sleep_for(std::chrono::duration<float>(to_sleep_seconds));
   }
 }
 
