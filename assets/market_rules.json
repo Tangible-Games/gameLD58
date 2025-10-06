@@ -302,9 +302,9 @@
         "Job": ["Teacher", "Psychologist", "Clown"],
         "Hobby": ["Chess", "Darts"]
       },
-      "pays_when_likes": 3000,
+      "pays_when_likes": 4000,
       "says_when_likes": "Ah, this one will cheer me up!",
-      "pays_when_dislikes": 15,
+      "pays_when_dislikes": 4,
       "says_when_dislikes": "Oh well, another servant...",
       "portrait_file_path": "assets/alien_5.png"
     },
@@ -318,9 +318,9 @@
         "Job": ["Pilot", "Driver"],
         "Hobby": ["Boxer", "DIY", "Karate"]
       },
-      "pays_when_likes": 3000,
+      "pays_when_likes": 5000,
       "says_when_likes": "It will fight to the death!",
-      "pays_when_dislikes": 15,
+      "pays_when_dislikes": 50,
       "says_when_dislikes": "Regular food supplies...",
       "portrait_file_path": "assets/alien_6.png"
     }
