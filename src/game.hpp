@@ -135,6 +135,9 @@ class Game : public TitleScreen::Callback,
   std::shared_ptr<Symphony::Audio::WaveFile> menu_audio_;
   std::shared_ptr<Symphony::Audio::WaveFile> market_audio_;
   std::shared_ptr<Symphony::Audio::PlayingStream> menu_audio_stream_;
+  std::shared_ptr<Symphony::Audio::WaveFile> level_audio_;
+  std::shared_ptr<Symphony::Audio::PlayingStream> level_audio_stream_;
+  float level_audio_timeout_{0.0f};
   std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
   std::string default_font_;
 };
@@ -276,11 +279,23 @@ void Game::Update(float dt) {
 
         state_ = State::kGame;
         LOGD("Game switches to state 'State::kGame'.");
+
+        level_audio_timeout_ = 3.0f;
       }
       break;
 
     case State::kGame:
       level_.Update(dt);
+
+      if (!audio_->IsPlaying(level_audio_stream_)) {
+        level_audio_timeout_ -= dt;
+        if (level_audio_timeout_ < 0.0f) {
+          level_audio_stream_ =
+              audio_->Play(level_audio_, Symphony::Audio::PlayTimes(1),
+                           Symphony::Audio::FadeInOut(5.0f, 5.0f));
+          level_audio_timeout_ = 10.0f;
+        }
+      }
       break;
 
     case State::kToBaseScreenFromLevelFadeIn:
@@ -371,6 +386,8 @@ void Game::Load() {
         "assets/05_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
     market_audio_ = Symphony::Audio::LoadWave(
         "assets/14_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
+    level_audio_ = Symphony::Audio::LoadWave(
+        "assets/09_22k.wav", Symphony::Audio::WaveFile::kModeStreamingFromFile);
     all_audio_ = LoadAllAudio();
 
     ready_for_loading_ = false;
@@ -639,6 +656,8 @@ void Game::FinishLevel(size_t captured_humans) {
 
   Keyboard::Instance().RegisterCallback(nullptr);
 
+  audio_->Stop(level_audio_stream_, Symphony::Audio::StopFade(0.5f));
+
   fade_in_out_.StartFadeIn(0.5f);
   state_ = State::kToBaseScreenFromLevelFadeIn;
   LOGD("Game switches to state 'State::kToBaseScreenFromLevelFadeIn'.");
@@ -681,6 +700,7 @@ void Game::QuitGame() {
   is_running_ = false;
 
   audio_->StopImmediately(menu_audio_stream_);
+  audio_->StopImmediately(level_audio_stream_);
 
   LOGD("Quit dialog requests quitting.");
 }
