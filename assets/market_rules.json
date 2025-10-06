@@ -155,6 +155,14 @@
     },
     {
       "Sex": "Female",
+      "Age": "21 years",
+      "Shape": "Fit",
+      "Character": "Average",
+      "Job": "Clown",
+      "Hobby": "Karate"
+    },
+    {
+      "Sex": "Female",
       "Age": "30 years",
       "Shape": "Average",
       "Character": "Workaholic",
@@ -226,8 +234,8 @@
         "Sex": ["Female"],
         "Age": ["18 years", "19 years", "20 years", "21 years"],
         "Shape": ["Fit"],
-        "Character": ["Active"],
-        "Job": ["Photo model", "Cheerleader", "Nun"],
+        "Character": ["Active", "Strong"],
+        "Job": ["Photo model", "Cheerleader", "Nun", "Pilot"],
         "Hobby": ["Posing"]
       },
       "pays_when_likes": 1000,
@@ -240,11 +248,11 @@
       "name": "Ak'grndtok Sm'aani Scientist",
       "likes": {
         "Sex": ["Male"],
-        "Age": ["49 years"],
+        "Age": ["49 years", "80 years"],
         "Shape": ["Fit"],
         "Character": ["Stoic"],
-        "Job": ["Meta Engineer", "Scientist"],
-        "Hobby": ["Fishing"]
+        "Job": ["Meta Engineer", "Scientist", "Astronomer"],
+        "Hobby": ["Fishing", "Cooking"]
       },
       "pays_when_likes": 2000,
       "says_when_likes": "Fits in my Lab perfectly!",
@@ -291,12 +299,12 @@
         "Age": ["60 years", "21 years", "19 years", "26 years"],
         "Shape": ["Average"],
         "Character": ["Funny", "Bitchy"],
-        "Job": ["Teacher", "Psychologist"],
+        "Job": ["Teacher", "Psychologist", "Clown"],
         "Hobby": ["Chess", "Darts"]
       },
-      "pays_when_likes": 3000,
+      "pays_when_likes": 4000,
       "says_when_likes": "Ah, this one will cheer me up!",
-      "pays_when_dislikes": 15,
+      "pays_when_dislikes": 4,
       "says_when_dislikes": "Oh well, another servant...",
       "portrait_file_path": "assets/alien_5.png"
     },
@@ -304,15 +312,15 @@
       "name": "Mia, Admiral of Alaor Empire",
       "likes": {
         "Sex": ["Male"],
-        "Age": ["86 years", "32 years"],
+        "Age": ["86 years", "32 years", "21 years"],
         "Shape": ["Fit"],
         "Character": ["Sweet"],
         "Job": ["Pilot", "Driver"],
-        "Hobby": ["Boxer", "DIY"]
+        "Hobby": ["Boxer", "DIY", "Karate"]
       },
-      "pays_when_likes": 3000,
+      "pays_when_likes": 5000,
       "says_when_likes": "It will fight to the death!",
-      "pays_when_dislikes": 15,
+      "pays_when_dislikes": 50,
       "says_when_dislikes": "Regular food supplies...",
       "portrait_file_path": "assets/alien_6.png"
     }
