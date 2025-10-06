@@ -337,7 +337,7 @@ void Level::Update(float dt) {
            RAND_MAX);
       humans_.emplace_back(
           renderer_, level_config_.humanRespawnX_[randPointNum],
-          level_config_.height, level_config_.length, human_sprite_sheet_);
+          level_config_.human_y, level_config_.length, human_sprite_sheet_);
       LOGD("Create a human at {}x{}",
            level_config_.humanRespawnX_[randPointNum], level_config_.human_y);
     }

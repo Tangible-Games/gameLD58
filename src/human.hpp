@@ -172,7 +172,7 @@ class Human {
       acc_.y = 0;
       if (v.y > configuration_.velocityDeadly) {
         dead_ = true;
-        return false;
+        return true;
       }
     }
     rect.center.x += v.x * dt;
@@ -191,13 +191,13 @@ class Human {
     AnimState next = state_;
 
     // const bool grounded = (rect.center.y >= groundY_ - 1e-4f);
-    // const bool movingX  = std::abs(acc_.x) > 1e-4f;
+    const bool movingX = rect.center.y + rect.half_size.y < groundY_ + 5.0f;
 
     if (dead_) {
       next = AnimState::Dead;
     } else if (!captured_) {
       next = AnimState::Walk;
-    } else {
+    } else if (captured_ && movingX) {
       next = AnimState::Capture;
     }
 
@@ -210,7 +210,7 @@ class Human {
           animations_.Play("walk", 50, true);
           break;
         case AnimState::Capture:
-          animations_.Play("capture", 50, true);
+          animations_.Play("capture", 60, true);
           break;
         case AnimState::Fall:
           animations_.Play("fall", 50, true);
@@ -237,7 +237,6 @@ class Human {
   Symphony::Sprite::AnimatedSprite animations_;
   AnimState state_{AnimState::Idle};
   bool dead_{false};
-
 };
 
 }  // namespace gameLD58
