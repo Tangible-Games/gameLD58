@@ -27,6 +27,9 @@ struct Object {
 struct Config {
   float length;
   float height;
+  float ufo_min_height{0.0f};
+  float ufo_max_height{0.0f};
+  float human_y{0.0f};
   Symphony::Math::Point2d ufo_spawn;
   int humansMin_;
   int humansMax_;
@@ -114,6 +117,10 @@ void Level::Load() {
   Config config;
   config.length = level_json.value("length", (float)kScreenWidth);
   config.height = level_json.value("height", (float)kScreenHeight);
+  config.ufo_min_height = level_json.value("ufo_min_height", 0.0f);
+  config.ufo_max_height =
+      level_json.value("ufo_max_height", (float)kScreenHeight);
+  config.human_y = level_json.value("human_y", (float)kScreenHeight);
 
   if (config.length < kScreenWidth) {
     LOGW("level.length {} < screen {}, clamping", config.length, kScreenWidth);
@@ -243,9 +250,9 @@ void Level::Update(float dt) {
            RAND_MAX);
       humans_.emplace_back(renderer_,
                            level_config_.humanRespawnX_[randPointNum],
-                           level_config_.height, level_config_.length);
+                           level_config_.human_y, level_config_.length);
       LOGD("Create a human at {}x{}",
-           level_config_.humanRespawnX_[randPointNum], level_config_.height);
+           level_config_.humanRespawnX_[randPointNum], level_config_.human_y);
     }
   }
 
@@ -259,10 +266,18 @@ void Level::Update(float dt) {
     ufo_center.x = level_config_.length - ufo_center.x;
   }
 
-  if (ufo_center.y < 0.f) {
-    ufo_center.y = 0.f;
-  } else if (ufo_center.y > level_config_.height) {
-    ufo_center.y = level_config_.height;
+  if (ufo_center.y < level_config_.ufo_min_height) {
+    ufo_center.y = level_config_.ufo_min_height;
+    if (ufo_.GetVelocity().y < 0.0f) {
+      auto v = ufo_.GetVelocity();
+      ufo_.SetVelocity({v.x, 0.0f});
+    }
+  } else if (ufo_center.y > level_config_.ufo_max_height) {
+    ufo_center.y = level_config_.ufo_max_height;
+    if (ufo_.GetVelocity().y > 0.0f) {
+      auto v = ufo_.GetVelocity();
+      ufo_.SetVelocity({v.x, 0.0f});
+    }
   }
   ufo_.SetPosition(ufo_center);
 
