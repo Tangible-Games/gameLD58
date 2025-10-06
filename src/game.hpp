@@ -62,6 +62,7 @@ class Game : public TitleScreen::Callback,
   void BackFromMarketScreen() override;
   void TryExitFromMarketScreen() override;
 
+  void FinishLevel(size_t captured_humans) override;
   void TryExitFromLevel() override;
 
   void BackToGame() override;
@@ -85,6 +86,7 @@ class Game : public TitleScreen::Callback,
     kMarketScreen,
     kToGameFadeIn,
     kToGameFadeOut,
+    kToBaseScreenFromLevelFadeIn,
     kGame,
   };
 
@@ -262,6 +264,20 @@ void Game::Update(float dt) {
     case State::kGame:
       level_.Update(dt);
       break;
+
+    case State::kToBaseScreenFromLevelFadeIn:
+      fade_in_out_.Update(dt);
+      if (fade_in_out_.IsIdle()) {
+        menu_audio_stream_ =
+            audio_->Play(menu_audio_, Symphony::Audio::kPlayLooped,
+                         Symphony::Audio::FadeInOut(2.0f, 1.0f));
+
+        base_screen_.Show(&player_status_);
+        fade_in_out_.StartFadeOut(0.5f);
+        state_ = State::kToBaseScreenFadeOut;
+        LOGD("Game switches to state 'State::kToBaseScreenFadeOut'.");
+      }
+      break;
   }
 
   if (show_quit_dialog_) {
@@ -277,7 +293,7 @@ void Game::Load() {
     loadRules();
     market_rules_ = LoadMarketRules();
 
-    level_.Load();
+    level_.Load(known_fonts_, default_font_);
     title_screen_.Load();
     story_screen_.Load(known_fonts_, default_font_);
     base_screen_.Load(known_fonts_, default_font_);
@@ -296,13 +312,6 @@ void Game::Load() {
     loading_.StartFadeOut(1.0f);
     state_ = State::kFadeToTitleScreen;
     LOGD("Game switches to state 'State::kFadeToTitleScreen'.");
-
-    // Should be after level:
-    std::list<KnownHumanoid> new_captured_humanoids =
-        CaptureRandomHumanoids(market_rules_, 5);
-    player_status_.cur_captured_humanoids.insert(
-        player_status_.cur_captured_humanoids.end(),
-        new_captured_humanoids.begin(), new_captured_humanoids.end());
 
     auto cur_time{std::chrono::steady_clock::now()};
     std::chrono::duration<float> load_time_seconds{cur_time - prev_time};
@@ -373,6 +382,10 @@ void Game::Draw() {
       break;
     case State::kGame:
       level_.Draw();
+      break;
+    case State::kToBaseScreenFromLevelFadeIn:
+      level_.Draw();
+      fade_in_out_.Draw();
       break;
   }
 
@@ -508,6 +521,26 @@ void Game::TryExitFromMarketScreen() {
       Keyboard::Instance().RegisterCallback(&quit_dialog_);
 
   LOGD("Game shows Quit dialog from Base screen.");
+}
+
+void Game::FinishLevel(size_t captured_humans) {
+  if (state_ != State::kGame) {
+    return;
+  }
+
+  std::list<KnownHumanoid> new_captured_humanoids =
+      CaptureRandomHumanoids(market_rules_, captured_humans);
+  player_status_.cur_captured_humanoids.insert(
+      player_status_.cur_captured_humanoids.end(),
+      new_captured_humanoids.begin(), new_captured_humanoids.end());
+  player_status_.humans_captured += (int)captured_humans;
+  ++player_status_.levels_completed;
+
+  Keyboard::Instance().RegisterCallback(nullptr);
+
+  fade_in_out_.StartFadeIn(0.5f);
+  state_ = State::kToBaseScreenFromLevelFadeIn;
+  LOGD("Game switches to state 'State::kToBaseScreenFromLevelFadeIn'.");
 }
 
 void Game::TryExitFromLevel() {

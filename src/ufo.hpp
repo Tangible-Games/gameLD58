@@ -33,7 +33,7 @@ class Ufo {
 
   void Update(float dt);
 
-  void SetIsPaused(bool is_paused);
+  void FinishLevel();
 
   const Symphony::Math::Vector2d& GetVelocity() const { return velocity_; }
 
@@ -78,7 +78,6 @@ class Ufo {
     } tractorBeam;
   } configuration_;
 
-  bool is_paused_{false};
   Symphony::Math::AARect2d rect_{};
   Symphony::Math::Vector2d velocity_{0, 0};
   Symphony::Math::Vector2d acceleration_{0, 0};
@@ -214,7 +213,7 @@ void Ufo::Update(float dt) {
       std::clamp(tractorBeamTimeout_, 0.0f, configuration_.tractorBeam.latency);
 }
 
-void Ufo::SetIsPaused(bool is_paused) { is_paused_ = is_paused; }
+void Ufo::FinishLevel() { tractorBeamTimeout_ = 0.0f; }
 
 static SDL_FColor SdlColorFromUInt32(uint32_t color) {
   SDL_FColor sdl_color;

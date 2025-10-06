@@ -34,12 +34,16 @@ struct Config {
   int humansMin_;
   int humansMax_;
   std::vector<float> humanRespawnX_;
+  size_t to_capture{0};
+  int time_on_level{0};
+  float ufo_velocity_at_end{0.0f};
 };
 
 class Level : public Keyboard::Callback {
  public:
   class Callback {
    public:
+    virtual void FinishLevel(size_t captured_humans) = 0;
     virtual void TryExitFromLevel() = 0;
   };
 
@@ -51,7 +55,9 @@ class Level : public Keyboard::Callback {
         paralax_renderer_(renderer),
         ufo_(renderer, audio) {}
 
-  void Load();
+  void Load(
+      std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts,
+      const std::string& default_font);
   void Draw();
   void Update(float dt);
 
@@ -67,6 +73,10 @@ class Level : public Keyboard::Callback {
  private:
   std::shared_ptr<SDL_Renderer> renderer_;
   std::shared_ptr<Symphony::Audio::Device> audio_;
+  std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts_;
+  std::string default_font_;
+  Symphony::Text::TextRenderer captured_text_;
+  Symphony::Text::TextRenderer time_text_;
   std::string level_path_;
   Config level_config_;
   bool is_paused_{false};
@@ -79,6 +89,10 @@ class Level : public Keyboard::Callback {
   float cam_y_;
 
   size_t capturedHumans_{0};
+  float time_left_{0.0f};
+
+  bool is_ending_{false};
+  float ending_timeout_{0.0f};
 
  private:
   static std::string readFile(const std::string& path) {
@@ -99,9 +113,17 @@ class Level : public Keyboard::Callback {
 
   template <typename T>
   void DrawObject(const T& obj, auto DrawToFn);
+
+  void reFormatCapturedText();
+  void reFormatTimeText();
 };
 
-void Level::Load() {
+void Level::Load(
+    std::map<std::string, std::shared_ptr<Symphony::Text::Font>> known_fonts,
+    const std::string& default_font) {
+  known_fonts_ = known_fonts;
+  default_font_ = default_font;
+
   const auto text = readFile(level_path_);
   if (text.empty()) {
     LOGE("[gameLD58:Level]: cannot read file '{}'", level_path_);
@@ -158,12 +180,26 @@ void Level::Load() {
     config.humanRespawnX_.push_back(h.get<float>());
   }
 
+  config.to_capture = level_json["to_capture"].get<size_t>();
+  config.time_on_level = level_json["time_on_level"].get<size_t>();
+  config.ufo_velocity_at_end = level_json["ufo_velocity_at_end"].get<float>();
+
   LOGD("Level loaded: length={}, spawn=({}, {}), obstacles={}", config.length,
        config.ufo_spawn.x, config.ufo_spawn.y, objects_.size());
 
   level_config_ = std::move(config);
 
   paralax_renderer_.Load(level_config_.length, "assets/backgrounds.json");
+
+  captured_text_.InitRenderer(renderer_);
+  captured_text_.LoadFromFile("assets/level_captured.txt");
+  captured_text_.SetPosition(10, 10);
+  captured_text_.SetSizes(kScreenWidth - 20, kScreenHeight - 10);
+
+  time_text_.InitRenderer(renderer_);
+  time_text_.LoadFromFile("assets/level_time.txt");
+  time_text_.SetPosition(10, 10);
+  time_text_.SetSizes(kScreenWidth - 20, kScreenHeight - 10);
 
   ufo_.Load();
 }
@@ -207,6 +243,18 @@ void Level::DrawObject(const T& obj, auto DrawToFn) {
   }
 }
 
+void Level::reFormatCapturedText() {
+  captured_text_.ReFormat(
+      {{"captured", std::to_string(capturedHumans_)},
+       {"to_capture", std::to_string(level_config_.to_capture)}},
+      default_font_, known_fonts_);
+}
+
+void Level::reFormatTimeText() {
+  time_text_.ReFormat({{"time", std::to_string((int)time_left_)}},
+                      default_font_, known_fonts_);
+}
+
 void Level::Draw() {
   paralax_renderer_.Draw(cam_x_, cam_y_);
 
@@ -231,11 +279,47 @@ void Level::Draw() {
       dst.y < kScreenHeight) {
     ufo_.DrawTo(dst);
   }
+
+  captured_text_.Render(0);
+
+  reFormatTimeText();
+  time_text_.Render(0);
 }
 
 void Level::Update(float dt) {
   if (is_paused_) {
     return;
+  }
+
+  if (is_ending_) {
+    auto ufo_center =
+        ufo_.GetBounds().center +
+        Symphony::Math::Vector2d(0.0f, level_config_.ufo_velocity_at_end) * dt;
+    ufo_.SetPosition(ufo_center);
+
+    if (ending_timeout_ > 0.0f) {
+      ending_timeout_ -= dt;
+      if (ending_timeout_ < 0.0f) {
+        ending_timeout_ = 0.0;
+
+        if (callback_) {
+          callback_->FinishLevel(capturedHumans_);
+        }
+      }
+    }
+
+    return;
+  }
+
+  time_left_ -= dt;
+  if (time_left_ < 0.0f) {
+    time_left_ = 0.0f;
+
+    is_ending_ = true;
+    ending_timeout_ = 1.0f;
+    ufo_.FinishLevel();
+
+    LOGD("Ending level, time's up.");
   }
 
   // Respawn humans if needed
@@ -319,7 +403,7 @@ void Level::Update(float dt) {
     if (collected) {
       h = humans_.erase(h);
       capturedHumans_++;
-      // TODO: Cargo size limitations here?
+      reFormatCapturedText();
     } else {
       h++;
     }
@@ -333,18 +417,32 @@ void Level::Update(float dt) {
       h++;
     }
   }
+
+  if (capturedHumans_ >= level_config_.to_capture) {
+    is_ending_ = true;
+    ending_timeout_ = 1.0f;
+    ufo_.FinishLevel();
+
+    LOGD("Ending level, captured enough.");
+  }
 }
 
 void Level::Start(bool is_paused) {
   is_paused_ = is_paused;
 
   ufo_.SetPosition(level_config_.ufo_spawn);
+  ufo_.SetVelocity(Symphony::Math::Vector2d());
+  ufo_.SetAcceleration(Symphony::Math::Vector2d());
+
+  is_ending_ = false;
+  ending_timeout_ = 0.0f;
+
+  capturedHumans_ = 0;
+  time_left_ = (float)level_config_.time_on_level + 0.5f;
+  reFormatCapturedText();
 }
 
-void Level::SetIsPaused(bool is_paused) {
-  is_paused_ = is_paused;
-  ufo_.SetIsPaused(is_paused);
-}
+void Level::SetIsPaused(bool is_paused) { is_paused_ = is_paused; }
 
 void Level::OnKeyDown(Keyboard::Key /*key*/) {}
 
