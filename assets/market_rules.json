@@ -232,7 +232,7 @@
       "name": "Boshaan Zalesh Farmer",
       "likes": {
         "Sex": ["Female"],
-        "Age": ["18 years", "19 years", "20 years", "21 years"],
+        "Age": ["18 years", "19 years", "20 years", "21 years", "72 years"],
         "Shape": ["Fit"],
         "Character": ["Active", "Strong"],
         "Job": ["Photo model", "Cheerleader", "Nun", "Pilot"],
@@ -267,8 +267,8 @@
         "Age": ["32 years", "50 years", "41 years"],
         "Shape": ["Fit"],
         "Character": ["Sweet"],
-        "Job": ["Psychologist", "Lawyer"],
-        "Hobby": ["TV shows"]
+        "Job": ["Psychologist", "Lawyer", "Artist"],
+        "Hobby": ["TV shows", "Running"]
       },
       "pays_when_likes": 1500,
       "says_when_likes": "I like to sculpt them hoomans!",
@@ -280,7 +280,7 @@
       "name": "Snagro Abigool Cowboy",
       "likes": {
         "Sex": ["Male"],
-        "Age": ["47 years", "30 years", "80 years"],
+        "Age": ["47 years", "30 years", "80 years", "44 years"],
         "Shape": ["Fit"],
         "Character": ["Strong", "Stoic"],
         "Job": ["Builder", "Driver"],
