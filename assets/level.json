@@ -1,8 +1,8 @@
 {
   "length": 960,
-  "height": 400,
+  "height": 380,
   "ufo_spawn_x": 200,
-  "ufo_spawn_y": 100,
+  "ufo_spawn_y": 250,
   "layers": ["rect", "plant"],
   "items": [
     {

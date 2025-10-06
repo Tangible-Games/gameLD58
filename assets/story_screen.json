@@ -3,14 +3,28 @@
     {
       "file_path": "assets/story_screen_1.txt",
       "x": 200,
-      "y": 10,
+      "y": 50,
       "width": 270,
       "height": 300
     },
     {
       "file_path": "assets/story_screen_2.txt",
       "x": 200,
-      "y": 10,
+      "y": 60,
+      "width": 270,
+      "height": 300
+    },
+    {
+      "file_path": "assets/story_screen_3.txt",
+      "x": 200,
+      "y": 45,
+      "width": 270,
+      "height": 300
+    },
+    {
+      "file_path": "assets/story_screen_4.txt",
+      "x": 200,
+      "y": 55,
       "width": 270,
       "height": 300
     }
