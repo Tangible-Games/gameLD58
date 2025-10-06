@@ -1,0 +1,7 @@
+<style font="sysfont_20" color="black" wrapping="noclip">Date: 01.5022.<sub variable="$date">
+<style font="sysfont_20" color="black" wrapping="noclip">Itm: Human
+<style font="sysfont_20" color="black" wrapping="noclip">Qty: 1
+
+<style font="sysfont_20" color="black" wrapping="noclip">Price: <sub variable="$credits">
+<style font="sysfont_20" color="red" wrapping="noclip">VAT: <sub variable="$vat">
+<style font="sysfont_20" color="black" wrapping="noclip">Total: <sub variable="$credits_after_vat">

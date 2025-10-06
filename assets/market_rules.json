@@ -39,9 +39,28 @@
         "Hobby": ["Posing"]
       },
       "pays_when_likes": 1000,
-      "says_when_likes": "Year, that's my thing!",
+      "says_when_likes": "Yeah, that's my thing!",
       "pays_when_dislikes": 10,
-      "says_when_dislikes": "Hm, another item in my collection."
+      "says_when_dislikes": "Hm, another item in my collection.",
+      "portrait_file_path": "assets/alien_1.png"
+    },
+    {
+      "name": "Ak'grndtok Sm'aani Scientist",
+      "likes": {
+        "Sex": ["Male"],
+        "Age": ["49 years"],
+        "Shape": ["Fit"],
+        "Character": ["Stoic"],
+        "Job": ["Meta Engineer"],
+        "Hobby": ["Fishing"]
+      },
+      "pays_when_likes": 2000,
+      "says_when_likes": "Fits in my Lab perfectly!",
+      "pays_when_dislikes": 20,
+      "says_when_dislikes": "Ok to wash measuring cups.",
+      "portrait_file_path": "assets/alien_2.png"
     }
-  ]
+  ],
+
+  "VAT": 0.2
 }
