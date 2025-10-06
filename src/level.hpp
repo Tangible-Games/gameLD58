@@ -57,7 +57,7 @@ class Level : public Keyboard::Callback {
         paralax_renderer_(renderer),
         ufo_(renderer, audio) {
     human_sprite_sheet_ = std::make_shared<Symphony::Sprite::SpriteSheet>(
-        renderer.get(), "assets", "humanoid.json");
+        renderer.get(), "assets", "humanoid_2.json");
   }
 
   void Load(

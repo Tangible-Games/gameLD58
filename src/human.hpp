@@ -99,12 +99,9 @@ class Human {
         maxX_{maxX},
         animations_{animation_sp} {}
 
-  enum class AnimState { Idle, Walk, Capture, Fall, Dead };
+  enum class AnimState { Idle, WalkLeft, WalkRight, Capture, Fall, Dead };
 
   bool Update(float dt) {
-    UpdateAnimationState();
-    animations_.Update(dt);
-
     if (captured_) {
       if (!prevCaptured_) {
         LOGD("Capturing started");
@@ -182,22 +179,32 @@ class Human {
       rect.center.x = rect.center.x - maxX_;
     }
 
+    UpdateAnimationState(dt);
+    animations_.Update(dt);
+
     return true;
   }
 
   void DrawTo(const SDL_FRect& r) { animations_.Draw(renderer_, r); }
 
-  void UpdateAnimationState() {
+  void UpdateAnimationState(float dt) {
     AnimState next = state_;
 
-    // const bool grounded = (rect.center.y >= groundY_ - 1e-4f);
-    const bool movingX = rect.center.y + rect.half_size.y < groundY_ + 5.0f;
+    bool is_falling =
+        !captured_ && rect.center.y < groundY_ - 1e-4f && acc_.y > 1e-4f;
+    bool is_flying = captured_ && rect.center.y < groundY_ - 10.f;
 
     if (dead_) {
       next = AnimState::Dead;
+      death_timer_ += dt;
+      if (death_timer_ > 1.f) {
+        next = AnimState::Idle;
+      }
     } else if (!captured_) {
-      next = AnimState::Walk;
-    } else if (captured_ && movingX) {
+      next = (acc_.x >= 0) ? AnimState::WalkRight : AnimState::WalkLeft;
+    } else if (is_falling) {
+      next = AnimState::Fall;
+    } else if (is_flying) {
       next = AnimState::Capture;
     }
 
@@ -205,18 +212,22 @@ class Human {
       state_ = next;
       switch (state_) {
         case AnimState::Idle:
+          animations_.Stop();
           break;
-        case AnimState::Walk:
+        case AnimState::WalkLeft:
+          animations_.Play("walk_left", 50, true);
+          break;
+        case AnimState::WalkRight:
           animations_.Play("walk", 50, true);
           break;
         case AnimState::Capture:
-          animations_.Play("capture", 60, true);
+          animations_.Play("capture", 50, true);
           break;
         case AnimState::Fall:
           animations_.Play("fall", 50, true);
           break;
         case AnimState::Dead:
-          animations_.Play("fall", 50, false);
+          animations_.Play("crash", 50, false);
           break;
       }
     }
@@ -237,6 +248,7 @@ class Human {
   Symphony::Sprite::AnimatedSprite animations_;
   AnimState state_{AnimState::Idle};
   bool dead_{false};
+  float death_timer_{0.0f};
 };
 
 }  // namespace gameLD58
