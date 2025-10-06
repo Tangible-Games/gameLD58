@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <nlohmann/json.hpp>
+#include <random>
 #include <string>
 #include <symphony_lite/aa_rect2d.hpp>
 #include <symphony_lite/animated_sprite.hpp>
@@ -56,8 +57,16 @@ class Level : public Keyboard::Callback {
         level_path_(std::move(path)),
         paralax_renderer_(renderer),
         ufo_(renderer, audio) {
-    human_sprite_sheet_ = std::make_shared<Symphony::Sprite::SpriteSheet>(
-        renderer.get(), "assets", "humanoid_2.json");
+    const char* files[] = {"humanoid_2.json", "humanoid_3.json",
+                           "humanoid_4.json", "humanoid_5.json",
+                           "humanoid_6.json"};
+
+    human_sprite_sheets_.reserve(std::size(files));
+    for (const char* f : files) {
+      human_sprite_sheets_.emplace_back(
+          std::make_shared<Symphony::Sprite::SpriteSheet>(renderer.get(),
+                                                          "assets", f));
+    }
   }
 
   void Load(
@@ -89,7 +98,9 @@ class Level : public Keyboard::Callback {
   std::vector<Object> objects_;
   std::list<Human> humans_;
   ParallaxRenderer paralax_renderer_;
-  std::shared_ptr<Symphony::Sprite::SpriteSheet> human_sprite_sheet_;
+  std::vector<std::shared_ptr<Symphony::Sprite::SpriteSheet>>
+      human_sprite_sheets_;
+  std::mt19937_64 rng_{std::random_device{}()};
   Ufo ufo_;
   float cam_x_;
   float cam_y_;
@@ -109,6 +120,13 @@ class Level : public Keyboard::Callback {
     std::ostringstream oss;
     oss << ifs.rdbuf();
     return oss.str();
+  }
+
+  std::shared_ptr<Symphony::Sprite::SpriteSheet> RandomSheet() {
+    if (human_sprite_sheets_.empty()) return {};
+    std::uniform_int_distribution<size_t> dist(0,
+                                               human_sprite_sheets_.size() - 1);
+    return human_sprite_sheets_[dist(rng_)];
   }
 
   static inline float shortest_delta(float a, float b, float L) {
@@ -337,7 +355,7 @@ void Level::Update(float dt) {
            RAND_MAX);
       humans_.emplace_back(
           renderer_, level_config_.humanRespawnX_[randPointNum],
-          level_config_.human_y, level_config_.length, human_sprite_sheet_);
+          level_config_.human_y, level_config_.length, RandomSheet());
       LOGD("Create a human at {}x{}",
            level_config_.humanRespawnX_[randPointNum], level_config_.human_y);
     }
