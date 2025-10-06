@@ -4,11 +4,11 @@
         "height": 50
     },
     "acceleration": {
-        "x": 15000,
+        "x": 25000,
         "y": 15000
     },
     "max_velocity": {
-        "x": 100,
+        "x": 150,
         "y": 50
     },
     "drag_sec": {

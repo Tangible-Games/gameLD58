@@ -8,7 +8,7 @@
         },
         "y": {
             "capturing": 2000,
-            "falling": 5000
+            "falling": 8000
         }
     },
     "velocity": {
@@ -16,10 +16,10 @@
             "max": 70
         },
         "y": {
-            "deadly": 30
+            "deadly": 150
         }
     },
     "capture_delay": 3,
-    "at_capture_change_dir_time_min": 1,
-    "at_capture_change_dir_time_max": 3
+    "at_capture_change_dir_time_min": 0.5,
+    "at_capture_change_dir_time_max": 1.5
 }
