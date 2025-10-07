@@ -48,3 +48,8 @@ jobs:
         meson setup builddirpsp --cross-file crosscompile.txt
         ninja -C builddirpsp gameLD58.zip
         ninja -C builddirpsp gameLD58_host_exe
+    - name: Build release for PSP
+      run: |
+        source build_env.sh
+        meson setup builddir.release --cross-file crosscompile.txt -Dlogging=false --buildtype=release
+        ninja -C builddir.release gameLD58.zip
