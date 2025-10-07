@@ -134,8 +134,8 @@ class Logger {
   static Logger& init(
       const Configuration& configuration = kDefaultConfiguration) {
     auto& logger = Logger::instance();
-#if VLOG_ENABLED
     logger.configuration_ = configuration;
+#if VLOG_ENABLED
     logger.add_sink(ConsoleSink::create());
 #endif
     return logger;
@@ -145,6 +145,8 @@ class Logger {
     auto& logger = Logger::instance();
 #if VLOG_ENABLED
     logger.sinks_.emplace_back(std::move(sink));
+#else
+    (void)sink;
 #endif
     return logger;
   }
