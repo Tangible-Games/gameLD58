@@ -229,7 +229,7 @@
 
   "known_aliens": [
     {
-      "name": "Boshaan Zalesh Farmer",
+      "name": "Boshaan Zalesh Producer",
       "likes": {
         "Sex": ["Female"],
         "Age": ["18 years", "19 years", "20 years", "21 years", "72 years"],
@@ -271,9 +271,9 @@
         "Hobby": ["TV shows", "Running"]
       },
       "pays_when_likes": 1500,
-      "says_when_likes": "I like to sculpt them hoomans!",
+      "says_when_likes": "I do like sculpt nice hoomans!",
       "pays_when_dislikes": 15,
-      "says_when_dislikes": "Can it lift heavy stones?",
+      "says_when_dislikes": "Nice not, heavy marble can't lift.",
       "portrait_file_path": "assets/alien_4.png"
     },
     {
@@ -289,23 +289,23 @@
       "pays_when_likes": 3000,
       "says_when_likes": "Strong, will plow the field!",
       "pays_when_dislikes": 15,
-      "says_when_dislikes": "Who needs that trash?",
+      "says_when_dislikes": "Who needs that weakling?",
       "portrait_file_path": "assets/alien_3.png"
     },
     {
       "name": "Carro the Rot Dictator",
       "likes": {
         "Sex": ["Female"],
-        "Age": ["60 years", "21 years", "19 years", "26 years"],
+        "Age": ["60 years", "21 years", "19 years", "26 years", "29 years"],
         "Shape": ["Average"],
         "Character": ["Funny", "Bitchy"],
         "Job": ["Teacher", "Psychologist", "Clown"],
-        "Hobby": ["Chess", "Darts"]
+        "Hobby": ["Chess", "Darts", "Card tricks"]
       },
       "pays_when_likes": 4000,
       "says_when_likes": "Ah, this one will cheer me up!",
       "pays_when_dislikes": 4,
-      "says_when_dislikes": "Oh well, another servant...",
+      "says_when_dislikes": "Yet another boring servant...",
       "portrait_file_path": "assets/alien_5.png"
     },
     {
