@@ -2,7 +2,6 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_rect.h>
 #include <SDL3_image/SDL_image.h>
-#include <spine/spine.h>
 #if defined __PSP__
 #include <pspkernel.h>
 #endif
@@ -17,7 +16,6 @@
 #include "consts.hpp"
 #include "game.hpp"
 #include "keyboard.hpp"
-#include "spine_sdl3.h"
 
 using namespace gameLD58;
 
