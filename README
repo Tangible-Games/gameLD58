@@ -22,7 +22,7 @@ source ./build_env.sh
 
 Create build directory:
 ```
-configure_cross.sh
+./configure_cross.sh
 ```
 
 # Build and run
@@ -37,8 +37,43 @@ Run on host:
 ninja -C builddir/ host_run
 ```
 
+# Release build
+
 Create a release on GitHub (use the next version number for the tag):
 ```
 git tag v0.0.1
 git push origin v0.0.1
+```
+
+# Web build
+
+Prepare Emscripten SDK first:
+
+Download EMSDK: https://github.com/emscripten-core/emsdk/archive/refs/tags/4.0.16.tar.gz
+Extract to $HOME/emsdk, e.g.:
+```
+mkdir $HOME/emsdk && tar xf emsdk-4.0.16.tar.gz -C $HOME/emsdk --strip-components=1
+cd $HOME/emsdk
+./emsdk install latest
+./emsdk activate latest
+```
+
+Import environment:
+```
+source ./build_env_web.sh
+```
+
+Create build directory:
+```
+./configure_web.sh
+```
+
+Run in the browser (Press ESC in console to stop http-server)
+```
+ninja -C builddir.web web_run
+```
+
+Build archive with binaries for deployment:
+```
+ninja -C builddir.web gameLD58web.zip
 ```
