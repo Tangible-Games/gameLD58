@@ -43,7 +43,7 @@ assets_link = custom_target(
 )
 
 # Generate build targets
-if meson.is_cross_build()
+if psp_target
     elf = executable(
         meson.project_name(),
         srcs,
@@ -105,6 +105,55 @@ if meson.is_cross_build()
             '@INPUT@',
             meson.project_source_root() / 'assets',
         ],
+    )
+endif
+
+if emscripten_target
+    emscripten_exe = executable(
+        meson.project_name(),
+        srcs,
+        link_args: ['--embed-file', '../assets/@/assets'],
+        include_directories: include_dirs,
+        dependencies: common_deps + emscripten_deps,
+    )
+
+    index_html = custom_target(
+        'index_html',
+        output: '.empty1',
+        command: [
+            python_exe,
+            [
+                meson.project_source_root() / 'libs' / 'build' / 'link_assets.py',
+                meson.project_source_root() / 'libs' / 'emscripten' / 'index.html',
+                meson.project_build_root(),
+            ],
+        ],
+        build_always_stale: true,
+    )
+
+    run_target(
+        'web_run',
+        command: [
+            python_exe,
+            meson.project_source_root() / 'libs' / 'build' / 'run_web.py',
+            meson.project_build_root(),
+        ],
+        depends: [emscripten_exe, index_html],
+    )
+
+    web_game_zip = custom_target(
+        input: [meson.project_source_root() / 'libs' / 'emscripten' / 'index.html'],
+        output: meson.project_name() + '_web.zip',
+        command: [
+            python_exe,
+            meson.project_source_root() / 'libs' / 'build' / 'build_zip_web.py',
+            '@OUTPUT@',
+            meson.project_build_root(),
+            meson.project_build_root() / meson.project_name() + '.js',
+            meson.project_build_root() / meson.project_name() + '.wasm',
+            '@INPUT0@',
+        ],
+        depends: [emscripten_exe],
     )
 endif
 

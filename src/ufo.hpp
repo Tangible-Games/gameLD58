@@ -295,7 +295,6 @@ bool Ufo::IsPointInBeam(const Symphony::Math::Point2d& p) {
 }
 
 bool Ufo::MaybeCatchHuman(Human& h) {
-  (void)h;
   if (tractorBeamTimeout_ > 0.0 && IsPointInBeam(h.rect.center)) {
     h.captured_ = true;
 

@@ -102,7 +102,6 @@ MarketRules LoadMarketRules() {
   LOGD("Finished loading Market rules.");
   LOGD("Known traits:");
   for (const auto& trait : result.known_traits) {
-    (void)trait;
     LOGD("\t- {}", trait);
   }
 
@@ -110,8 +109,6 @@ MarketRules LoadMarketRules() {
   for (int index = 0; auto& known_humanoid : result.known_humanoids) {
     LOGD("\t- {}", index);
     for (const auto& trait : result.known_traits) {
-      (void)trait;
-      (void)known_humanoid;
       LOGD("\t\t- {}: {}", trait, known_humanoid.traits[trait]);
     }
     ++index;
@@ -128,7 +125,6 @@ MarketRules LoadMarketRules() {
     for (const auto& trait : result.known_traits) {
       LOGD("\t\t\t- {}:", trait);
       for (auto& trait_value : known_alien.likes[trait]) {
-        (void)trait_value;
         LOGD("\t\t\t\t- {}", trait_value);
       }
     }

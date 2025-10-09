@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <symphony_lite/all_symphony.hpp>
 
-inline float randToOne() { return (float)std::rand() / RAND_MAX; }
+inline float randToOne() { return (float)std::rand() / (float)RAND_MAX; }
 
 inline float randMinusOneToOne() { return 1.0 - (2.0 * randToOne()); }
 

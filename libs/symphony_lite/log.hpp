@@ -280,15 +280,64 @@ class Logger {
 
 #else
 
-#define LOGE(fmt, ...)
-#define LOGW(fmt, ...)
-#define LOGI(fmt, ...)
-#define LOGD(fmt, ...)
-#define LOGT(fmt, ...)
-#define LOGE_IF(condition, fmt, ...)
-#define LOGW_IF(condition, fmt, ...)
-#define LOGI_IF(condition, fmt, ...)
-#define LOGD_IF(condition, fmt, ...)
-#define LOGT_IF(condition, fmt, ...)
+// Suppress unused variable warnings
+template <class... Args>
+inline void log_nop(Args&&...) { /* nothing */ }
+
+#define LOGE(fmt, ...)    \
+  do {                    \
+    (void)sizeof(fmt);    \
+    log_nop(__VA_ARGS__); \
+  } while (0)
+#define LOGW(fmt, ...)    \
+  do {                    \
+    (void)sizeof(fmt);    \
+    log_nop(__VA_ARGS__); \
+  } while (0)
+#define LOGI(fmt, ...)    \
+  do {                    \
+    (void)sizeof(fmt);    \
+    log_nop(__VA_ARGS__); \
+  } while (0)
+#define LOGD(fmt, ...)    \
+  do {                    \
+    (void)sizeof(fmt);    \
+    log_nop(__VA_ARGS__); \
+  } while (0)
+#define LOGT(fmt, ...)    \
+  do {                    \
+    (void)sizeof(fmt);    \
+    log_nop(__VA_ARGS__); \
+  } while (0)
+#define LOGE_IF(condition, fmt, ...) \
+  do {                               \
+    (void)(condition);               \
+    (void)sizeof(fmt);               \
+    log_nop(__VA_ARGS__);            \
+  } while (0)
+#define LOGW_IF(condition, fmt, ...) \
+  do {                               \
+    (void)(condition);               \
+    (void)sizeof(fmt);               \
+    log_nop(__VA_ARGS__);            \
+  } while (0)
+#define LOGI_IF(condition, fmt, ...) \
+  do {                               \
+    (void)(condition);               \
+    (void)sizeof(fmt);               \
+    log_nop(__VA_ARGS__);            \
+  } while (0)
+#define LOGD_IF(condition, fmt, ...) \
+  do {                               \
+    (void)(condition);               \
+    (void)sizeof(fmt);               \
+    log_nop(__VA_ARGS__);            \
+  } while (0)
+#define LOGT_IF(condition, fmt, ...) \
+  do {                               \
+    (void)(condition);               \
+    (void)sizeof(fmt);               \
+    log_nop(__VA_ARGS__);            \
+  } while (0)
 
 #endif

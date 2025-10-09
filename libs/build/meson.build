@@ -1,6 +1,18 @@
 fs = import('fs')
 
+psp_target = false
+emscripten_target = false
 if meson.is_cross_build()
+    if host_machine.system() == 'emscripten'
+        emscripten_target = true
+        message('Emscripten target enabled')
+    else
+        psp_target = true
+        message('PSP target enabled')
+    endif
+endif
+
+if psp_target
     # PSPDEV configuration and deps
     psp_config = find_program('psp-config')
     pspdev_sdk = run_command(psp_config, '--pspsdk-path', check: true).stdout().strip()
@@ -75,7 +87,6 @@ if meson.is_cross_build()
     mksfoex_exe = find_program('mksfoex')
     strip_exe = find_program('psp-strip')
     pack_pbp_exe = find_program('pack-pbp')
-    sh_exe = find_program('sh')
     ppsspp_exe = find_program(
         'PPSSPPSDL',
         '/Applications/PPSSPPSDL.app/Contents/MacOS/PPSSPPSDL',
@@ -88,6 +99,22 @@ if meson.is_cross_build()
     # Always optimized on device
     add_project_arguments('-O2', language: ['c', 'cpp'])
     add_project_arguments('-DLOG_FILE="log.txt"', language: ['c', 'cpp'])
+endif
+
+if emscripten_target
+    add_project_arguments('-O2', language: ['c', 'cpp'])
+    add_project_arguments('-std=c++2a', language: 'cpp')
+    add_project_arguments('-std=gnu11', language: 'c')
+    add_project_arguments('-DEMSCRIPTEN_TARGET', language: ['c', 'cpp'])
+    add_project_arguments(
+        '-Wno-gnu-zero-variadic-macro-arguments',
+        language: ['c', 'cpp'],
+    )
+    add_project_arguments(
+        '-Wno-gnu-zero-variadic-macro-arguments',
+        language: ['c', 'cpp'],
+    )
+
 endif
 
 # Host configurations and deps
@@ -133,6 +160,7 @@ if muon_exe.found()
         meson.project_source_root() / 'meson.build',
         meson.project_source_root() / 'libs' / 'meson.build',
         meson.project_source_root() / 'libs' / 'build' / 'meson.build',
+        meson.project_source_root() / 'libs' / 'emscripten' / 'meson.build',
         meson.project_source_root() / 'libs' / 'symphony_lite' / 'meson.build',
         meson.project_source_root() / 'libs' / 'third-party' / 'meson.build',
         meson.project_source_root() / 'src' / 'meson.build',
