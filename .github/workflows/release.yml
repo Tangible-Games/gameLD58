@@ -18,7 +18,9 @@ jobs:
           submodules: 'true'
           fetch-depth: 0
     - name: Install deps
-      run: sudo apt install -y meson pkg-config
+      run: |
+        sudo apt update -y
+        sudo apt install -y meson pkg-config
     - name: Instal PSPDEV
       run: |
         wget https://github.com/pspdev/pspdev/releases/download/v20250901/pspdev-ubuntu-latest-x86_64.tar.gz
