@@ -380,12 +380,17 @@ void MarketScreen::OnKeyUp(Keyboard::Key key) {
         alien_pays_after_vat_ =
             (int)((1.0f - market_rules_->vat) * alien_pays_);
 
-        reFormatAlienReply();
+        player_status_->credits_earned += alien_pays_after_vat_;
+        player_status_->best_price =
+            std::max(player_status_->best_price, alien_pays_);
 
-        audio_->Play(all_audio_->audio[Sound::kButtonClick],
+        reFormatCredits();
+        reFormatReceipt();
+
+        audio_->Play(all_audio_->audio[Sound::kKaChing],
                      Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
 
-        state_ = State::kAlienReply;
+        state_ = State::kReceipt;
         no_button_time_ = no_button_timeout_;
       } else if (key == Keyboard::Key::kSelect) {
         if (callback_) {
@@ -399,17 +404,17 @@ void MarketScreen::OnKeyUp(Keyboard::Key key) {
 
     case State::kAlienReply:
       if (key == Keyboard::Key::kX) {
-        player_status_->credits_earned += alien_pays_after_vat_;
-        player_status_->best_price =
-            std::max(player_status_->best_price, alien_pays_);
-        reFormatCredits();
+        cur_humanoid_index_ = 0;
 
-        reFormatReceipt();
+        cur_humanoid_it_ = player_status_->cur_captured_humanoids.begin();
+        if (cur_humanoid_it_ == player_status_->cur_captured_humanoids.end()) {
+          state_ = State::kAllSold;
+        } else {
+          need_humanoid_re_format = true;
 
-        audio_->Play(all_audio_->audio[Sound::kKaChing],
-                     Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
+          state_ = State::kShowWare;
+        }
 
-        state_ = State::kReceipt;
         no_button_time_ = no_button_timeout_;
       }
       break;
@@ -418,20 +423,13 @@ void MarketScreen::OnKeyUp(Keyboard::Key key) {
       if (key == Keyboard::Key::kX) {
         player_status_->cur_captured_humanoids.erase(cur_humanoid_it_);
 
-        cur_humanoid_it_ = player_status_->cur_captured_humanoids.begin();
-        if (cur_humanoid_it_ == player_status_->cur_captured_humanoids.end()) {
-          state_ = State::kAllSold;
-        } else {
-          cur_humanoid_index_ = 0;
-
-          need_humanoid_re_format = true;
-
-          state_ = State::kShowWare;
-          no_button_time_ = no_button_timeout_;
-        }
+        reFormatAlienReply();
 
         audio_->Play(all_audio_->audio[Sound::kButtonClick],
                      Symphony::Audio::PlayTimes(1), Symphony::Audio::kNoFade);
+
+        state_ = State::kAlienReply;
+        no_button_time_ = no_button_timeout_;
       }
       break;
 
